@@ -24,6 +24,26 @@
           wrapProgram $out/bin/kotlin-language-server --prefix PATH : ${final.jre}/bin
        '';
       };
+      gradle = final.stdenv.mkDerivation rec {
+        name = "gradle-6.7";
+        nativeVersion = "0.22-milestone-8";
+        src = final.fetchurl {
+          url = "https://services.gradle.org/distributions/${name}-bin.zip";
+          sha256 = "1i6zm55wzy13wvvmf3804b0rs47yrqqablf4gpf374ls05cpgmca";
+        };
+        dontBuild = true;
+
+        installPhase = ''
+          mkdir -pv $out/lib/gradle/
+          cp -rv lib/ $out/lib/gradle/
+          gradle_launcher_jar=$(echo $out/lib/gradle/lib/gradle-launcher-*.jar)
+          test -f $gradle_launcher_jar
+          makeWrapper ${final.graalvm11-ee}/bin/java $out/bin/gradle \
+            --set JAVA_HOME ${final.graalvm11-ee} \
+            --add-flags "-classpath $gradle_launcher_jar org.gradle.launcher.GradleMain"
+        '';
+        buildInputs = [ final.unzip final.graalvm11-ee final.makeWrapper ];
+      };
     };
 
     devShell.x86_64-linux = pkgs.mkShell {
