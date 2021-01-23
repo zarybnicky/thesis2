@@ -1,10 +1,20 @@
-import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
+import java.net.URL
+import java.util.Properties
+import org.apache.tools.ant.filters.ReplaceTokens
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import org.gradle.api.internal.HasConvention
 
-plugins {
-    kotlin("jvm") version "1.4.21"
-    kotlin("kapt") version "1.4.21"
-    `java-library`
-    java
+group = project.properties["group"].toString()
+version = project.properties["version"].toString()
+
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.61")
+  }
 }
 
 repositories {
@@ -12,35 +22,137 @@ repositories {
   mavenCentral()
 }
 
-val graalVersion = "20.2.0"
+plugins {
+    application
+    java
+    idea
+    kotlin("jvm") version "1.4.21"
+    kotlin("kapt") version "1.4.21"
+}
+
 val compiler: Configuration by configurations.creating
+val graalVersion = "20.2.0"
 
 dependencies {
-    implementation("com.github.h0tk3y.betterParse:better-parse:0.4.1")
-    kapt("com.github.h0tk3y.betterParse:better-parse:0.4.1")
-
-    testImplementation(kotlin("test"))
-    testImplementation(kotlin("test-junit"))
-
-    compiler("org.graalvm.compiler:compiler:$graalVersion")
-    api("org.graalvm.compiler:compiler:$graalVersion")
-    api("org.graalvm.sdk:graal-sdk:$graalVersion")
-    api("org.graalvm.sdk:launcher-common:$graalVersion")
-    api("org.graalvm.truffle:truffle-api:$graalVersion")
-    testApi("org.graalvm.truffle:truffle-api:$graalVersion")
-    testApi("org.graalvm.compiler:compiler:$graalVersion")
-    kapt("org.graalvm.truffle:truffle-api:$graalVersion")
-    kapt("org.graalvm.truffle:truffle-dsl-processor:$graalVersion")
+  implementation(kotlin("stdlib"))
+  arrayOf("asm","asm-tree","asm-commons").forEach { implementation("org.ow2.asm:$it:7.1") }
+  implementation("org.fusesource.jansi:jansi:1.18")
+  compiler("org.graalvm.compiler:compiler:$graalVersion")
+  implementation("org.graalvm.compiler:compiler:$graalVersion")
+  implementation("org.graalvm.sdk:graal-sdk:$graalVersion")
+  implementation("org.graalvm.sdk:launcher-common:$graalVersion")
+  implementation("org.graalvm.truffle:truffle-api:$graalVersion")
+  implementation("com.github.h0tk3y.betterParse:better-parse:0.4.1")
+  testImplementation("org.graalvm.compiler:compiler:$graalVersion")
+  kapt("org.graalvm.truffle:truffle-api:$graalVersion")
+  kapt("org.graalvm.truffle:truffle-dsl-processor:$graalVersion")
+  testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_9
-    targetCompatibility = JavaVersion.VERSION_1_9
-    modularity.inferModulePath.set(true)
+  sourceCompatibility = JavaVersion.VERSION_1_9
+  targetCompatibility = JavaVersion.VERSION_1_9
+  modularity.inferModulePath.set(true)
 }
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "9"
+
+tasks.withType<KotlinCompile> {
+  kotlinOptions.jvmTarget = "9"
 }
-kotlin.sourceSets["main"].apply { kotlin.srcDir("src") }
-sourceSets["main"].apply { java.srcDir("src") }
-sourceSets["test"].apply { java.srcDir("test") }
+
+fun<R> SourceSet.kotlin(f: KotlinSourceSet.() -> R): R =
+  ((this as HasConvention).convention.getPlugin(KotlinSourceSet::class.java)).f()
+val SourceSet.kotlin: SourceDirectorySet get() = kotlin { kotlin }
+
+sourceSets {
+  main {
+    java.srcDir("src")
+    kotlin.srcDirs("src")
+  }
+  test {
+    kotlin.srcDirs("test")
+  }
+  val bench by creating {
+    dependencies {
+      kaptBench("org.openjdk.jmh:jmh-generator-annprocess:1.22")
+    }
+    java.srcDir("bench")
+    kotlin.srcDir("bench")
+    kotlin {
+      dependencies {
+        implementation(kotlin("stdlib"))
+        implementation("org.openjdk.jmh:jmh-core:1.22")
+      }
+    }
+    compileClasspath += sourceSets["main"].output
+    runtimeClasspath += sourceSets["main"].output
+    compileClasspath += configurations.runtimeClasspath.get()
+    runtimeClasspath += configurations.runtimeClasspath.get()
+  }
+}
+
+application {
+  mainClassName = "lambdapi.Launcher"
+  applicationDefaultJvmArgs = listOf(
+    "-XX:+UnlockExperimentalVMOptions",
+    "-XX:+EnableJVMCI",
+    "--module-path=${compiler.asPath}",
+    "--upgrade-module-path=${compiler.asPath}",
+    "-Dtruffle.class.path.append=@LAMBDAPI_APP_HOME@/lib/lambdapi-${project.version}.jar"
+  )
+}
+
+var rootBuildDir = project.buildDir
+
+val graalArgs = listOf(
+  "-XX:+UnlockExperimentalVMOptions",
+  "-XX:+EnableJVMCI",
+  "--module-path=${compiler.asPath}",
+  "--upgrade-module-path=${compiler.asPath}",
+//  "-XX:-UseJVMCIClassLoader",
+  "-Dgraalvm.locatorDisabled=true",
+  "-Dtruffle.class.path.append=build/libs/lambdapi-${project.version}.jar",
+  "--add-opens=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.runtime=ALL-UNNAMED",
+  "--add-opens=org.graalvm.truffle/com.oracle.truffle.api.source=ALL-UNNAMED",
+
+  "-Dgraal.Dump=Truffle",
+  "-Dgraal.PrintGraph=Network",
+  "-Dgraal.CompilationFailureAction=ExitVM",
+  "-Dgraal.TraceTruffleCompilation=true",
+//  "-Dgraal.TraceTruffleSplitting=true",
+//  "-Dgraal.TruffleTraceSplittingSummary=true",
+  "-Dgraal.TraceTruffleAssumptions=true",
+  "-Dgraal.TraceTruffleTransferToInterpreter=true",
+  // limit size of graphs for easier visualization
+  "-Dgraal.TruffleMaximumRecursiveInlining=0",
+//  "-Dgraal.LoopPeeling=false",
+  "-Xss32m"
+)
+
+tasks.test {
+  useJUnitPlatform()
+  testLogging {
+    events("passed","skipped","failed")
+    showStandardStreams = true
+  }
+  dependsOn("jar")
+  jvmArgs = graalArgs
+}
+
+tasks.register("bench", JavaExec::class) {
+  dependsOn("benchClasses", "jar")
+//  dependsOn(sourceSets["bench"].getJarTaskName())
+  classpath = sourceSets["bench"].runtimeClasspath + sourceSets["bench"].compileClasspath
+  main = "org.openjdk.jmh.Main"
+  jvmArgs = graalArgs
+}
+
+tasks.getByName<Jar>("jar") {
+  exclude("jre/**")
+  exclude("META-INF/symlinks")
+  exclude("META-INF/permissions")
+  archiveBaseName.set("lambdapi")
+  manifest {
+    attributes["Main-Class"] = "lambdapi.Launcher"
+    attributes["Class-Path"] = configurations.runtimeClasspath.get().files.joinToString(separator = " ") { it.absolutePath }
+  }
+}

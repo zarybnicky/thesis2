@@ -2,11 +2,11 @@ package lambdapi
 
 import com.oracle.truffle.api.*
 import com.oracle.truffle.api.frame.VirtualFrame
+import com.oracle.truffle.api.frame.FrameDescriptor
 import com.oracle.truffle.api.nodes.*
 import java.io.IOException
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
-
 
 @TruffleLanguage.Registration(
         id = "lambdapi",
@@ -36,11 +36,19 @@ class Lang : TruffleLanguage<Lang.Context>() {
         }
     }
 
-    class Context(val env: Env)
+    class Context(var env: Env)
 
     override fun createContext(env: Env): Context = Context(env)
     override fun isObjectOfLanguage(obj: Any): Boolean = false
-    override fun parse(req: ParsingRequest): CallTarget = Truffle.getRuntime().createCallTarget(null)
+    override fun parse(req: ParsingRequest): CallTarget =
+        Truffle.getRuntime().createCallTarget(InlineCode(currentLanguage(), null))
+
+    class InlineCode(
+        language: Lang,
+        fd: FrameDescriptor?
+    ) : RootNode(language, fd) {
+        override fun execute(frame: VirtualFrame) = 42
+    }
 
     abstract class Exp<T> {
         abstract fun apply(frame: VirtualFrame): T
@@ -114,6 +122,10 @@ class Lang : TruffleLanguage<Lang.Context>() {
                     count -= 1
                     true
                 }
+    }
+
+    companion object {
+        fun currentLanguage(): Lang = getCurrentLanguage(Lang::class.java)
     }
 
     fun run() {
