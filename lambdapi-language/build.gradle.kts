@@ -1,9 +1,6 @@
-import java.net.URL
-import java.util.Properties
-import org.apache.tools.ant.filters.ReplaceTokens
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 import org.gradle.api.internal.HasConvention
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 group = project.properties["group"].toString()
 version = project.properties["version"].toString()
@@ -46,6 +43,7 @@ dependencies {
   testImplementation("org.graalvm.compiler:compiler:$graalVersion")
   kapt("org.graalvm.truffle:truffle-api:$graalVersion")
   kapt("org.graalvm.truffle:truffle-dsl-processor:$graalVersion")
+  testImplementation(platform("org.junit:junit-bom:5.7.0"))
   testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
 }
 
@@ -73,7 +71,7 @@ sourceSets {
   }
   val bench by creating {
     dependencies {
-      kaptBench("org.openjdk.jmh:jmh-generator-annprocess:1.22")
+      "kaptBench"("org.openjdk.jmh:jmh-generator-annprocess:1.22")
     }
     java.srcDir("bench")
     kotlin.srcDir("bench")
