@@ -5,3 +5,10 @@ build/
 auto/
 *.toc
 *.aux
+*.ptc
+*.out
+*.log
+*.fls
+*.fdb_latexmk
+*.blg
+*.bbl
