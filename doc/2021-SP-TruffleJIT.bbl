@@ -1,0 +1,39 @@
+\makeatletter
+\makeatother
+\begin{thebibliography}{1}
+
+\bibitem{amin2017collapsing}
+{\sc\bgroup}Amin{\egroup}, N. and~{\sc\bgroup}Rompf{\egroup}, T.
+\newblock Collapsing towers of interpreters.
+\newblock {\em Proceedings of the ACM on Programming Languages}.
+\newblock ACM New York, NY, USA.
+\newblock 2017, vol.~2, POPL, p.~1--33.
+
+\bibitem{eisenberg2016dependent}
+{\sc\bgroup}Eisenberg{\egroup}, R.~A.
+\newblock {\em Dependent types in haskell: Theory and practice}.
+\newblock University of Pennsylvania, 2016.
+
+\bibitem{kmett_2019}
+{\sc\bgroup}Kmett{\egroup}, E.
+\newblock {\em Ekmett/cadenza}.
+\newblock 2019.
+\newblock Available at: ~{\small\url{https://github.com/ekmett/cadenza/}}.
+
+\bibitem{loh2010tutorial}
+{\sc\bgroup}L{\"o}h{\egroup}, A., {\sc\bgroup}McBride{\egroup}, C.
+  and~{\sc\bgroup}Swierstra{\egroup}, W.
+\newblock A tutorial implementation of a dependently typed lambda calculus.
+\newblock {\em Fundamenta informaticae}.
+\newblock IOS Press.
+\newblock 2010, vol.~102, no.~2, p.~177--207.
+
+\bibitem{marlow2004making}
+{\sc\bgroup}Marlow{\egroup}, S. and~{\sc\bgroup}Jones{\egroup}, S.~P.
+\newblock Making a fast curry: push/enter vs. eval/apply for higher-order
+  languages.
+\newblock {\em ACM SIGPLAN Notices}.
+\newblock ACM New York, NY, USA.
+\newblock 2004, vol.~39, no.~9, p.~4--15.
+
+\end{thebibliography}

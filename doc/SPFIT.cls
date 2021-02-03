@@ -301,14 +301,14 @@
 %	USEFUL PREPARATIONS
 %--------------------------------------------------------
 
-\graphicspath{{images/}{plots/}}
+\graphicspath{{img/}{plots/}}
 
 \usepackage{blindtext}
 \newcommand{\sgn}{\operatorname{sgn}}
 
 \usepackage{booktabs}
 
-\graphicspath{{images/}{plots/}}
+\graphicspath{{img/}{plots/}}
 
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[[#1]]}}}
 \newcommand{\phony}[1]{\textcolor{gray}{#1}}

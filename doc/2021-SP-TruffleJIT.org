@@ -199,7 +199,7 @@ commercially.
 
 #+ATTR_LaTeX: :placement [!htpb]
 #+CAPTION: GraalVM and Truffle (source: oracle.com)
-[[./images/graalvm.jpg]]
+[[./img/graalvm.jpg]]
 
 ** LambdaPi implementation
 I have implemented a dependently typed lambda calculus called LambdaPi based on
@@ -245,6 +245,6 @@ seeing how the performance of the individual implementations differs.
 
 #+BEGIN_EXPORT latex
 \phantomsection
-\bibliographystyle{bib-styles/enplain}
+\bibliographystyle{bibstyle}
 \bibliography{2021-SP-TruffleJIT-bib}
 #+END_EXPORT
