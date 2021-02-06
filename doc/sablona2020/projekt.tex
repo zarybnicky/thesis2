@@ -1,160 +1,77 @@
-\documentclass[english, zadani]{fitthesis}
-%\documentclass[english,zadani,print]{fitthesis} % for the black and white print - links are black
-%\documentclass[english,zadani,cprint]{fitthesis} % for the print - links are black, logo is color
-
-% Kompilace po částech (rychlejší, ale v náhledu nemusí být vše aktuální)
-% Compilation piecewise (faster, but not all parts in preview will be up-to-date)
-% \usepackage{subfiles}
-
-\graphicspath{{obrazky-figures/}{./obrazky-figures/}}
-
-%---rm---------------
-\renewcommand{\rmdefault}{lmr}%zavede Latin Modern Roman jako rm / set Latin Modern Roman as rm
-%---sf---------------
-\renewcommand{\sfdefault}{qhv}%zavede TeX Gyre Heros jako sf
-%---tt------------
-\renewcommand{\ttdefault}{lmtt}% zavede Latin Modern tt jako tt
-
-% vypne funkci šablony, která automaticky nahrazuje uvozovky,
-% aby nebyly prováděny nevhodné náhrady v popisech API apod.
-% disables function of the template which replaces quotation marks
-% to avoid unnecessary replacements in the API descriptions etc.
-\csdoublequotesoff
-
-
-
-\usepackage{url}
-
-
-\ifWis
-\ifx\pdfoutput\undefined % nejedeme pod pdflatexem / we are not using pdflatex
-\else
-  \usepackage{color}
-  \usepackage[unicode,colorlinks,hyperindex,plainpages=false,pdftex]{hyperref}
-  \definecolor{hrcolor-ref}{RGB}{223,52,30}
-  \definecolor{hrcolor-cite}{HTML}{2F8F00}
-  \definecolor{hrcolor-urls}{HTML}{092EAB}
-  \hypersetup{
-	linkcolor=hrcolor-ref,
-	citecolor=hrcolor-cite,
-	filecolor=magenta,
-	urlcolor=hrcolor-urls
-  }
-  \def\pdfBorderAttrs{/Border [0 0 0] }  % bez okrajů kolem odkazů / without margins around links
-  \pdfcompresslevel=9
-\fi
-\else % pro tisk budou odkazy, na které se dá klikat, černé / for the print clickable links will be black
-\ifx\pdfoutput\undefined % nejedeme pod pdflatexem / we are not using pdflatex
-\else
-  \usepackage{color}
-  \usepackage[unicode,colorlinks,hyperindex,plainpages=false,pdftex,urlcolor=black,linkcolor=black,citecolor=black]{hyperref}
-  \definecolor{links}{rgb}{0,0,0}
-  \definecolor{anchors}{rgb}{0,0,0}
-  \def\AnchorColor{anchors}
-  \def\LinkColor{links}
-  \def\pdfBorderAttrs{/Border [0 0 0] } % bez okrajů kolem odkazů / without margins around links
-  \pdfcompresslevel=9
-\fi
-\fi
-% Řešení problému, kdy klikací odkazy na obrázky vedou za obrázek
-% This solves the problems with links which leads after the picture
-\usepackage[all]{hypcap}
-
-% Informace o práci/projektu / Information about the thesis
-%---------------------------------------------------------------------------
-\projectinfo{
-  %Prace / Thesis
-  project={DP},
-  year={2021},
-  date=\today,
-  title.cs={Just-in-time překlad závisle typovaného lambda kalkulu},
-  title.en={Just-in-Time Compilation\\of the Dependently-typed Lambda Calculus},
-  title.length={15.5cm},
-  %sectitle.length={14.5cm}, % nastavení délky bloku s druhým titulkem pro úpravu zalomení řádku (lze definovat zde nebo níže)
-  author.name={Jakub},
-  author.surname={Zárybnický},
-  author.title.p={Bc.},
-  department={UITS},
-  supervisor.name={Ondřej},
-  supervisor.surname={Lengál},
-  supervisor.title.p={Ing.},
-  supervisor.title.a={Ph.D.},
-  keywords.cs={klíčová slova v českém jazyce, oddělená čárkami.},
-  keywords.en={klíčová slova v anglickém jazyce, oddělená čárkami.},
-  abstract.cs={Do tohoto odstavce bude zapsán výtah (abstrakt) práce v českém (slovenském) jazyce.},
-  abstract.en={Do tohoto odstavce bude zapsán výtah (abstrakt) práce v anglickém jazyce.},
-  declaration={I hereby declare that this Master's thesis was prepared as an original work by the author under the supervision of Mr. X
- The supplementary information was provided by Mr. Y
- I have listed all the literary sources, publications and other sources, which were used during the preparation of this thesis.},
-  acknowledgment={Here it is possible to express thanks to the supervisor and to the people which provided professional help (external submitter, consultant, etc.).},
-  faculty={FIT},
-  faculty.cs={Fakulta informačních technologií},
-  faculty.en={Faculty of Information Technology},
-  department.cs={Ústav inteligentních systémů},
-  department.en={Department of Intelligent Systems}
-}
-
-% Rozšířený abstrakt (cca 3 normostrany) - lze definovat zde nebo výše / Extended abstract (approximately 3 standard pages) - can be defined here or above
-%\extendedabstract{Do tohoto odstavce bude zapsán výtah (abstrakt) práce v českém (slovenském) jazyce.}
-
-% nastavení délky bloku s titulkem pro úpravu zalomení řádku - lze definovat zde nebo výše / setting the length of a block with a thesis title for adjusting a line break - can be defined here or above
-%\titlelength{14.5cm}
-% nastavení délky bloku s druhým titulkem pro úpravu zalomení řádku - lze definovat zde nebo výše / setting the length of a block with a second thesis title for adjusting a line break - can be defined here or above
-%\sectitlelength{14.5cm}
-
-% řeší první/poslední řádek odstavce na předchozí/následující stránce
-% solves first/last row of the paragraph on the previous/next page
-\clubpenalty=10000
-\widowpenalty=10000
-
-% checklist
-\newlist{checklist}{itemize}{1}
-\setlist[checklist]{label=$\square$}
-
+% Created 2021-02-06 Sat 20:20
+% Intended LaTeX compiler: pdflatex
+\documentclass[english,zadani,odsaz]{fitthesis}
+\renewcommand\title[1]{}
+\usepackage{minted}
+\usepackage[figure,table,listing]{totalcount}
+\input{metadata}
+\date{\today}
+\title{}
+\hypersetup{
+ pdfauthor={},
+ pdftitle={},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 28.0.50 (Org mode 9.3)}, 
+ pdflang={English}}
 \begin{document}
-  \maketitle
-  \setlength{\parskip}{0pt}
-  {\hypersetup{hidelinks}\tableofcontents}
-  \ifODSAZ
-    \setlength{\parskip}{0.5\bigskipamount}
-  \else
-    \setlength{\parskip}{0pt}
-  \fi
-  \iftwoside\cleardoublepage\fi
 
-  \input{projekt-01-kapitoly-chapters}
-  % Kompilace po částech (viz výše, nutno odkomentovat)
-  % Compilation piecewise (see above, it is necessary to uncomment it)
-  %\subfile{projekt-01-uvod-introduction}
-  % ...
-  %\subfile{chapters/projekt-05-conclusion}
+% * (front matter)                                              :ignoreheading:
+\maketitle
+\setlength{\parskip}{0pt}
+{\hypersetup{hidelinks}\tableofcontents}
+\iftotalfigures\listoffigures\fi
+\iftotaltables\listoftables\fi
+\iftotallistings\listoflistings\fi
+\iftwoside\cleardoublepage\fi
+\setlength{\parskip}{0.5\bigskipamount}
 
-  \makeatletter
-  \def\@openbib@code{\addcontentsline{toc}{chapter}{Bibliography}}
-  \makeatother
-  \bibliographystyle{bib-styles/Pysny/enplain}
-  \begin{flushleft}
-  \bibliography{projekt-20-literatura-bibliography}
-  \end{flushleft}
-  \iftwoside\cleardoublepage\fi
+\chapter{Úvod}
+\label{sec:org287e116}
+\chapter{Partial evaluation/JIT/Futamura}
+\label{sec:org64cac04}
+\chapter{JIT principles}
+\label{sec:org49af6be}
+\chapter{GraalVM/Truffle}
+\label{sec:org65567bb}
+\chapter{Dependently-Typed Lambda Calculus}
+\label{sec:org378c19a}
+\chapter{LambdaPi specification}
+\label{sec:org7182857}
+\chapter{LambdaPi Interpreter}
+\label{sec:org9c2ae1f}
+\chapter{Truffle-based compiler}
+\label{sec:org0e9198f}
+\chapter{LLVM-based compiler}
+\label{sec:orgbdb622a}
+\chapter{Benchmarks}
+\label{sec:org5386c90}
+\chapter{Evaluation}
+\label{sec:orgd17bf8e}
 
-  \appendix
-  \appendixpage
-  \iftwoside\cleardoublepage\fi
+% * (bibliography, start of appendix)                           :ignoreheading:
+\makeatletter
+\def\@openbib@code{\addcontentsline{toc}{chapter}{Bibliography}}
+\makeatother
+\bibliographystyle{bib-styles/Pysny/enplain}
 
-  \section*{List of Appendices}
-  \addcontentsline{toc}{section}{List of Appendices}
-  \startcontents[chapters]
-  \setlength{\parskip}{0pt}
-  \printcontents[chapters]{l}{0}{\setcounter{tocdepth}{2}}
+\begin{flushleft}
+\bibliography{projekt-20-literatura-bibliography}
+\end{flushleft}
+\iftwoside\cleardoublepage\fi
 
-  \ifODSAZ
-    \setlength{\parskip}{0.5\bigskipamount}
-  \else
-    \setlength{\parskip}{0pt}
-  \fi
+% Appendices
+\appendix
+\appendixpage
+\iftwoside\cleardoublepage\fi
 
-  \iftwoside\cleardoublepage\fi
-  \input{projekt-30-prilohy-appendices}
+\startcontents[chapters]
+% \setlength{\parskip}{0pt}
+% \printcontents[chapters]{l}{0}{\setcounter{tocdepth}{2}}
+% \setlength{\parskip}{0.5\bigskipamount}
+\iftwoside\cleardoublepage\fi
 
+\chapter{Contents of the attached data storage}
+\label{sec:org01ce501}
+\ldots{}
 \end{document}
