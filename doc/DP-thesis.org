@@ -72,7 +72,7 @@ implementations, and a set of benchmarks demonstrating a positive or a negative
 result.  If the result is positive, there are many potential follow-up tasks:
 implementing a different, more complex language, maybe a language to be
 interpreted into the dependently-typed lambda calculus to attempt the approach
-implemented in the /Collapsing Tower of Interpreters/ \cite{amin2017collapsing},
+implemented in the /Collapsing Tower of Interpreters/ cite:amin2017collapsing,
 or experimenting with different runtime models - all depending on the results of
 this preliminary proof of concept.
 
@@ -86,7 +86,7 @@ second term as possible.
 As far as I am aware, there are no other native just-in-time compiled
 implementations of the dependently-typed lambda calculus, with the exception of
 the preliminary investigations done by the originator of this idea
-\cite{kmett_2019}, although there are a few projects implementing a lambda
+cite:kmett_2019, although there are a few projects implementing a lambda
 calculus directly to the Java Virtual Machine byte code..
 
 * Partial evaluation/JIT/Futamura
@@ -180,7 +180,7 @@ e.g.  in Agda or Idris, I took this opportunity to investigate the theoretical
 basis of type systems - type systems in general, as used in general programming
 languages, their various limitations---like the need to extend System F (System
 FC) as used in Haskell to support fully dependent types
-\cite{eisenberg2016dependent}, the lambda cube, the expressive power of
+cite:eisenberg2016dependent, the lambda cube, the expressive power of
 different kinds of type systems, and where they are used.
 
 
@@ -189,9 +189,11 @@ different kinds of type systems, and where they are used.
 * LambdaPi Interpreter
 I have implemented a dependently typed lambda calculus called LambdaPi based on
 the prior work /A tutorial implementation of a dependently typed lambda calculus/
-\cite{loh2010tutorial}. The parser and interpreter are written in Kotlin, where
+cite:loh2010tutorial. The parser and interpreter are written in Kotlin, where
 I will also need to write the JIT implementation. This is a pure interpreter
 that will serve as a baseline for future benchmarks.
+
+
 
 #+ATTR_LaTeX: :placement [!htpb]
 #+CAPTION: The constant function in LambdaPi
@@ -208,22 +210,20 @@ let const = (\ a b x y -> x) :: forall (a :: *) (b :: *) . a -> b -> a
 * Evaluation
 
 * (bibliography, start of appendix)                           :ignoreheading:
+bibliographystyle:bibstyle
+nobibliography:bibliography.bib
+
 #+BEGIN_EXPORT latex
 \makeatletter
 \def\@openbib@code{\addcontentsline{toc}{chapter}{Bibliography}}
 \makeatother
-\bibliographystyle{bibstyle}
-
 \begin{flushleft}
 \bibliography{bibliography}
 \end{flushleft}
 \iftwoside\cleardoublepage\fi
-
-% Appendices
 \appendix
 \appendixpage
 \iftwoside\cleardoublepage\fi
-
 \startcontents[chapters]
 % \setlength{\parskip}{0pt}
 % \printcontents[chapters]{l}{0}{\setcounter{tocdepth}{2}}
