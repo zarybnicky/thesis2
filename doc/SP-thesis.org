@@ -246,5 +246,5 @@ seeing how the performance of the individual implementations differs.
 #+BEGIN_EXPORT latex
 \phantomsection
 \bibliographystyle{bibstyle}
-\bibliography{2021-SP-TruffleJIT-bib}
+\bibliography{bibliography}
 #+END_EXPORT

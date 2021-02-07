@@ -38,10 +38,10 @@
 \makeatletter
 \def\@openbib@code{\addcontentsline{toc}{chapter}{Bibliography}}
 \makeatother
-\bibliographystyle{bib-styles/Pysny/enplain}
+\bibliographystyle{bibstyle}
 
 \begin{flushleft}
-\bibliography{projekt-20-literatura-bibliography}
+\bibliography{bibliography}
 \end{flushleft}
 \iftwoside\cleardoublepage\fi
 

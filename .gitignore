@@ -1,3 +1,4 @@
+_minted*/
 build/
 .gradle/
 .idea/
@@ -12,3 +13,4 @@ auto/
 *.fdb_latexmk
 *.blg
 *.bbl
+\#*

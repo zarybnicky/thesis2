@@ -1,4 +1,4 @@
-% Created 2021-02-01 Mon 16:02
+% Created 2021-02-07 Sun 15:43
 % Intended LaTeX compiler: pdflatex
 \documentclass{SPFIT}
 \usepackage[utf8x]{inputenc}
@@ -57,7 +57,7 @@ the usefulness of JIT compilation for the dependently-typed lambda calculus.
 \startdocument
 
 \section{Introduction}
-\label{sec:orgb69e573}
+\label{sec:org79a9ee8}
 When creating small experimental or research languages, writing a compiler may
 be too much effort for the expected gain. On the other hand an interpreter is
 usually not as performant as its creators may require for more computationally
@@ -120,7 +120,7 @@ the preliminary investigations done by the originator of this idea
 calculus directly to the Java Virtual Machine byte code..
 
 \section{Assignment}
-\label{sec:org577ba43}
+\label{sec:org551e1f1}
 The assignment for the first term was given as follows:
 \begin{enumerate}
 \item Investigate dependent types, simply-typed and dependently-typed lambda
@@ -132,7 +132,7 @@ dependently-typed lambda calculus.
 \end{enumerate}
 
 \subsection{Lambda calculus}
-\label{sec:org808842e}
+\label{sec:org6b3622c}
 The untyped lambda calculus is introduced in the intermediate programming
 languages class but I haven't yet encountered its simply- or dependently-typed
 variants during my studies.
@@ -190,7 +190,7 @@ FC) as used in Haskell to support fully dependent types
 different kinds of type systems, and where they are used.
 
 \subsection{GraalVM, Truffle}
-\label{sec:org5fac853}
+\label{sec:orgf8262ba}
 \textbf{GraalVM} is a just-in-time optimizing compiler for the Java bytecode. \textbf{Truffle} is
 a set of libraries that expose the internals of the GraalVM compiler, intended
 for easy implementation of other languages. So far JavaScript, Python, Ruby, R,
@@ -223,7 +223,7 @@ commercially.
 \end{figure}
 
 \subsection{LambdaPi implementation}
-\label{sec:org9e354c2}
+\label{sec:org268f63b}
 I have implemented a dependently typed lambda calculus called LambdaPi based on
 the prior work \emph{A tutorial implementation of a dependently typed lambda calculus}
 \cite{loh2010tutorial}. The parser and interpreter are written in Kotlin, where
@@ -253,7 +253,7 @@ will likely not be equal.  A part of my work next term will be figuring out how
 well they map to the execution model of Truffle.
 
 \section{Conclusions}
-\label{sec:org3f13b07}
+\label{sec:org57f16e4}
 The next step is finalizing the basic Truffle implementation, applying the
 specializations as recommended by the Truffle documentation, and investigating
 other possible optimizations, especially pertaining to trampolining and
@@ -268,6 +268,6 @@ step. Any further work will depend on the results of these benchmarks, after
 seeing how the performance of the individual implementations differs.
 
 \phantomsection
-\bibliographystyle{bib-styles/enplain}
-\bibliography{2021-SP-TruffleJIT-bib}
+\bibliographystyle{bibstyle}
+\bibliography{bibliography}
 \end{document}
