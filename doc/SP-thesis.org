@@ -1,3 +1,4 @@
+* (front matter)                                              :ignoreheading:
 #+OPTIONS: texht:nil toc:nil author:nil ':t
 #+LANGUAGE: en
 #+LATEX_CLASS: SPFIT

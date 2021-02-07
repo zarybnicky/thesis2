@@ -13,4 +13,6 @@ auto/
 *.fdb_latexmk
 *.blg
 *.bbl
+*.lof
+*.lol
 \#*
