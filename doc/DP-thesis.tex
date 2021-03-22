@@ -1,19 +1,25 @@
-* (front matter)                                              :ignoreheading:
-#+LANGUAGE: en
-#+OPTIONS: texht:nil toc:nil author:nil ':t
-#+LATEX_CLASS: fitthesis
-#+LATEX_CLASS_OPTIONS: [english,zadani,odsaz]
-# print = B&W links and logo
-# cprint = B&W links, color logo
-#+BIND: org-latex-title-command ""
-#+BIND: org-latex-default-figure-position "tbh"
-#+LATEX_HEADER: \usepackage{minted}
-#+LATEX_HEADER: \usepackage{tikz}
-#+LATEX_HEADER: \usepackage{tikz-cd}
-#+LATEX_HEADER: \usepackage{bussproofs}
-#+LaTeX_HEADER: \usepackage[figure,table,listing]{totalcount}
-#+LaTeX_HEADER: \input{metadata}
-#+BEGIN_EXPORT latex
+% Created 2021-02-07 Sun 15:49
+% Intended LaTeX compiler: pdflatex
+\documentclass[english,zadani,odsaz]{fitthesis}
+\renewcommand\title[1]{}
+\usepackage{minted}
+\usepackage{tikz}
+\usepackage{tikz-cd}
+\usepackage{bussproofs}
+\usepackage[figure,table,listing]{totalcount}
+\input{metadata}
+\date{\today}
+\title{}
+\hypersetup{
+ pdfauthor={},
+ pdftitle={},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 28.0.50 (Org mode 9.3)}, 
+ pdflang={English}}
+\begin{document}
+
+% * (front matter)                                              :ignoreheading:
 \maketitle
 \setlength{\parskip}{0pt}
 {\hypersetup{hidelinks}\tableofcontents}
@@ -22,9 +28,9 @@
 \iftotallistings\listoflistings\fi
 \iftwoside\cleardoublepage\fi
 \setlength{\parskip}{0.5\bigskipamount}
-#+END_EXPORT
 
-* Introduction
+\chapter{Introduction}
+\label{sec:org3fb8cda}
 When creating small experimental or research languages, writing a compiler may
 be too much effort for the expected gain. On the other hand an interpreter is
 usually not as performant as its creators may require for more computationally
@@ -40,11 +46,10 @@ the gains may be several orders of magnitude.
 The goal of my thesis is to evaluate whether the GraalVM/Truffle platform is
 suitable enough to act as a specializer for functional languages, in particular
 for the dependently-typed lambda calculus.  To illustrate in Figure
-\ref{fig:futamora}, the question is whether the path \textit{Native
-Image\textrightarrow Result} is fast enough compared to the path
+\ref{fig:futamora}, the question is whether the path \textit\{Native
+Image\textrightarrow Result\} is fast enough compared to the path
 \textit{Executable\textrightarrow Result}.
 
-#+BEGIN_EXPORT latex
 \begin{figure}
 \centering
 \begin{tikzcd}
@@ -59,7 +64,6 @@ Executable \arrow[rd, "Run" description, bend right] & {} & Native\ Image \arrow
 \caption{Methods of program execution}
 \label{fig:futamora}
 \end{figure}
-#+END_EXPORT
 
 Truffle has already been used rather successfully for the (mostly) imperative
 languages Ruby, Python, R, Java, and WebAssembly, but (purely-)functional
@@ -72,7 +76,7 @@ implementations, and a set of benchmarks demonstrating a positive or a negative
 result.  If the result is positive, there are many potential follow-up tasks:
 implementing a different, more complex language, maybe a language to be
 interpreted into the dependently-typed lambda calculus to attempt the approach
-implemented in the /Collapsing Tower of Interpreters/ cite:amin2017collapsing,
+implemented in the \emph{Collapsing Tower of Interpreters} \cite{amin2017collapsing},
 or experimenting with different runtime models - all depending on the results of
 this preliminary proof of concept.
 
@@ -86,21 +90,28 @@ second term as possible.
 As far as I am aware, there are no other native just-in-time compiled
 implementations of the dependently-typed lambda calculus, with the exception of
 the preliminary investigations done by the originator of this idea
-cite:kmett_2019, although there are a few projects implementing a lambda
+\cite{kmett_2019}, although there are a few projects implementing a lambda
 calculus directly to the Java Virtual Machine byte code..
 
-* GraalVM and the Truffle Framework
-*GraalVM* is a just-in-time optimizing compiler for the Java bytecode. *Truffle* is
+\chapter{Partial evaluation/JIT/Futamura}
+\label{sec:org045b127}
+
+\chapter{JIT principles}
+\label{sec:org79761c8}
+
+\chapter{GraalVM/Truffle}
+\label{sec:org4a642f5}
+\textbf{GraalVM} is a just-in-time optimizing compiler for the Java bytecode. \textbf{Truffle} is
 a set of libraries that expose the internals of the GraalVM compiler, intended
 for easy implementation of other languages. So far JavaScript, Python, Ruby, R,
 and WebAssembly have Truffle implementations, and therefore can run on the JVM.
 
-GraalVM is also intended to allow creating /polyglot applications/ easily,
+GraalVM is also intended to allow creating \emph{polyglot applications} easily,
 applications that have their parts written in different languages. It is
 therefore easy to e.g. call R to create visualizations for the results of a
 Python program, or to call any Truffle language from Java.
 
-There is also the option to compile a /Native Image/ to eliminate most program
+There is also the option to compile a \emph{Native Image} to eliminate most program
 start-up costs associated with a just-in-time compiler, pre-compiling the
 program partially (ahead-of-time).
 
@@ -115,39 +126,34 @@ While GraalVM/Truffle is open-source and released under GPL v2, an
 enterprise edition that claims large performance improvements is released
 commercially.
 
-#+ATTR_LaTeX: :placement [!htb]
-#+CAPTION: GraalVM and Truffle (source: oracle.com)
-[[./img/graalvm.jpg]]
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=.9\linewidth]{./img/graalvm.jpg}
+\caption{GraalVM and Truffle (source: oracle.com)}
+\end{figure}
 
-JIT options - specialization, deoptimization
-Use cases
-Potential optimizations
+\chapter{Dependently-Typed Lambda Calculus}
+\label{sec:orge053f1d}
+The untyped lambda calculus is introduced in the intermediate programming
+languages class but I haven't yet encountered its simply- or dependently-typed
+variants during my studies.
 
-* The LambdaPi Language
-** Lambda Calculus Theory
-*** Untyped Lambda Calculus
 The untyped lambda calculus is a simple language consisting of just three kinds
 of forms: variables, function application, and abstraction.
 
-#+CAPTION: Untyped lambda calculus
-#+ATTR_LaTeX: :options [!htpb]
-#+begin_figure latex
+\begin{figure}[!htpb]
 \[\begin{array}{ccll}
 e & ::= & x            & \text{variable} \\
   & |   & e_1~e_2      & \text{application} \\
   & |   & \lambda x. e & \text{abstraction}
 \end{array}\]
-#+end_figure
+\caption{Untyped lambda calculus}
+\end{figure}
 
-syntax, semantics, usage
-
-*** Simply-Typed Lambda Calculus
 The simply-typed lambda calculus adds a fourth kind of a term, type annotation,
 and its type language:
 
-#+CAPTION: Simply typed lambda calculus
-#+ATTR_LaTeX: :options [!htpb]
-#+begin_figure latex
+\begin{figure}[!htpb]
 \[\begin{array}{ccll}
 e & ::= & x           & \text{variable} \\
   & |   & e_1~e_2      & \text{application} \\
@@ -158,20 +164,13 @@ e & ::= & x           & \text{variable} \\
 \tau & ::= & \alpha           & \text{base type} \\
      & |   & \tau\rightarrow\tau' & \text{composite type}
 \end{array}\]
-#+end_figure
-
-syntax, semantics, type checking, type inference
-
-*** Lambda cube
-
-... image
+\caption{Simply typed lambda calculus}
+\end{figure}
 
 The dependently typed lambda calculus merges these two languages together,
 simplifying the grammar.
 
-#+CAPTION: Dependently typed lambda calculus
-#+ATTR_LaTeX: :options [!htpb]
-#+begin_figure latex
+\begin{figure}[!htpb]
 \[\begin{array}{ccll}
 e & ::= & x           & \text{variable} \\
   & |   & e_1~e_2      & \text{application} \\
@@ -180,69 +179,71 @@ e & ::= & x           & \text{variable} \\
   & |   & *           & \text{the type of types} \\
   & |   & \forall x:\rho.\rho' & \text{dependent function space}
 \end{array}\]
-#+end_figure
-...
+\caption{Dependently typed lambda calculus}
+\end{figure}
 
-directions, decidability, where is DTLC
+As I was already familiar with the use of dependent types in general programming
+e.g.  in Agda or Idris, I took this opportunity to investigate the theoretical
+basis of type systems - type systems in general, as used in general programming
+languages, their various limitations---like the need to extend System F (System
+FC) as used in Haskell to support fully dependent types
+\cite{eisenberg2016dependent}, the lambda cube, the expressive power of
+different kinds of type systems, and where they are used.
 
-** LambdaPi specification
-#+ATTR_LaTeX: :placement [!htpb]
-#+CAPTION: The constant function in LambdaPi
-#+begin_src text
-let const = (\ a b x y -> x) :: forall (a :: *) (b :: *) . a -> b -> a
-#+end_src
 
-syntax, semantics, type checking, type inference
+\chapter{LambdaPi specification}
+\label{sec:org495e9bb}
 
-** Type Checking
-Bottleneck in dependent types and something to speed up using Truffle
-
-NBE, elaboration zoo
-
-* Language Implementations
-** Interpreter
+\chapter{LambdaPi Interpreter}
+\label{sec:org777ba4e}
 I have implemented a dependently typed lambda calculus called LambdaPi based on
-the prior work /A tutorial implementation of a dependently typed lambda calculus/
-cite:loh2010tutorial. The parser and interpreter are written in Kotlin, where
+the prior work \emph{A tutorial implementation of a dependently typed lambda calculus}
+\cite{loh2010tutorial}. The parser and interpreter are written in Kotlin, where
 I will also need to write the JIT implementation. This is a pure interpreter
 that will serve as a baseline for future benchmarks.
 
-data classes, NBE, neutral
+\begin{listing}[!htpb]
+\begin{minted}[]{text}
+let const = (\ a b x y -> x) :: forall (a :: *) (b :: *) . a -> b -> a
+\end{minted}
+\caption{The constant function in LambdaPi}
+\end{listing}
 
-** Truffle-based compiler
+\chapter{Truffle-based compiler}
+\label{sec:org233c730}
 
-** LLVM-based compiler
+\chapter{LLVM-based compiler}
+\label{sec:orgf2f99c1}
 
-* Evaluation
-** Benchmarks
+\chapter{Benchmarks}
+\label{sec:org0a20009}
 
-** Results
+\chapter{Evaluation}
+\label{sec:org4810524}
 
-** Future work
-
-* Conclusion
-
-* (bibliography, start of appendix)                           :ignoreheading:
-bibliographystyle:bibstyle
-nobibliography:bibliography.bib
-
-#+BEGIN_EXPORT latex
+% * (bibliography, start of appendix)                           :ignoreheading:
 \makeatletter
 \def\@openbib@code{\addcontentsline{toc}{chapter}{Bibliography}}
 \makeatother
+\bibliographystyle{bibstyle}
+
 \begin{flushleft}
 \bibliography{bibliography}
 \end{flushleft}
 \iftwoside\cleardoublepage\fi
+
+% Appendices
 \appendix
 \appendixpage
 \iftwoside\cleardoublepage\fi
+
 \startcontents[chapters]
 % \setlength{\parskip}{0pt}
 % \printcontents[chapters]{l}{0}{\setcounter{tocdepth}{2}}
 % \setlength{\parskip}{0.5\bigskipamount}
 \iftwoside\cleardoublepage\fi
-#+END_EXPORT
 
-* Contents of the attached data storage
-...
+\chapter{Contents of the attached data storage}
+\label{sec:orgf914ee3}
+\ldots{}
+\end{document}

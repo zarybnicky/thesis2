@@ -7,6 +7,7 @@ import com.oracle.truffle.api.nodes.*
 import java.io.IOException
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
+import lambdapi.parseString
 
 @TruffleLanguage.Registration(
         id = "lambdapi",

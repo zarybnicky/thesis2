@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "lambdapi": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1608110146,
+        "narHash": "sha256-T54YtcdfA4MV5jehiqN6/XmSc28zLP/3jCpVTH2ICQ0=",
+        "owner": "ilya-klyuchnikov",
+        "repo": "lambdapi",
+        "rev": "79ddf21581e03ea34a94cc00ffd5c8684d845ed9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ilya-klyuchnikov",
+        "ref": "master",
+        "repo": "lambdapi",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1611396451,
@@ -18,6 +35,7 @@
     },
     "root": {
       "inputs": {
+        "lambdapi": "lambdapi",
         "nixpkgs": "nixpkgs"
       }
     }

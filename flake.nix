@@ -1,15 +1,26 @@
 {
   inputs.nixpkgs.url = github:NixOS/nixpkgs/master;
+  inputs.lambdapi.url = github:ilya-klyuchnikov/lambdapi/master;
+  inputs.lambdapi.flake = false;
 
-  outputs = { self, nixpkgs }: let
+  outputs = { self, lambdapi, nixpkgs }: let
     inherit (pkgs.nix-gitignore) gitignoreSourcePure;
+    getSrc = dir: gitignoreSourcePure [./.gitignore] dir;
     pkgs = import nixpkgs {
       system = "x86_64-linux";
       overlays = [ self.overlay ];
       config.allowUnfree = true;
     };
+    compiler = "ghc884";
+    hsPkgs = pkgs.haskell.packages.${compiler};
   in {
     overlay = final: prev: {
+      haskell = prev.haskell // {
+        packageOverrides = prev.lib.composeExtensions (prev.haskell.packageOverrides or (_: _: {})) (hself: hsuper: {
+          lph = hself.callCabal2nix "lph" lambdapi {};
+        });
+      };
+
       kotlin-language-server = final.stdenv.mkDerivation rec {
         pname = "kotlin-language-server";
         version = "0.7.0";
@@ -46,12 +57,18 @@
       };
     };
 
-    devShell.x86_64-linux = pkgs.mkShell {
-      inputsFrom = [];
+    devShell.x86_64-linux = hsPkgs.shellFor {
+      withHoogle = false;
+      packages = p: [ p.lph ];
       buildInputs = [
+        hsPkgs.cabal-install
+        hsPkgs.hie-bios
+        hsPkgs.haskell-language-server
+        hsPkgs.stan
         pkgs.kotlin-language-server
         pkgs.graalvm11-ee
         pkgs.gradle
+        (pkgs.antlr4.override { jre = pkgs.graalvm11-ee; })
       ];
     };
   };

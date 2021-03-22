@@ -1,0 +1,24 @@
+[submodule "dep/elaboration-zoo"]
+	path = dep/elaboration-zoo
+	url = https://github.com/AndrasKovacs/elaboration-zoo/
+[submodule "dep/grammars-v4"]
+	path = dep/grammars-v4
+	url = https://github.com/antlr/grammars-v4
+[submodule "dep/lambdapi"]
+	path = dep/lambdapi
+	url = https://github.com/ilya-klyuchnikov/lambdapi/
+[submodule "dep/pi-forall"]
+	path = dep/pi-forall
+	url = https://github.com/sweirich/pi-forall/
+[submodule "dep/compilers-course"]
+	path = dep/compilers-course
+	url = https://github.com/h0tk3y/compilers-course
+[submodule "dep/simplelanguage"]
+	path = dep/simplelanguage
+	url = https://github.com/graalvm/simplelanguage
+[submodule "dep/normalization-by-evaluation"]
+	path = dep/normalization-by-evaluation
+	url = https://gist.github.com/ekmett/492f05ee9d9be5c964de67598577df1f
+[submodule "dep/fsharp-tapl"]
+	path = dep/fsharp-tapl
+	url = https://github.com/jack-pappas/fsharp-tapl
