@@ -1,0 +1,88 @@
+* Montuno: Efficient elaboration of dependent types using JIT compiler
+
+- Intro + motivation
+  - Follow-up to Cadenza (STLC) on behalf of its creator 
+  - Combination of JIT and dependent types is natural (computation on the
+    type-level) but not found in literature
+  - Motivation: JIT for elaboration!!! plus easy prototyping, stepping block for
+    other projects (efficient LF/Twelf, ...)
+- Platform: GraalVM and Truffle
+  - Intro: ecosystem, purpose, benefits
+  - GraalVM marketing texts: HotSpotVM's JIT vs Graal's
+  - Truffle
+    - Intro + motivating multilanguage snippet
+    - features with code samples
+    - benchmarks for other languages
+- Language: Dependently Typed Lambda Calculus
+  - Dependent types
+    - Intro dependent types + motivating example
+    - hot ML research area (cubical, path, ...) (look in Kovacs' materials)
+  - Lambda calculi
+    - work up the lambda cube
+  - Techniques:
+    - Type-checking techniques (bidi, by-eval, ...) + motivation
+    - Evaluation techniques (by-need, etc.)
+  - Specification
+    - syntax
+    - semantics
+- Implementation
+  - Interpreter
+    - Grammar, Term, eval/uneval algorithm, inference algorithm
+  - Truffle
+    - Basics: annotate & run, show the evaluation graph (IGV)
+    - Annotations: trampoline, eval-apply, ..., show their effect
+    - maybe use SmallTT techniques, etc.
+  - "I've considered LLVM, WASM backends, but we need to evaluate type-checking
+    perf especially, so not relevant - better to compare with existing and/or
+    experimental systems"
+  - Toy LLVM backend?
+  - SmallTT
+  - Coq
+  - Agda - for comparison
+- Benchmarks
+  - from SmallTT project, from Idris project
+  - memory usage (curve)
+  - compilation speed (type-heavy test)
+  - evaluation speed (compute-heavy test)
+- Evaluation
+  - Results!
+- Conclusion
+  - Good enough?
+  - LF, techniques, extensions, real language
+
+* Tasks
+- Unit tests for the parser
+  - https://www.jetbrains.com/help/idea/tdd-with-kotlin.html
+  - https://github.com/renatahodovan/grammarinator
+  - https://github.com/ilya-klyuchnikov/lambdapi/blob/master/prelude.lp
+- Parse tree inspector for ANTLR?
+- Get IGV working
+- Get Chrome debugger working
+- Debugging Graal in Idea?
+
+* Questions
+What's so special about HOAS?
+What did techniques other Truffle functional languages use? Pony, ...
+Should we include type-checking in runtime? == **partial evaluation** w/o checking
+Can I do polyglot? Can I do basic I/O to eliminate warm-up? Benchmarking primitives?
+
+* Dependent types, Lambda cube
+https://en.wikipedia.org/wiki/Dependent_type
+https://en.wikipedia.org/wiki/Higher-order_abstract_syntax
+https://en.wikipedia.org/wiki/Combinatory_logic
+
+* Implementations
+https://github.com/AndrasKovacs/smalltt
+https://github.com/u2zv1wx/neut
+https://github.com/Beluga-lang/Beluga
+
+* Benchmarks:
+Search: agda idris compilation "benchmark"
+Search: dependent elaboration 
+
+https://github.com/AndrasKovacs/smalltt
+https://www.reddit.com/r/haskell/comments/3zc81v/tradeoffs_of_dependent_types_xpost_from_ridris/
+https://github.com/xgrommx/idris-ecosystem
+https://eb.host.cs.st-andrews.ac.uk/drafts/dtp-erasure-draft.pdf
+https://www.researchgate.net/publication/221278462_Beluga_Programming_with_Dependent_Types_Contextual_Data_and_Contexts
+
