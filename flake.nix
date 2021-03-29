@@ -59,7 +59,7 @@
 
     devShell.x86_64-linux = hsPkgs.shellFor {
       withHoogle = false;
-      packages = p: [ p.lph ];
+      packages = p: [];# p.lph ];
       buildInputs = [
         hsPkgs.cabal-install
         hsPkgs.hie-bios

@@ -34,12 +34,11 @@ val graalVersion = "20.2.0"
 
 dependencies {
     implementation(kotlin("stdlib"))
+    implementation(kotlin("reflect"))
 
     antlr("org.antlr:antlr4:4.8-1")
     api("org.antlr:antlr4-runtime:4.8-1")
-    implementation("guru.nidi:graphviz-java:0.18.1")
     implementation("kotlin-pretty:kotlin-pretty:0.5.2")
-    implementation("me.tomassetti:kllvm:0.1.0")
 
     testImplementation(platform("org.junit:junit-bom:5.7.0"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")

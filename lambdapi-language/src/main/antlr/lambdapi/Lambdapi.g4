@@ -1,30 +1,31 @@
 grammar Lambdapi;
-
 @header {
 package lambdapi;
 }
 
 term
-    : 'let' name=IDENT ':' type=term '=' tm=term 'in' body=term #Let
-//    | 'if' ifE=term 'then' thenE=term 'else' elseE=term #If
-    | '\\' (args+=bind)* '->' body=term #Lam
-    | fun=infix (args+=infix)+ #App
-    | exp=infix #Exp
-//    | name=infix ':' type=term #Ann
+    : 'let' name=binder ':' type=term '=' tm=term 'in' body=term #Let
+    | LAMBDA (args+=binder)* '.' body=term #Lam
+    | '(' (dom+=binder)+ ':' kind=term ')' ARROW cod=term #Pi
+    | (spine+=atom)+ (ARROW rest=term)? #App
     ;
-infix
+atom
     : '(' rec=term ')' #Rec
-    | IDENT ('->' rest=infix)? #Arr
-//    | LIT #Lit
+    | IDENT #Var
+    | '*' #Star
+    | 'Nat' #Nat
+    | NAT #LitNat
     ;
-bind
-    : IDENT
-    | '(' name=IDENT ':' type=term ')'
-//    | '_'
+binder
+    : IDENT #Ident
+    | '_' #Hole
     ;
 
-//LIT   : [0-9]+;
-IDENT : [a-zA-Z] [a-zA-Z0-9]*;
-WS    : [ \t\r\n] -> skip;
+IDENT : [a-zA-Z] [a-zA-Z0-9']*;
+NAT : [0-9]+;
+
+WS : [ \t\r\n] -> skip;
 COMMENT : '--' (~[\r\n])* -> skip;
 NCOMMENT : '{-'~[#] .*? '-}' -> skip;
+LAMBDA : '\\' | 'λ';
+ARROW : '->' | '→';
