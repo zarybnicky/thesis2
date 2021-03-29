@@ -76,6 +76,8 @@ https://github.com/AndrasKovacs/smalltt
 https://github.com/u2zv1wx/neut
 https://github.com/Beluga-lang/Beluga
 
+Agda impl problems: https://github.com/agda/agda/issues/514
+
 * Benchmarks:
 Search: agda idris compilation "benchmark"
 Search: dependent elaboration 
