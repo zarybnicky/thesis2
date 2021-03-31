@@ -105,13 +105,13 @@ sourceSets {
 }
 
 application {
-    mainClassName = "lambdapi.Launcher"
+    mainClassName = "montuno.Launcher"
     applicationDefaultJvmArgs = listOf(
         "-XX:+UnlockExperimentalVMOptions",
         "-XX:+EnableJVMCI",
         "--module-path=${compiler.asPath}",
         "--upgrade-module-path=${compiler.asPath}",
-        "-Dtruffle.class.path.append=@LAMBDAPI_APP_HOME@/lib/lambdapi-${project.version}.jar"
+        "-Dtruffle.class.path.append=@MONTUNO_APP_HOME@/lib/montuno-${project.version}.jar"
     )
 }
 
@@ -124,7 +124,7 @@ val graalArgs = listOf(
     "--upgrade-module-path=${compiler.asPath}",
 //  "-XX:-UseJVMCIClassLoader",
     "-Dgraalvm.locatorDisabled=true",
-    "-Dtruffle.class.path.append=build/libs/lambdapi-${project.version}.jar",
+    "-Dtruffle.class.path.append=build/libs/montuno-${project.version}.jar",
     "--add-opens=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.runtime=ALL-UNNAMED",
     "--add-opens=org.graalvm.truffle/com.oracle.truffle.api.source=ALL-UNNAMED",
 
@@ -164,9 +164,9 @@ tasks.getByName<Jar>("jar") {
     exclude("jre/**")
     exclude("META-INF/symlinks")
     exclude("META-INF/permissions")
-    archiveBaseName.set("lambdapi")
+    archiveBaseName.set("montuno")
     manifest {
-        attributes["Main-Class"] = "lambdapi.Launcher"
+        attributes["Main-Class"] = "montuno.Launcher"
         attributes["Class-Path"] =
             configurations.runtimeClasspath.get().files.joinToString(separator = " ") { it.absolutePath }
     }

@@ -1,3 +1,3 @@
 rootProject.name = "thesis"
-include("lambdapi-language")
+include("montuno")
 include("cadenza")

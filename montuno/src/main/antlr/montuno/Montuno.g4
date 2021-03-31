@@ -1,6 +1,6 @@
-grammar Lambdapi;
+grammar Montuno;
 @header {
-package lambdapi;
+package montuno;
 }
 
 term

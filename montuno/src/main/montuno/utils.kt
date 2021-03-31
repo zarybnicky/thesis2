@@ -1,4 +1,7 @@
-package lambdapi
+package montuno
+
+import com.oracle.truffle.api.source.Source
+import com.oracle.truffle.api.source.SourceSection
 
 data class Ix(val it: Int)
 fun Ix.dec() = Ix(it - 1)
@@ -42,3 +45,24 @@ fun Names?.elem(n: String): Boolean = when {
     this.n == n -> true
     else -> next.elem(n)
 }
+
+sealed class Loc {
+    object Unavailable : Loc();
+    data class Range(val start: Int, val length: Int) : Loc()
+    data class Line(val line: Int) : Loc()
+
+    fun string(source: String): String = when (this) {
+        is Unavailable -> "<unavailable>"
+        is Range -> source.subSequence(start, start + length).toString()
+        is Line -> source.lineSequence().elementAt(line)
+    }
+    fun section(source: Source): SourceSection = when (this) {
+        is Unavailable -> source.createUnavailableSection()
+        is Range -> source.createSection(start, length)
+        is Line -> source.createSection(line)
+    }
+
+    infix fun with(r: Raw) = RSrcPos(this, r)
+}
+
+fun Source.section(loc: Loc): SourceSection = loc.section(this)

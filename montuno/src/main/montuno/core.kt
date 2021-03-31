@@ -1,34 +1,37 @@
-package lambdapi
+package montuno
+
+import montuno.syntax.parseString
 
 sealed class Raw
-class RVar(val n: String) : Raw()
-class RLitNat(val n: Int) : Raw()
-class RApp(val arg: Raw, val body: Raw) : Raw()
-class RLam(val arg: String, val body: Raw) : Raw()
+data class RVar(val n: String) : Raw()
+data class RLitNat(val n: Int) : Raw()
+data class RApp(val arg: Raw, val body: Raw) : Raw()
+data class RLam(val arg: String, val body: Raw) : Raw()
 object RStar : Raw()
 object RNat : Raw()
-class RPi(val arg: String, val ty: Raw, val body: Raw) : Raw()
-class RLet(val n: String, val ty: Raw, val bind: Raw, val body: Raw) : Raw()
+data class RPi(val arg: String, val ty: Raw, val body: Raw) : Raw()
+data class RLet(val n: String, val ty: Raw, val bind: Raw, val body: Raw) : Raw()
+data class RSrcPos(val loc: Loc, val body: Raw) : Raw()
 // class RIf(val ifE: Raw, val thenE: Raw, val elseE: Raw) : Raw()
 
 sealed class Term
-class TVar(val ix: Ix) : Term()
-class TLitNat(val n: Int) : Term()
-class TApp(val arg: Term, val body: Term) : Term()
-class TLam(val arg: String, val body: Term) : Term()
+data class TVar(val ix: Ix) : Term()
+data class TLitNat(val n: Int) : Term()
+data class TApp(val arg: Term, val body: Term) : Term()
+data class TLam(val arg: String, val body: Term) : Term()
 object TStar : Term()
 object TNat : Term()
-class TPi(val arg: String, val ty: Term, val body: Term) : Term()
-class TLet(val n: String, val ty: Term, val bind: Term, val body: Term) : Term()
+data class TPi(val arg: String, val ty: Term, val body: Term) : Term()
+data class TLet(val n: String, val ty: Term, val bind: Term, val body: Term) : Term()
 
 sealed class Val
-class VVar(val lvl: Lvl) : Val()
-class VLitNat(val n: Int) : Val()
-class VApp(val arg: Val, val body: Val) : Val()
-class VLam(val arg: String, val clo: Closure) : Val()
+data class VVar(val lvl: Lvl) : Val()
+data class VLitNat(val n: Int) : Val()
+data class VApp(val arg: Val, val body: Val) : Val()
+data class VLam(val arg: String, val clo: Closure) : Val()
 object VStar : Val()
 object VNat : Val()
-class VPi(val arg: String, val ty: Val, val clo: Closure) : Val()
+data class VPi(val arg: String, val ty: Val, val clo: Closure) : Val()
 
 data class Closure(val env: Env?, val tm: Term)
 infix fun Closure.ap(v: Val): Val = tm.eval(Env(v, env))
@@ -47,7 +50,7 @@ fun Term.eval(env: Env?): Val = when (this) {
     is TLet -> body.eval(Env(bind.eval(env), env))
 }
 
-fun Term.nf(env: Env?): Term = this.eval(env).quote(Lvl(env.len()))
+fun Term.nf(env: Env?): Term = eval(env).quote(Lvl(env.len()))
 
 fun Val.quote(cur: Lvl): Term = when (this) {
     is VVar -> TVar(cur.toIx(lvl))
@@ -72,15 +75,22 @@ fun conv(l: Lvl, t: Val, u: Val): Boolean = when {
     else -> false
 }
 
-data class Ctx(val env: Env?, val types: Types?, val l: Lvl)
+data class Ctx(val env: Env?, val types: Types?, val loc: Loc, val l: Lvl)
 fun Ctx.bind(n: String, ty: Val): Ctx =
-    Ctx(env.cons(VVar(l)), types.cons(n, ty), l.inc())
+    Ctx(env.cons(VVar(l)), types.cons(n, ty), loc, l.inc())
 fun Ctx.define(n: String, v: Val, ty: Val): Ctx =
-    Ctx(env.cons(v), types.cons(n, ty), l.inc())
-fun Ctx.showVal(v: Val): String = v.quote(l).pretty(types.toNames()).toString()
+    Ctx(env.cons(v), types.cons(n, ty), loc, l.inc())
+fun Ctx.primitive(n: String, t: String, v: String): Ctx {
+    val typ = infer(parseString(t)).first.eval(env)
+    return define(n, check(parseString(v), typ).eval(env), typ)
+}
+fun Ctx.show(v: Val): String = v.quote(l).pretty(types.toNames()).toString()
+fun Ctx.show(t: Term): String = t.nf(env).pretty(types.toNames()).toString()
+fun Ctx.withPos(newLoc: Loc): Ctx = Ctx(env, types, newLoc, l)
 
-@Throws(TypeCastException::class)
+@Throws(TypeError::class)
 fun Ctx.check(r: Raw, a: Val): Term = when {
+    r is RSrcPos -> withPos(loc).check(r.body, a)
     r is RLam && a is VPi -> TLam(r.arg, bind(r.arg, a.ty).check(r.body, a.clo.ap(VVar(l))))
     r is RLet -> {
         val ty = check(r.ty, VStar)
@@ -92,14 +102,15 @@ fun Ctx.check(r: Raw, a: Val): Term = when {
     else -> {
         val (t, tty) = infer(r)
         if (!conv(l, tty, a)) {
-            throw TypeCastException("type mismatch\nexpected: ${showVal(a)}\ninferred: ${showVal(tty)}")
+            throw TypeError("type mismatch, expected ${show(a)}, instead got ${show(tty)}", loc)
         }
         t
     }
 }
 
-@Throws(TypeCastException::class)
+@Throws(TypeError::class)
 fun Ctx.infer(r: Raw): Pair<Term, Val> = when (r) {
+    is RSrcPos -> withPos(r.loc).infer(r.body)
     is RVar -> types.find(r.n)
     is RLitNat -> TLitNat(r.n) to VNat
     is RApp -> {
@@ -109,10 +120,10 @@ fun Ctx.infer(r: Raw): Pair<Term, Val> = when (r) {
                 val u = check(r.body, tty.ty)
                 TApp(t, u) to tty.clo.ap(u.eval(env))
             }
-            else -> throw TypeCastException("expected a function type, instead inferred:\n${showVal(tty)}")
+            else -> throw TypeError("expected a function type, instead inferred:\n${show(tty)}", loc)
         }
     }
-    is RLam -> throw TypeCastException("can't infer type for lambda")
+    is RLam -> throw TypeError("can't infer type for lambda", loc)
     RStar -> TStar to VStar
     RNat -> TNat to VStar
     is RPi -> {
@@ -130,48 +141,40 @@ fun Ctx.infer(r: Raw): Pair<Term, Val> = when (r) {
     }
 }
 
-fun nfMain(input: String): Unit {
+fun nfMain(input: String) {
     val raw = parseString(input)
-    val (t, a) = Ctx(null, null, Lvl(0)).infer(raw)
-    print(t.nf(null).pretty(null))
-    print(" : ")
-    print(a.quote(Lvl(0)).pretty(null))
+    try {
+        val ctx = Ctx(null, null, Loc.Line(0), Lvl(0))
+            .primitive("id", "(A : *) -> A -> A", "\\A x. x")
+            .primitive("const", "(A B : *) -> A -> B -> A", "\\A B x y. x")
+        val (t, a) = ctx.infer(raw)
+        print("${ctx.show(t)} : ${ctx.show(a)}")
+    } catch (t: TypeError) {
+        print("${t}\nin code:\n${t.loc.string(input)}")
+    }
 }
 
-fun ex0() {
-    nfMain("""
-        let id : (A : *) -> A -> A = \A x. x in
-        let foo : * = * in
-        let bar : * = id id in
-        id
-    """.trimIndent())
-}
+val ex0 = """
+    let foo : * = * in
+    let bar : * = id id in
+    foo
+""".trimIndent()
 
-fun ex1() {
-    nfMain("""
-        let id : (A : *) -> A -> A = \A x. x in
-        let const : (A B : *) -> A -> B -> A = \A B x y. x in
-        id ((A B : *) -> A -> B -> A) const
-    """.trimIndent())
-}
-fun ex2() {
-    nfMain("""
-        let Nat'  : * = (N : *) -> (N -> N) -> N -> N in
-        let five : Nat' = \N s z. s (s (s (s (s z)))) in
-        let add  : Nat' -> Nat' -> Nat' = \a b N s z. a N s (b N s z) in
-        let mul  : Nat' -> Nat' -> Nat' = \a b N s z. a N (b N s) z in
-        let ten      : Nat' = add five five in
-        let hundred  : Nat' = mul ten ten in
-        let thousand : Nat' = mul ten hundred in
-        thousand
-    """.trimIndent())
-}
+val ex1 = """
+    id ((A B : *) -> A -> B -> A) const
+""".trimIndent()
 
-fun ex3() {
-    nfMain("""
-        let id : (A : *) -> A -> A = \A x. x in id
-        --id Nat 5
-    """.trimIndent())
-}
+val ex2 = """
+    let Nat' : * = (N : *) -> (N -> N) -> N -> N in
+    let five : Nat' = \N s z. s (s (s (s (s z)))) in
+    let add  : Nat' -> Nat' -> Nat' = \a b N s z. a N s (b N s z) in
+    let mul  : Nat' -> Nat' -> Nat' = \a b N s z. a N (b N s) z in
+    let ten      : Nat' = add five five in
+    let hundred  : Nat' = mul ten ten in
+    let thousand : Nat' = mul ten hundred in
+    thousand
+""".trimIndent()
 
-fun main() = ex2()
+const val ex3 = "id Nat 5"
+
+fun main() = nfMain(ex1)

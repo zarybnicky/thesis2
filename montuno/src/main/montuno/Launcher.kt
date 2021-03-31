@@ -1,0 +1,4 @@
+package montuno
+
+class Launcher {
+}

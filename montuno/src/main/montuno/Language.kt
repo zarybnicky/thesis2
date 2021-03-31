@@ -1,4 +1,4 @@
-package lambdapi
+package montuno
 
 import com.oracle.truffle.api.*
 import com.oracle.truffle.api.frame.VirtualFrame
@@ -7,28 +7,27 @@ import com.oracle.truffle.api.nodes.*
 import java.io.IOException
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
-import lambdapi.parseString
 
 @TruffleLanguage.Registration(
-        id = "lambdapi",
-        name = "lambdapi",
+        id = "montuno",
+        name = "montuno",
         version = "0.1",
-        defaultMimeType = "application/x-lambdapi",
-        characterMimeTypes = ["application/x-lambdapi"],
+        defaultMimeType = "application/x-montuno",
+        characterMimeTypes = ["application/x-montuno"],
         contextPolicy = TruffleLanguage.ContextPolicy.SHARED,
-        fileTypeDetectors = [Lang.Detector::class]
+        fileTypeDetectors = [Language.Detector::class]
 )
-class Lang : TruffleLanguage<Lang.Context>() {
+class Language : TruffleLanguage<Language.Context>() {
     class Detector : TruffleFile.FileTypeDetector {
         override fun findEncoding(@Suppress("UNUSED_PARAMETER") file: TruffleFile): Charset = StandardCharsets.UTF_8
         override fun findMimeType(file: TruffleFile): String? {
             val name = file.name ?: return null
-            if (name.endsWith(".lp")) return "application/x-lambdapi"
+            if (name.endsWith(".mn")) return "application/x-montuno"
             try {
                 file.newBufferedReader(StandardCharsets.UTF_8).use { fileContent ->
                     val firstLine = fileContent.readLine()
-                    if (firstLine != null && firstLine.matches("^#!/usr/bin/env lambdapi".toRegex()))
-                        return "application/x-lambdapi"
+                    if (firstLine != null && firstLine.matches("^#!/usr/bin/env montuno".toRegex()))
+                        return "application/x-montuno"
                 }
             } catch (e: IOException) { // ok
             } catch (e: SecurityException) { // ok
@@ -45,7 +44,7 @@ class Lang : TruffleLanguage<Lang.Context>() {
         Truffle.getRuntime().createCallTarget(InlineCode(currentLanguage(), null))
 
     class InlineCode(
-        language: Lang,
+        language: Language,
         fd: FrameDescriptor?
     ) : RootNode(language, fd) {
         override fun execute(frame: VirtualFrame) = 42
@@ -70,7 +69,7 @@ class Lang : TruffleLanguage<Lang.Context>() {
     // function TestRootNode() {
     //    for (i = 100000; i > 0; i--) { SomeFun() }
     // }
-    class TestRootNode(language: Lang) : RootNode(language) {
+    class TestRootNode(language: Language) : RootNode(language) {
         private var fn = SomeFun(language)
         private var ct: DirectCallNode? = null
         override fun execute(frame: VirtualFrame): Int {
@@ -96,7 +95,7 @@ class Lang : TruffleLanguage<Lang.Context>() {
     //     result += ((42 + 42) + (42 + 42)) + ((42 + 42) + (42 + 42))
     //   }
     // }
-    class SomeFun(language: Lang) : RootNode(language) {
+    class SomeFun(language: Language) : RootNode(language) {
         private var repeating = DummyLoop()
         private var loop: LoopNode = Truffle.getRuntime().createLoopNode(repeating)
         override fun execute(frame: VirtualFrame): Int {
@@ -110,7 +109,8 @@ class Lang : TruffleLanguage<Lang.Context>() {
         // This will be constant folded
         val child = Add(
                 Add(Add(FortyTwo, FortyTwo), Add(FortyTwo, FortyTwo)),
-                Add(Add(FortyTwo, FortyTwo), Add(FortyTwo, FortyTwo)))
+                Add(Add(FortyTwo, FortyTwo), Add(FortyTwo, FortyTwo))
+        )
 
         private var count = 10000
         var result = 0
@@ -126,11 +126,11 @@ class Lang : TruffleLanguage<Lang.Context>() {
     }
 
     companion object {
-        fun currentLanguage(): Lang = getCurrentLanguage(Lang::class.java)
+        fun currentLanguage(): Language = getCurrentLanguage(Language::class.java)
     }
 
     fun run() {
-        val rootNode = TestRootNode(Lang())
+        val rootNode = TestRootNode(Language())
         val target = Truffle.getRuntime().createCallTarget(rootNode)
         println(target.call())
     }

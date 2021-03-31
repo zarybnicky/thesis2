@@ -6,6 +6,7 @@
     type-level) but not found in literature
   - Motivation: JIT for elaboration!!! plus easy prototyping, stepping block for
     other projects (efficient LF/Twelf, ...)
+  - smalltt a step in another direction
 - Platform: GraalVM and Truffle
   - Intro: ecosystem, purpose, benefits
   - GraalVM marketing texts: HotSpotVM's JIT vs Graal's
