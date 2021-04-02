@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 
 class SyntaxTest {
     @Test
-    fun testParseExpr() {
+    fun testLetNatExpr() {
         assertEquals(
             parseExpr("let i : Nat = 5 in i"),
             RLet(
@@ -18,6 +18,17 @@ class SyntaxTest {
                 RLitNat(Loc.Range(14, 1), 5),
                 RVar(Loc.Range(19, 1), "i")
             )
+        )
+    }
+
+    @Test
+    fun testNfTop() {
+        assertEquals(
+            parseModule("%nf 5"),
+            listOf(RElab(
+                Loc.Range(0, 5),
+                RLitNat(Loc.Range(4, 1), 5)
+            )),
         )
     }
 

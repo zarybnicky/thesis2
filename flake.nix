@@ -69,6 +69,7 @@
         pkgs.kotlin-language-server
         pkgs.graalvm11-ee
         pkgs.gradle
+        pkgs.hyperfine
         (pkgs.antlr4.override { jre = pkgs.graalvm11-ee; })
       ];
     };
