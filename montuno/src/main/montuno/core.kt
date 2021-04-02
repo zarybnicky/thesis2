@@ -25,7 +25,7 @@ data class Closure(val env: Env?, val tm: Term)
 infix fun Closure.ap(v: Val): Val = tm.eval(Env(v, env))
 
 fun Term.eval(env: Env?): Val = when (this) {
-    is TVar -> env.ix(ix)
+    is TVar -> env[ix]
     is TLitNat -> VLitNat(n)
     is TApp -> when (val t = arg.eval(env)) {
         is VLam -> t.clo ap body.eval(env)
@@ -44,30 +44,30 @@ fun Val.quote(cur: Lvl): Term = when (this) {
     is VVar -> TVar(cur.toIx(lvl))
     is VLitNat -> TLitNat(n)
     is VApp -> TApp(arg.quote(cur), body.quote(cur))
-    is VLam -> TLam(arg, clo.ap(VVar(cur)).quote(cur.inc()))
+    is VLam -> TLam(arg, (clo ap VVar(cur)).quote(cur + 1))
     is VStar -> TStar
     is VNat -> TNat
-    is VPi -> TPi(arg, ty.quote(cur), clo.ap(VVar(cur)).quote(cur.inc()))
+    is VPi -> TPi(arg, ty.quote(cur), (clo ap VVar(cur)).quote(cur + 1))
 }
 
 fun conv(l: Lvl, t: Val, u: Val): Boolean = when {
     t is VLitNat && u is VLitNat -> t.n == u.n
     t is VVar && u is VVar -> t.lvl == u.lvl
     t is VApp && u is VApp -> conv(l, t.arg, u.arg) && conv(l, t.body, u.body)
-    t is VLam && u is VLam -> conv(l.inc(), t.clo.ap(VVar(l)), t.clo.ap(VVar(l)))
-    t is VLam -> conv(l.inc(), t.clo.ap(VVar(l)), VApp(u, VVar(l)))
-    u is VLam -> conv(l.inc(), u.clo.ap(VVar(l)), VApp(t, VVar(l)))
+    t is VLam && u is VLam -> conv(l + 1, t.clo ap VVar(l), t.clo ap VVar(l))
+    t is VLam -> conv(l + 1, t.clo ap VVar(l), VApp(u, VVar(l)))
+    u is VLam -> conv(l + 1, u.clo ap VVar(l), VApp(t, VVar(l)))
     t is VStar && u is VStar -> true
     t is VNat && u is VNat -> true
-    t is VPi && u is VPi -> conv(l, t.ty, u.ty) && conv(l.inc(), t.clo.ap(VVar(l)), u.clo.ap(VVar(l)))
+    t is VPi && u is VPi -> conv(l, t.ty, u.ty) && conv(l + 1, t.clo ap VVar(l), u.clo ap VVar(l))
     else -> false
 }
 
 data class Ctx(val env: Env?, val types: Types?, var loc: Loc, val l: Lvl)
 fun Ctx.bind(n: String, ty: Val): Ctx =
-    Ctx(env.cons(VVar(l)), types.cons(n, ty), loc, l.inc())
+    Ctx(env + VVar(l), types.cons(n, ty), loc, l + 1)
 fun Ctx.define(n: String, v: Val, ty: Val): Ctx =
-    Ctx(env.cons(v), types.cons(n, ty), loc, l.inc())
+    Ctx(env + v, types.cons(n, ty), loc, l + 1)
 fun Ctx.primitive(n: String, t: String, v: String): Ctx {
     val typ = infer(parseExpr(t)).first.eval(env)
     return define(n, check(parseExpr(v), typ).eval(env), typ)

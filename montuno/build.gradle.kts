@@ -42,6 +42,8 @@ dependencies {
 
     testImplementation(platform("org.junit:junit-bom:5.7.0"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
+    testImplementation("org.graalvm.compiler:compiler:$graalVersion")
+
     arrayOf("asm", "asm-tree", "asm-commons").forEach { implementation("org.ow2.asm:$it:7.1") }
     implementation("org.fusesource.jansi:jansi:1.18")
 
@@ -50,8 +52,6 @@ dependencies {
     implementation("org.graalvm.sdk:graal-sdk:$graalVersion")
     implementation("org.graalvm.sdk:launcher-common:$graalVersion")
     implementation("org.graalvm.truffle:truffle-api:$graalVersion")
-    implementation("com.github.h0tk3y.betterParse:better-parse:0.4.1")
-    testImplementation("org.graalvm.compiler:compiler:$graalVersion")
     kapt("org.graalvm.truffle:truffle-api:$graalVersion")
     kapt("org.graalvm.truffle:truffle-dsl-processor:$graalVersion")
 }

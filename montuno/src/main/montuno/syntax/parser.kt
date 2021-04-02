@@ -7,24 +7,28 @@ import org.antlr.v4.runtime.ParserRuleContext
 
 enum class Icit {Expl, Impl}
 
-sealed class RawTop(val loc: Loc)
-class RDecl(loc: Loc, val n: String, val ty: Raw) : RawTop(loc)
-class RDefn(loc: Loc, val n: String, val ty: Raw?, val tm: Raw) : RawTop(loc)
-class RElab(loc: Loc, val tm: Raw) : RawTop(loc)
+sealed class RawTop {
+    abstract val loc: Loc
+}
+data class RDecl(override val loc: Loc, val n: String, val ty: Raw) : RawTop()
+data class RDefn(override val loc: Loc, val n: String, val ty: Raw?, val tm: Raw) : RawTop()
+data class RElab(override val loc: Loc, val tm: Raw) : RawTop()
 
-sealed class Raw(val loc: Loc)
-class RVar(loc: Loc, val n: String) : Raw(loc)
-class RLitNat(loc: Loc, val n: Int) : Raw(loc)
-class RApp(loc: Loc, val arg: Raw, val body: Raw) : Raw(loc)
-class RLam(loc: Loc, val arg: String, val body: Raw) : Raw(loc)
-class RStar(loc: Loc) : Raw(loc)
-class RNat(loc: Loc) : Raw(loc)
-class RPi(loc: Loc, val icit: Icit, val arg: String, val ty: Raw, val body: Raw) : Raw(loc)
-class RLet(loc: Loc, val n: String, val ty: Raw, val bind: Raw, val body: Raw) : Raw(loc)
+sealed class Raw {
+    abstract val loc: Loc
+}
+data class RVar(override val loc: Loc, val n: String) : Raw()
+data class RLitNat(override val loc: Loc, val n: Int) : Raw()
+data class RApp(override val loc: Loc, val arg: Raw, val body: Raw) : Raw()
+data class RLam(override val loc: Loc, val arg: String, val body: Raw) : Raw()
+data class RStar(override val loc: Loc) : Raw()
+data class RNat(override val loc: Loc) : Raw()
+data class RPi(override val loc: Loc, val icit: Icit, val arg: String, val ty: Raw, val body: Raw) : Raw()
+data class RLet(override val loc: Loc, val n: String, val ty: Raw, val bind: Raw, val body: Raw) : Raw()
 // class RIf(val ifE: Raw, val thenE: Raw, val elseE: Raw) : Raw()
 
 sealed class Loc {
-    object Unavailable : Loc();
+    object Unavailable : Loc()
     data class Range(val start: Int, val length: Int) : Loc()
     data class Line(val line: Int) : Loc()
 
