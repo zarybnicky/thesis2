@@ -41,17 +41,9 @@
 \ProcessOptions\relax
 %Jako vychozi pouzijeme tridu REPORT / We will use REPORT class as a base
 \iftwoside
-  \ifx\pdfoutput\undefined % nejedeme pod pdftexem / we are not using pdftex
-    \LoadClass[a4paper,twoside,onecolumn,11pt]{report}
-  \else
-    \LoadClass[pdftex,a4paper,twoside,onecolumn,11pt]{report}
-  \fi
+  \LoadClass[a4paper,twoside,onecolumn,11pt]{report}
 \else
-  \ifx\pdfoutput\undefined % nejedeme pod pdftexem
-    \LoadClass[a4paper,oneside,onecolumn,11pt]{report}
-  \else
-    \LoadClass[pdftex,a4paper,oneside,onecolumn,11pt]{report}
-  \fi
+  \LoadClass[a4paper,oneside,onecolumn,11pt]{report}
 \fi
 
 %-----------------------------------------------------------------------------
@@ -59,16 +51,18 @@
 %-----------------------------------------------------------------------------
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage[greek, main=english]{babel}
-\usepackage[utf8x]{inputenc}
+\usepackage[english]{babel}
 \usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
 \usepackage{textcomp}
-\usepackage{textgreek}
 \usepackage{cmap}
 \usepackage{url}
 \usepackage{ragged2e}
 \usepackage{color}
 \usepackage{etoolbox}
+\usepackage{graphicx}
+\usepackage{pdfpages}
+
 \ifczech
   \main@language{czech}
 \else
@@ -76,16 +70,6 @@
     \main@language{slovak}
   \else
     \main@language{english}
-  \fi
-\fi
-\ifx\pdfoutput\undefined  % nejedeme pod pdftexem / we are not using pdftex
-  \usepackage{graphics}
-  \usepackage{epsfig}
-\else % je to pdftex ! / it is pdftex !
-  \ifzadani
-    \usepackage{pdfpages}
-  \else % neni potreba pdfpages / pdfpages is not necessary
-    \usepackage[pdftex]{graphicx}
   \fi
 \fi
 
@@ -766,11 +750,9 @@ Management}{\@fit@EN}%
 \iftoggle{zadaniTwop}{
   \cleardoublepage
   \includepdf[pages=-,offset=0.6cm -1.7cm]{zadani.pdf}
-  %\ifzadani\includepdf[pages=-,offset=0.6cm -1.7cm]{assignment.pdf}\fi
 }{
   \ifzadani
     \includepdf[pages=-,offset=0.6cm -1.7cm]{zadani.pdf}
-    %\ifzadani\includepdf[pages=-,offset=0.6cm -1.7cm]{assignment.pdf}\fi
   \fi
 }
 
@@ -950,12 +932,10 @@ Management}{\@fit@EN}%
 
 % Balíčky
 % Packages
-\usepackage[greek, main=english]{babel}
-\usepackage[]{opensans}
-\usepackage[utf8x]{inputenc} %kodovani / encoding
+\usepackage[english]{babel}
 \usepackage[T1]{fontenc}
-\usepackage{textcomp}
-\usepackage{textgreek}
+\usepackage[utf8]{inputenc} %kodovani / encoding
+\usepackage[]{opensans}
 \usepackage{cmap}
 \usepackage{float}
 \usepackage{calc}
@@ -1082,11 +1062,8 @@ Management}{\@fit@EN}%
 %END Jan Pluskal (ipluskal) listings
 
 
-% Příkazy pro TODO (3 alternativy - lze zvolit preferovanou)
-% commands for TODO (3 alternatives - preferred one can be selected)
-\newcommand{\todo}[1]{\textcolor{red}{\textbf{[[#1]]}}}
-%\usepackage[colorinlistoftodos,prependcaption,textsize=tiny, disable]{todonotes}
-%\usepackage[colorinlistoftodos,prependcaption,textsize=tiny]{todonotes}
+%\usepackage[colorinlistoftodo, disable]{todonotes}
+\usepackage[colorinlistoftodos]{todonotes}
 
 \newcommand{\phony}[1]{\textcolor{gray}{#1}}
 \newcommand{\blind}[1]{\textcolor{gray}{\Blindtext[#1]}}
@@ -1100,33 +1077,20 @@ Management}{\@fit@EN}%
 % balíček "hyperref" vytváří klikací odkazy v pdf, pokud tedy použijeme pdflatex
 % problém je, že balíček hyperref musí být uveden jako poslední, takže nemůže
 % být v šabloně
+\usepackage{color}
 \ifWis
-\ifx\pdfoutput\undefined % nejedeme pod pdflatexem / we are not using pdflatex
-\else
-  \usepackage{color}
-  \usepackage[unicode,colorlinks,hyperindex,plainpages=false,pdftex]{hyperref}
+  \usepackage[unicode,colorlinks,hyperindex,plainpages=false]{hyperref}
   \definecolor{links}{rgb}{0.4,0.5,0}
   \definecolor{anchors}{rgb}{1,0,0}
-  \def\AnchorColor{anchors}
-  \def\LinkColor{links}
-  \def\pdfBorderAttrs{/Border [0 0 0] }  % bez okrajů kolem odkazů / without margins around links
-  \pdfcompresslevel=9
-\fi
 \else % pro tisk budou odkazy, na které se dá klikat, černé / for the print clickable links will be black
-\ifx\pdfoutput\undefined % nejedeme pod pdflatexem / we are not using pdflatex
-\else
-  \usepackage{color}
-  \usepackage[unicode,colorlinks,hyperindex,plainpages=false,pdftex,urlcolor=black,linkcolor=black,citecolor=black]{hyperref}
+\usepackage[unicode,colorlinks,hyperindex,plainpages=false,urlcolor=black,linkcolor=black,citecolor=black]{hyperref}
   \definecolor{links}{rgb}{0,0,0}
   \definecolor{anchors}{rgb}{0,0,0}
-  \def\AnchorColor{anchors}
-  \def\LinkColor{links}
-  \def\pdfBorderAttrs{/Border [0 0 0] } % bez okrajů kolem odkazů / without margins around links
-  \pdfcompresslevel=9
 \fi
-\fi
-% Řešení problému, kdy klikací odkazy na obrázky vedou za obrázek
 \usepackage[all]{hypcap}
+\def\AnchorColor{anchors}
+\def\LinkColor{links}
+\def\pdfBorderAttrs{/Border [0 0 0] }  % bez okrajů kolem odkazů / without margins around links
 
 % řeší první/poslední řádek odstavce na předchozí/následující stránce
 % solves first/last row of the paragraph on the previous/next page
@@ -1134,5 +1098,3 @@ Management}{\@fit@EN}%
 \widowpenalty=10000
 
 \endinput
-%%
-%% End of file `fitthesis.cls'.

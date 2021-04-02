@@ -25,6 +25,9 @@
 #+END_EXPORT
 
 * Změnit název: "Montuno: Efficient elaboration of dependent types using JIT compiler"
+#+BEGIN_EXPORT latex
+\listoftodos
+#+END_EXPORT
 
 * Introduction
 ** (Old)
@@ -93,7 +96,7 @@ cite:kmett_2019, although there are a few projects implementing a lambda
 calculus directly to the Java Virtual Machine byte code..
 
 ** New
---- see Excel@FIT start
+[[comment:see Excel@FIT start]]
 
 Follow-up to Cadenza (STLC) on behalf of its creator
 
@@ -199,9 +202,9 @@ syntax, semantics, type checking, type inference
 
 *** Dependently-Typed Lambda Calculus
 
-Lambda cube
+\missingfigure{Lambda cube}
 
-... image
+Lambda cube
 
 The dependently typed lambda calculus merges these two languages together,
 simplifying the grammar.
