@@ -1,9 +1,9 @@
 {
   inputs.nixpkgs.url = github:NixOS/nixpkgs/master;
-  inputs.lambdapi.url = github:ilya-klyuchnikov/lambdapi/master;
-  inputs.lambdapi.flake = false;
+  inputs.lambdapi = { url = github:ilya-klyuchnikov/lambdapi/master; flake =  false; };
+  inputs.smalltt = { url = github:zarybnicky/smalltt/master; flake = false; };
 
-  outputs = { self, lambdapi, nixpkgs }: let
+  outputs = { self, lambdapi, smalltt, nixpkgs }: let
     inherit (pkgs.nix-gitignore) gitignoreSourcePure;
     getSrc = dir: gitignoreSourcePure [./.gitignore] dir;
     pkgs = import nixpkgs {
@@ -18,6 +18,7 @@
       haskell = prev.haskell // {
         packageOverrides = prev.lib.composeExtensions (prev.haskell.packageOverrides or (_: _: {})) (hself: hsuper: {
           lph = hself.callCabal2nix "lph" lambdapi {};
+          smalltt = hself.callCabal2nix "smalltt" smalltt {};
         });
       };
 
@@ -59,7 +60,7 @@
 
     devShell.x86_64-linux = hsPkgs.shellFor {
       withHoogle = false;
-      packages = p: [];# p.lph ];
+      packages = p: [ p.smalltt p.lph ];
       buildInputs = [
         hsPkgs.cabal-install
         hsPkgs.hie-bios

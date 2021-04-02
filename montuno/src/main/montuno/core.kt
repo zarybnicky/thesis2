@@ -1,18 +1,6 @@
 package montuno
 
-import montuno.syntax.parseString
-
-sealed class Raw
-data class RVar(val n: String) : Raw()
-data class RLitNat(val n: Int) : Raw()
-data class RApp(val arg: Raw, val body: Raw) : Raw()
-data class RLam(val arg: String, val body: Raw) : Raw()
-object RStar : Raw()
-object RNat : Raw()
-data class RPi(val arg: String, val ty: Raw, val body: Raw) : Raw()
-data class RLet(val n: String, val ty: Raw, val bind: Raw, val body: Raw) : Raw()
-data class RSrcPos(val loc: Loc, val body: Raw) : Raw()
-// class RIf(val ifE: Raw, val thenE: Raw, val elseE: Raw) : Raw()
+import montuno.syntax.*
 
 sealed class Term
 data class TVar(val ix: Ix) : Term()
@@ -44,8 +32,8 @@ fun Term.eval(env: Env?): Val = when (this) {
         else -> VApp(t, body.eval(env))
     }
     is TLam -> VLam(arg, Closure(env, body))
-    TStar -> VStar
-    TNat -> VNat
+    is TStar -> VStar
+    is TNat -> VNat
     is TPi -> VPi(arg, ty.eval(env), Closure(env, body))
     is TLet -> body.eval(Env(bind.eval(env), env))
 }
@@ -75,31 +63,36 @@ fun conv(l: Lvl, t: Val, u: Val): Boolean = when {
     else -> false
 }
 
-data class Ctx(val env: Env?, val types: Types?, val loc: Loc, val l: Lvl)
+data class Ctx(val env: Env?, val types: Types?, var loc: Loc, val l: Lvl)
 fun Ctx.bind(n: String, ty: Val): Ctx =
     Ctx(env.cons(VVar(l)), types.cons(n, ty), loc, l.inc())
 fun Ctx.define(n: String, v: Val, ty: Val): Ctx =
     Ctx(env.cons(v), types.cons(n, ty), loc, l.inc())
 fun Ctx.primitive(n: String, t: String, v: String): Ctx {
-    val typ = infer(parseString(t)).first.eval(env)
-    return define(n, check(parseString(v), typ).eval(env), typ)
+    val typ = infer(parseExpr(t)).first.eval(env)
+    return define(n, check(parseExpr(v), typ).eval(env), typ)
 }
 fun Ctx.show(v: Val): String = v.quote(l).pretty(types.toNames()).toString()
 fun Ctx.show(t: Term): String = t.nf(env).pretty(types.toNames()).toString()
-fun Ctx.withPos(newLoc: Loc): Ctx = Ctx(env, types, newLoc, l)
+inline fun <A> Ctx.withPos(newLoc: Loc, run: Ctx.() -> A): A {
+    val oldLoc = this.loc
+    this.loc = newLoc
+    val a = run()
+    this.loc = oldLoc
+    return a
+}
 
 @Throws(TypeError::class)
 fun Ctx.check(r: Raw, a: Val): Term = when {
-    r is RSrcPos -> withPos(loc).check(r.body, a)
-    r is RLam && a is VPi -> TLam(r.arg, bind(r.arg, a.ty).check(r.body, a.clo.ap(VVar(l))))
-    r is RLet -> {
+    r is RLam && a is VPi -> withPos(r.loc) { TLam(r.arg, bind(r.arg, a.ty).check(r.body, a.clo.ap(VVar(l)))) }
+    r is RLet -> withPos(r.loc) {
         val ty = check(r.ty, VStar)
         val vty by lazy { ty.eval(env) }
         val b = check(r.bind, vty)
         val vb by lazy { b.eval(env) }
         TLet(r.n, ty, b, define(r.n, vty, vb).check(r.body, a))
     }
-    else -> {
+    else -> withPos(r.loc) {
         val (t, tty) = infer(r)
         if (!conv(l, tty, a)) {
             throw TypeError("type mismatch, expected ${show(a)}, instead got ${show(tty)}", loc)
@@ -110,11 +103,10 @@ fun Ctx.check(r: Raw, a: Val): Term = when {
 
 @Throws(TypeError::class)
 fun Ctx.infer(r: Raw): Pair<Term, Val> = when (r) {
-    is RSrcPos -> withPos(r.loc).infer(r.body)
     is RVar -> types.find(r.n)
     is RLitNat -> TLitNat(r.n) to VNat
-    is RApp -> {
-        val (t, tty) = this.infer(r.arg)
+    is RApp -> withPos(r.loc) {
+        val (t, tty) = infer(r.arg)
         when (tty) {
             is VPi -> {
                 val u = check(r.body, tty.ty)
@@ -124,14 +116,14 @@ fun Ctx.infer(r: Raw): Pair<Term, Val> = when (r) {
         }
     }
     is RLam -> throw TypeError("can't infer type for lambda", loc)
-    RStar -> TStar to VStar
-    RNat -> TNat to VStar
-    is RPi -> {
+    is RStar -> TStar to VStar
+    is RNat -> TNat to VStar
+    is RPi -> withPos(r.loc) {
         val a = check(r.ty, VStar)
         val b = bind(r.arg, a.eval(env)).check(r.body, VStar)
         TPi(r.arg, a, b) to VStar
     }
-    is RLet -> {
+    is RLet -> withPos(r.loc) {
         val a = check(r.ty, VStar)
         val va by lazy { a.eval(env) }
         val t = check(r.bind, va)
@@ -141,12 +133,18 @@ fun Ctx.infer(r: Raw): Pair<Term, Val> = when (r) {
     }
 }
 
+fun topToExpr(x: Raw, xs: List<RawTop>): Raw = xs.foldRight(x, { l, r -> when (l) {
+    is RDefn -> RLet(l.loc, l.n, l.ty ?: RVar(Loc.Unavailable, "_"), l.tm, r)
+    is RDecl -> TODO()
+    is RElab -> r
+}})
+
 fun nfMain(input: String) {
-    val raw = parseString(input)
+    val raw = topToExpr(parseExpr("id ({A B} -> A -> B -> A) const"), parseModule(input))
+    val ctx = Ctx(null, null, Loc.Line(0), Lvl(0))
+        .primitive("id", "(A : *) -> A -> A", "\\A x. x")
+        .primitive("const", "(A B : *) -> A -> B -> A", "\\A B x y. x")
     try {
-        val ctx = Ctx(null, null, Loc.Line(0), Lvl(0))
-            .primitive("id", "(A : *) -> A -> A", "\\A x. x")
-            .primitive("const", "(A B : *) -> A -> B -> A", "\\A B x y. x")
         val (t, a) = ctx.infer(raw)
         print("${ctx.show(t)} : ${ctx.show(a)}")
     } catch (t: TypeError) {
@@ -154,27 +152,28 @@ fun nfMain(input: String) {
     }
 }
 
-val ex0 = """
-    let foo : * = * in
-    let bar : * = id id in
-    foo
-""".trimIndent()
+const val ex0 = "foo : * = *. bar : * = id id."
 
-val ex1 = """
-    id ((A B : *) -> A -> B -> A) const
-""".trimIndent()
+const val ex1 = "%nf id ((A B : *) -> A -> B -> A) const"
 
 val ex2 = """
-    let Nat' : * = (N : *) -> (N -> N) -> N -> N in
-    let five : Nat' = \N s z. s (s (s (s (s z)))) in
-    let add  : Nat' -> Nat' -> Nat' = \a b N s z. a N s (b N s z) in
-    let mul  : Nat' -> Nat' -> Nat' = \a b N s z. a N (b N s) z in
-    let ten      : Nat' = add five five in
-    let hundred  : Nat' = mul ten ten in
-    let thousand : Nat' = mul ten hundred in
-    thousand
+    Nat' : * = (N : *) -> (N -> N) -> N -> N.
+    five : Nat' = \N s z. s (s (s (s (s z)))).
+    add  : Nat' -> Nat' -> Nat' = \a b N s z. a N s (b N s z).
+    mul  : Nat' -> Nat' -> Nat' = \a b N s z. a N (b N s) z.
+    ten      : Nat' = add five five.
+    hundred  : Nat' = mul ten ten.
+    thousand : Nat' = mul ten hundred.
+    %nf thousand
 """.trimIndent()
 
-const val ex3 = "id Nat 5"
+val ex4 = """
+    Vec : * → Nat → * = λ a n. (V : Nat → *) → V 0 → ((n : Nat) → a → V n → V (n + 1)) → V n.
+    vnil : (a : *) → Vec a 0 = λ V n c. n.
+    vcons : (a n : *) → a → Vec a n → Vec a (n + 1) = λ a as V n c. c a (as V n c).
+    %nf vec1 = vcons true (vcons false (vcons true vnil)).
+""".trimIndent()
+
+const val ex3 = "%nf id Nat 5"
 
 fun main() = nfMain(ex1)

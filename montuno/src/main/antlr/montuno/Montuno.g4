@@ -3,10 +3,19 @@ grammar Montuno;
 package montuno;
 }
 
+file : (decls+=top)* EOF;
+
+top
+    : id=IDENT ':' type=term '.' #Decl
+    | id=binder (':' type=term)? '=' body=term '.' #Defn
+    | '%nf' term #Elab
+    ;
+
 term
     : 'let' name=binder ':' type=term '=' tm=term 'in' body=term #Let
     | LAMBDA (args+=binder)* '.' body=term #Lam
-    | '(' (dom+=binder)+ ':' kind=term ')' ARROW cod=term #Pi
+    | '(' (dom+=binder)+ ':' kind=term ')' ARROW cod=term #PiExpl
+    | '{' (dom+=binder)+ (':' kind=term)? '}' ARROW cod=term #PiImpl
     | (spine+=atom)+ (ARROW rest=term)? #App
     ;
 atom

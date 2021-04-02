@@ -22,3 +22,9 @@
 [submodule "dep/fsharp-tapl"]
 	path = dep/fsharp-tapl
 	url = https://github.com/jack-pappas/fsharp-tapl
+[submodule "dep/smalltt"]
+	path = dep/smalltt
+	url = https://github.com/zarybnicky/smalltt
+[submodule "dep/truffleruby"]
+	path = dep/truffleruby
+	url = https://github.com/oracle/truffleruby

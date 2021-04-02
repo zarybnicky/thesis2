@@ -1,5 +1,7 @@
 package montuno
 
+import montuno.syntax.Loc
+
 class TypeError(message: String, val loc: Loc) : Exception(message) {
     override fun toString(): String = message.orEmpty()
 }

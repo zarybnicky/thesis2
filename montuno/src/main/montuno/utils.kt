@@ -2,6 +2,7 @@ package montuno
 
 import com.oracle.truffle.api.source.Source
 import com.oracle.truffle.api.source.SourceSection
+import montuno.syntax.Loc
 
 data class Ix(val it: Int)
 fun Ix.dec() = Ix(it - 1)
@@ -46,23 +47,8 @@ fun Names?.elem(n: String): Boolean = when {
     else -> next.elem(n)
 }
 
-sealed class Loc {
-    object Unavailable : Loc();
-    data class Range(val start: Int, val length: Int) : Loc()
-    data class Line(val line: Int) : Loc()
-
-    fun string(source: String): String = when (this) {
-        is Unavailable -> "<unavailable>"
-        is Range -> source.subSequence(start, start + length).toString()
-        is Line -> source.lineSequence().elementAt(line)
-    }
-    fun section(source: Source): SourceSection = when (this) {
-        is Unavailable -> source.createUnavailableSection()
-        is Range -> source.createSection(start, length)
-        is Line -> source.createSection(line)
-    }
-
-    infix fun with(r: Raw) = RSrcPos(this, r)
+fun Source.section(loc: Loc): SourceSection = when (loc) {
+    is Loc.Unavailable -> createUnavailableSection()
+    is Loc.Range -> createSection(loc.start, loc.length)
+    is Loc.Line -> createSection(loc.line)
 }
-
-fun Source.section(loc: Loc): SourceSection = loc.section(this)

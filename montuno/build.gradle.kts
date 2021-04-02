@@ -38,7 +38,7 @@ dependencies {
 
     antlr("org.antlr:antlr4:4.8-1")
     api("org.antlr:antlr4-runtime:4.8-1")
-    implementation("kotlin-pretty:kotlin-pretty:0.5.2")
+    implementation("kotlin-pretty:kotlin-pretty:0.6.0")
 
     testImplementation(platform("org.junit:junit-bom:5.7.0"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")

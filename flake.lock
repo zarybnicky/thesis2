@@ -36,7 +36,25 @@
     "root": {
       "inputs": {
         "lambdapi": "lambdapi",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "smalltt": "smalltt"
+      }
+    },
+    "smalltt": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1617289647,
+        "narHash": "sha256-wfkKn4n51dqVHfphWGnupkzx496CRlS9UCmqzsP5XsU=",
+        "owner": "zarybnicky",
+        "repo": "smalltt",
+        "rev": "aa9c69715b253d36ca6611155e5b03c9fde86e83",
+        "type": "github"
+      },
+      "original": {
+        "owner": "zarybnicky",
+        "ref": "master",
+        "repo": "smalltt",
+        "type": "github"
       }
     }
   },

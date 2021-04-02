@@ -1,4 +1,4 @@
-% Created 2021-02-07 Sun 15:49
+% Created 2021-04-02 Fri 13:43
 % Intended LaTeX compiler: pdflatex
 \documentclass[english,zadani,odsaz]{fitthesis}
 \renewcommand\title[1]{}
@@ -29,8 +29,13 @@
 \iftwoside\cleardoublepage\fi
 \setlength{\parskip}{0.5\bigskipamount}
 
+\chapter{Změnit název: ``Montuno: Efficient elaboration of dependent types using JIT compiler''}
+\label{sec:org605e2a9}
+
 \chapter{Introduction}
-\label{sec:org3fb8cda}
+\label{sec:org44f3e9a}
+\section{(Old)}
+\label{sec:org2ef14f0}
 When creating small experimental or research languages, writing a compiler may
 be too much effort for the expected gain. On the other hand an interpreter is
 usually not as performant as its creators may require for more computationally
@@ -93,14 +98,24 @@ the preliminary investigations done by the originator of this idea
 \cite{kmett_2019}, although there are a few projects implementing a lambda
 calculus directly to the Java Virtual Machine byte code..
 
-\chapter{Partial evaluation/JIT/Futamura}
-\label{sec:org045b127}
+\section{New}
+\label{sec:org87d7d5a}
+--- see Excel@FIT start
 
-\chapter{JIT principles}
-\label{sec:org79761c8}
+Follow-up to Cadenza (STLC) on behalf of its creator
 
-\chapter{GraalVM/Truffle}
-\label{sec:org4a642f5}
+Combination of JIT and dependent types is natural (computation on the type-level) but not found in literature
+
+Motivation: JIT for elaboration!!! plus easy prototyping, stepping block for
+    other projects (efficient LF/Twelf, \ldots{})
+
+smalltt a step in another direction
+
+
+\chapter{GraalVM and the Truffle Framework}
+\label{sec:org55e978c}
+\section{Intro: ecosystem, purpose, benefits}
+\label{sec:orgb9a70cc}
 \textbf{GraalVM} is a just-in-time optimizing compiler for the Java bytecode. \textbf{Truffle} is
 a set of libraries that expose the internals of the GraalVM compiler, intended
 for easy implementation of other languages. So far JavaScript, Python, Ruby, R,
@@ -132,12 +147,37 @@ commercially.
 \caption{GraalVM and Truffle (source: oracle.com)}
 \end{figure}
 
-\chapter{Dependently-Typed Lambda Calculus}
-\label{sec:orge053f1d}
-The untyped lambda calculus is introduced in the intermediate programming
-languages class but I haven't yet encountered its simply- or dependently-typed
-variants during my studies.
+JIT options - specialization, deoptimization
+Use cases
+Potential optimizations
+\section{GraalVM}
+\label{sec:orgcc19adc}
+marketing texts
 
+diagrams
+
+Hotspot's JIT vs Graal's
+
+\section{Truffle}
+\label{sec:org9dbdbb8}
+Intro + motivating multilanguage snippet
+
+features with code samples
+
+benchmarks for other languages
+
+\chapter{Language specification}
+\label{sec:orgc59e533}
+\section{Dependent types}
+\label{sec:org0762d55}
+Intro dependent types + motivating example
+
+hot ML research area (cubical, path, \ldots{}) (look in Kovacs' materials)
+
+\section{Lambda Calculus Theory}
+\label{sec:org8d4a078}
+\subsection{Untyped Lambda Calculus}
+\label{sec:orgbd1c553}
 The untyped lambda calculus is a simple language consisting of just three kinds
 of forms: variables, function application, and abstraction.
 
@@ -150,6 +190,10 @@ e & ::= & x            & \text{variable} \\
 \caption{Untyped lambda calculus}
 \end{figure}
 
+syntax, semantics, usage
+
+\subsection{Simply-Typed Lambda Calculus}
+\label{sec:org16662a1}
 The simply-typed lambda calculus adds a fourth kind of a term, type annotation,
 and its type language:
 
@@ -167,6 +211,15 @@ e & ::= & x           & \text{variable} \\
 \caption{Simply typed lambda calculus}
 \end{figure}
 
+syntax, semantics, type checking, type inference
+
+\subsection{Dependently-Typed Lambda Calculus}
+\label{sec:orgd3dc091}
+
+Lambda cube
+
+\ldots{} image
+
 The dependently typed lambda calculus merges these two languages together,
 simplifying the grammar.
 
@@ -181,27 +234,24 @@ e & ::= & x           & \text{variable} \\
 \end{array}\]
 \caption{Dependently typed lambda calculus}
 \end{figure}
+\ldots{}
 
-As I was already familiar with the use of dependent types in general programming
-e.g.  in Agda or Idris, I took this opportunity to investigate the theoretical
-basis of type systems - type systems in general, as used in general programming
-languages, their various limitations---like the need to extend System F (System
-FC) as used in Haskell to support fully dependent types
-\cite{eisenberg2016dependent}, the lambda cube, the expressive power of
-different kinds of type systems, and where they are used.
+directions, decidability, where is DTLC
 
+implicits, holes, metacontext
 
-\chapter{LambdaPi specification}
-\label{sec:org495e9bb}
+\section{Algorithms}
+\label{sec:org8c81d3d}
+type-checking (bidi, NbE) + motivation
 
-\chapter{LambdaPi Interpreter}
-\label{sec:org777ba4e}
-I have implemented a dependently typed lambda calculus called LambdaPi based on
-the prior work \emph{A tutorial implementation of a dependently typed lambda calculus}
-\cite{loh2010tutorial}. The parser and interpreter are written in Kotlin, where
-I will also need to write the JIT implementation. This is a pure interpreter
-that will serve as a baseline for future benchmarks.
+elaboration (what is it, why is it slow, glued, nondet, cite Kovacs)
 
+evaluation techniques (by-need, \ldots{})
+
+eval/apply (in implementation section)
+
+\section{Specification}
+\label{sec:org6d14800}
 \begin{listing}[!htpb]
 \begin{minted}[]{text}
 let const = (\ a b x y -> x) :: forall (a :: *) (b :: *) . a -> b -> a
@@ -209,34 +259,163 @@ let const = (\ a b x y -> x) :: forall (a :: *) (b :: *) . a -> b -> a
 \caption{The constant function in LambdaPi}
 \end{listing}
 
-\chapter{Truffle-based compiler}
-\label{sec:org233c730}
+grammar
 
-\chapter{LLVM-based compiler}
-\label{sec:orgf2f99c1}
+semantics (inference rules, evaluation rules)
 
-\chapter{Benchmarks}
-\label{sec:org0a20009}
+\chapter{Language Implementations}
+\label{sec:orgdf575c8}
+\section{Pure Interpreter}
+\label{sec:org26ee3d5}
+\subsection{Parser}
+\label{sec:org7cfeb08}
+ANTLR is the parser to use in JVM
+
+Several ways to consume: listener, visitor - I've used AST transformation which
+is the most compact and most familiar to other DTLC implementations which are
+usually in functional languages
+
+(listener - enter/exit function calls, visitor is similar, toAst uses recursive calls)
+
+\begin{minted}[linenos,firstnumber=1]{antlr}
+grammar Montuno;
+@header {
+package montuno;
+}
+
+file : (decls+=top)* EOF;
+
+top
+    : id=IDENT ':' type=term '.' #Decl
+    | id=binder (':' type=term)? '=' body=term '.' #Defn
+    | '%nf' term #Elab
+    ;
+
+term
+    : 'let' name=binder ':' type=term '=' tm=term 'in' body=term #Let
+    | LAMBDA (args+=binder)* '.' body=term #Lam
+    | '(' (dom+=binder)+ ':' kind=term ')' ARROW cod=term #PiExpl
+    | '{' (dom+=binder)+ (':' kind=term)? '}' ARROW cod=term #PiImpl
+    | (spine+=atom)+ (ARROW rest=term)? #App
+    ;
+atom
+    : '(' rec=term ')' #Rec
+    | IDENT #Var
+    | '*' #Star
+    | 'Nat' #Nat
+    | NAT #LitNat
+    ;
+binder
+    : IDENT #Ident
+    | '_' #Hole
+    ;
+
+IDENT : [a-zA-Z] [a-zA-Z0-9']*;
+NAT : [0-9]+;
+
+WS : [ \t\r\n] -> skip;
+COMMENT : '--' (~[\r\n])* -> skip;
+NCOMMENT : '{-'~[#] .*? '-}' -> skip;
+LAMBDA : '\\' | 'λ';
+ARROW : '->' | '→';
+\end{minted}
+
+\subsection{Data shape}
+\label{sec:org1cf8b82}
+
+\subsection{Algorithms}
+\label{sec:orgc23ee08}
+elaboration
+
+\section{Truffle Interpreter}
+\label{sec:orgd235983}
+I have implemented a dependently typed lambda calculus called LambdaPi based on
+the prior work \emph{A tutorial implementation of a dependently typed lambda calculus}
+\cite{loh2010tutorial}. The parser and interpreter are written in Kotlin, where
+I will also need to write the JIT implementation. This is a pure interpreter
+that will serve as a baseline for future benchmarks.
+
+parser shared with the previous implementation
+
+data classes
+
+truffle specifics
+
+inline cache, tail call, trampoline (continuations)
+
+!! show their effect on program graphs
+
+eval/uneval(quote)
+
+evaluation phases - translate to Code, run typecheck, run eval vs glued, ???
+
+native image
+
+\subsection{Evaluation model of function application}
+\label{sec:org541f92d}
+push-enter - arguments are pushed onto the stack, the function then takes as
+many as it requires
+
+eval-apply - the caller sees the arity of the function and then decides whether
+it is over-applied (evaluates the function and creates a continuation), appllied
+exactly (EVAL), or under-applied (creates a PAP, a closure-like value)
+
+-- exactly describe the rules from eval-apply paper KNOWNCALL, EXACT, CALLK, PAP
+-- known application ( = known arity), unknown function
+
+
+\section{Similar implementations}
+\label{sec:orgea74763}
+``I've considered LLVM, WASM backends, but we need to evaluate type-checking
+perf especially, so not relevant - better to compare with existing and/or
+experimental systems''
+
+SmallTT, Coq, Agda, GHC - for comparison
 
 \chapter{Evaluation}
-\label{sec:org4810524}
+\label{sec:orgf507896}
+\section{Benchmarks}
+\label{sec:org8a6ee3e}
+\begin{itemize}
+\item from SmallTT project, from Idris project
+\item memory usage (curve)
+\item compilation speed (type-heavy test)
+\item evaluation speed (compute-heavy test)
+\end{itemize}
+
+Nats, pairs, fun types, numerics
+
+\section{Results}
+\label{sec:orgea99192}
+---
+
+\section{Future work}
+\label{sec:orgbec03ed}
+good enough?
+
+LF, techniques, extensions, real language
+
+\chapter{Conclusion}
+\label{sec:org7079550}
+
+
+
 
 % * (bibliography, start of appendix)                           :ignoreheading:
+
 \makeatletter
 \def\@openbib@code{\addcontentsline{toc}{chapter}{Bibliography}}
 \makeatother
-\bibliographystyle{bibstyle}
-
 \begin{flushleft}
+
+\bibliographystyle{bibstyle}
 \bibliography{bibliography}
+
 \end{flushleft}
 \iftwoside\cleardoublepage\fi
-
-% Appendices
 \appendix
 \appendixpage
 \iftwoside\cleardoublepage\fi
-
 \startcontents[chapters]
 % \setlength{\parskip}{0pt}
 % \printcontents[chapters]{l}{0}{\setcounter{tocdepth}{2}}
@@ -244,6 +423,6 @@ let const = (\ a b x y -> x) :: forall (a :: *) (b :: *) . a -> b -> a
 \iftwoside\cleardoublepage\fi
 
 \chapter{Contents of the attached data storage}
-\label{sec:orgf914ee3}
+\label{sec:org19b42c7}
 \ldots{}
 \end{document}

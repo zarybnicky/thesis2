@@ -59,9 +59,11 @@
 %-----------------------------------------------------------------------------
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage[english]{babel}
-\usepackage[utf8]{inputenc} %kodovani / encoding
+\usepackage[greek, main=english]{babel}
+\usepackage[utf8x]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{textgreek}
 \usepackage{cmap}
 \usepackage{url}
 \usepackage{ragged2e}
@@ -948,10 +950,12 @@ Management}{\@fit@EN}%
 
 % Balíčky
 % Packages
-\usepackage[english]{babel}
+\usepackage[greek, main=english]{babel}
 \usepackage[]{opensans}
-\usepackage[utf8]{inputenc} %kodovani / encoding
+\usepackage[utf8x]{inputenc} %kodovani / encoding
 \usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{textgreek}
 \usepackage{cmap}
 \usepackage{float}
 \usepackage{calc}
