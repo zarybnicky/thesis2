@@ -28,3 +28,36 @@
 [submodule "dep/truffleruby"]
 	path = dep/truffleruby
 	url = https://github.com/oracle/truffleruby
+[submodule "dep/setoidtt"]
+	path = dep/setoidtt
+	url = https://github.com/AndrasKovacs/setoidtt
+[submodule "dep/trufflesqueak"]
+	path = dep/trufflesqueak
+	url = https://github.com/hpi-swa/trufflesqueak
+[submodule "dep/graalphp"]
+	path = dep/graalphp
+	url = https://github.com/abertschi/graalphp
+[submodule "dep/mumbler"]
+	path = dep/mumbler
+	url = https://github.com/cesquivias/mumbler
+[submodule "dep/TruffleSOM"]
+	path = dep/TruffleSOM
+	url = https://github.com/smarr/TruffleSOM
+[submodule "dep/graaljs"]
+	path = dep/graaljs
+	url = https://github.com/oracle/graaljs
+[submodule "dep/yona"]
+	path = dep/yona
+	url = https://github.com/yona-lang/yona/
+[submodule "dep/enso"]
+	path = dep/enso
+	url = https://github.com/enso-org/enso
+[submodule "dep/prolog-truffle"]
+	path = dep/prolog-truffle
+	url = https://gitlab.forge.hefr.ch/tony.licata/prolog-truffle
+[submodule "dep/fastr"]
+	path = dep/fastr
+	url = https://github.com/oracle/fastr
+[submodule "dep/graalpython"]
+	path = dep/graalpython
+	url = https://github.com/graalvm/graalpython

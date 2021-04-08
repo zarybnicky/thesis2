@@ -96,73 +96,97 @@ cite:kmett_2019, although there are a few projects implementing a lambda
 calculus directly to the Java Virtual Machine byte code..
 
 ** New
-[[comment:see Excel@FIT start]]
+*Motivation* What is the raison d'\^{e}tre of your project? Why should anyone care? No general meaningless claims. Make bulletproof arguments for the importance of your work.
 
-Follow-up to Cadenza (STLC) on behalf of its creator
+*Problem definition* What exactly are you solving? What is the core and what is a bonus? What parameters should a proper solution of the problem have? Define the problem precisely and state how its solution should be evaluated.
 
-Combination of JIT and dependent types is natural (computation on the type-level) but not found in literature
+*Existing solutions* Discuss existing solutions, be fair in identifying their strengths and weaknesses. Cite important works from the field of your topic. Try to define well what is the \textit{state of the art}. You can include a Section 2 titled ``Background'' or ``Previous Works'' and have the details there and make this paragraph short. Or, you can enlarge this paragraph to a whole page. In many scientific papers, \emph{this} is the most valuable part if it is written properly.
 
-Motivation: JIT for elaboration!!! plus easy prototyping, stepping block for
-    other projects (efficient LF/Twelf, ...)
+*Our solution* Make a quick outline of your approach -- pitch your solution.  The solution will be described later in detail, but give the reader a very quick overview now.
+
+*Contributions* Sell your solution. Pinpoint your achievements. Be fair and objective.
+
+The aim of this work is to create an efficient compiler for a language with
+dependent types. Compiling dependently-typed languages, compared to simply-typed
+or untyped languages, comes with large performance penalties, often making large
+non-trivial programs hard to write due to the compiler running out of memory or
+taking minutes to compile.
+https://github.com/agda/agda/issues/514#issuecomment-129023737
+https://github.com/idris-lang/Idris2/issues/964
+On the other hand, programming language research projects place more and more
+demands on the compiler (cubical, univalence, ... CITE)
+
+The goal of this project is to create a compiler for a dependently-typed
+language that outperforms existing compilers at, in particular, the speed of
+type-checking and compilation; evaluation speed of the resulting program is not
+as important for our benchmarks. Special attention will be on the asymptotics,
+as the implementation platform brings rather large constant factors.
+
+This work is a successor to the Cadenza project (cite) which implements a
+simply-typed lambda calculus with extensions in the Truffle framework. While it
+is unfinished and did not show promising performance compared to other
+simply-typed lambda calculus implementations according to its creator Edward
+Kmett, my work attempts to apply its ideas to the dependently-typed lambda
+calculus, where the presence of type-level computation should lead to larger
+gains.
+
+[[comment::inline This work builds on the pedagogic and algorithmic work on DTT by A.K.]]
+
+I have not found another attempt to apply just-in-time compilation in the
+implementation of a language with dependent types and in type-level computations
+in particular, despite the fact that adding just-in-time compilation to the
+type-checking phase of compilation seems natural in the context of
+dependently-typed languages where type-level computation is available. I assume
+that it is due to the fact that the Truffle project is aimed primarily at
+imperative languages and mapping functional concepts is not straightforward
+(comment:luna) - and implementing a standalone just-in-time compiler is not
+straightforward.
+
+Improving the algorithms for type-checking is an active area of research, but
+implementing them in a more dynamic manner (beyond just changing the data
+structures) is not something I have found.
+
+--- Using the technique of just-in-time compilation we can avoid the performance
+problems associated with dependent type-checking by rewriting inefficient parts
+of the control-flow graph during compilation.
+
+--- The Truffle language implementation framework gives us a way of turning an
+interpreter into a compiler with few changes, and allows us to rewrite the
+control-flow graph and just-in-time compilation process during runtime.
+
+--- This is a novel approach to a problem all current dependently-typed
+languages face and, if successful, will bring immediate benefits to programming
+language implementers.
+
+[[comment:In addition, easy prototyping, stepping block for other projects (efficient LF/Twelf, ...)]]
 
 smalltt a step in another direction
 
-
-* GraalVM and the Truffle Framework
-** Intro: ecosystem, purpose, benefits
-*GraalVM* is a just-in-time optimizing compiler for the Java bytecode. *Truffle* is
-a set of libraries that expose the internals of the GraalVM compiler, intended
-for easy implementation of other languages. So far JavaScript, Python, Ruby, R,
-and WebAssembly have Truffle implementations, and therefore can run on the JVM.
-
-GraalVM is also intended to allow creating /polyglot applications/ easily,
-applications that have their parts written in different languages. It is
-therefore easy to e.g. call R to create visualizations for the results of a
-Python program, or to call any Truffle language from Java.
-
-There is also the option to compile a /Native Image/ to eliminate most program
-start-up costs associated with a just-in-time compiler, pre-compiling the
-program partially (ahead-of-time).
-
-From the point of view of a programmer, Truffle makes it possible to write an
-interpreter, and then slowly add optimizations like program graph rewriting,
-node specializations, inline instruction caching or others. This seems like a
-good middle ground between spending large amounts of time on an optimized
-compiler, and just specifying the semantics of a program in an interpreter that,
-however, will likely not run quickly.
-
-While GraalVM/Truffle is open-source and released under GPL v2, an
-enterprise edition that claims large performance improvements is released
-commercially.
-
-#+ATTR_LaTeX: :placement [!htb]
-#+CAPTION: GraalVM and Truffle (source: oracle.com)
-[[./img/graalvm.jpg]]
-
-JIT options - specialization, deoptimization
-Use cases
-Potential optimizations
-** GraalVM
-marketing texts
-
-diagrams
-
-Hotspot's JIT vs Graal's
-
-** Truffle
-Intro + motivating multilanguage snippet
-
-features with code samples
-
-benchmarks for other languages
-
-* Language specification
+* Language Design $\equiv$ Designing a DTLC
 ** Dependent types
 Intro dependent types + motivating example
 
 hot ML research area (cubical, path, ...) (look in Kovacs' materials)
 
-** Lambda Calculus Theory
+*** Π-type
+dependent product type, dependent function type
+
+Π(n:ℕ). Vec(ℝ, n) ~ dependent function type
+Π(n:ℕ). ℝ ~ regular function type
+
+*** Σ-type
+dependent sum type, dependent pair type
+
+(a, b) : Σ(x:A). B(x) ~ dependent sum type
+
+*** First order dependent types
+Generalizing the function space to the dependent function space
+a -> b => (a : A) -> b
+
+** Lambda Calculus
+To present the dependently-typed lambda calculus well, we will build up to it
+starting from the untyped lambda calculus.
+
 *** Untyped Lambda Calculus
 The untyped lambda calculus is a simple language consisting of just three kinds
 of forms: variables, function application, and abstraction.
@@ -180,8 +204,15 @@ e & ::= & x            & \text{variable} \\
 syntax, semantics, usage
 
 *** Simply-Typed Lambda Calculus
-The simply-typed lambda calculus adds a fourth kind of a term, type annotation,
-and its type language:
+The simply-typed lambda calculus introduces the concept of types, which have
+separate syntax and semantics from the language of terms.
+
+The language of terms is extended with a fourth kind of term, type annotation.
+
+The language of types is the universal or base type, and an arrow from between
+types.
+
+[[comment:This language is not turing-complete, must terminate :inline]]
 
 #+CAPTION: Simply typed lambda calculus
 #+ATTR_LaTeX: :options [!htpb]
@@ -206,8 +237,21 @@ syntax, semantics, type checking, type inference
 
 Lambda cube
 
-The dependently typed lambda calculus merges these two languages together,
+The dependently typed lambda calculus merges the languages of terms and types together
 simplifying the grammar.
+
+The capabilities of typed lambda calculi can be described by the lambda cube
+
+terms on terms
+
+terms on types (STLC)
+
+types on types (1st order DTLC)
+
+types on terms (CoC)
+
+This brings many algorithmic difficulties which I sidestep by choosing the
+first-order dependently-typed lambda calculus with the /type-in-type/ rule.
 
 #+CAPTION: Dependently typed lambda calculus
 #+ATTR_LaTeX: :options [!htpb]
@@ -227,40 +271,60 @@ directions, decidability, where is DTLC
 
 implicits, holes, metacontext
 
-** Algorithms
-type-checking (bidi, NbE) + motivation
+** Syntax
+In language implementation, the syntax that the programmer writes, the surface
+syntax, is then parsed, simplified, and de-sugared into the core language, which
+is what is actually used for evaluation and type-checking.
 
-elaboration (what is it, why is it slow, glued, nondet, cite Kovacs)
-
-evaluation techniques (by-need, ...)
-
-eval/apply (in implementation section)
-
-** Specification
 #+ATTR_LaTeX: :placement [!htpb]
 #+CAPTION: The constant function in LambdaPi
 #+begin_src text
 let const = (\ a b x y -> x) :: forall (a :: *) (b :: *) . a -> b -> a
 #+end_src
 
-grammar
+[[comment:grammar :inline]]
 
-semantics (inference rules, evaluation rules)
+** Semantics
+- Lambda calculus equivalences:
+  - α-equivalence = structural, allows α-renaming
+  - β-equivalence = allows β-reduction (function application step) ==
+    α-equivalence of β-normal forms
+  - η-equivalence = allows η-reduction (f ≡ λx. f x)
 
-* Language Implementations
-** Pure Interpreter
-*** Parser
-ANTLR is the parser to use in JVM
+- Type checking = determining whether a program is well-typed
 
-Several ways to consume: listener, visitor - I've used AST transformation which
-is the most compact and most familiar to other DTLC implementations which are
-usually in functional languages
+- Type inference = the process of obtaining the type of an expression from its
+  parts or implicits (Hindley-Milner is well-known, ~inference rules~)
 
-(listener - enter/exit function calls, visitor is similar, toAst uses recursive calls)
+- Elaboration = convert a partially specified expression into a complete,
+  type-correct form (http://leodemoura.github.io/files/elaboration.pdf)
 
-#+include: "../montuno/src/main/antlr/montuno/Montuno.g4" src antlr -n
+- Bidirectional typing (https://www.cl.cam.ac.uk/~nk480/bidir-survey.pdf) = now
+  standard approach, combines type-checking and inference, simpler to implement
+  even if inference is not required
 
-*** Data shape
+- Conversion checking = type (or expression) equivalence checking, includes
+  evaluation (NbE = full comparison of normal forms)
+
+*** Inference rules
+[[comment:rules -> graphs :inline]]
+
+*** Evaluation rules
+[[comment:rules -> graphs :inline]]
+
+*** Extensions
+- built-ins / primitives / wired-in types
+- FFI with truffle
+- threads, ... - ignored
+
+* Language Implementation $\equiv$ Implementing a DTLC: Montuno
+** Syntax representation
+*** Closures
+HOAS vs Closure
+
+HOAS impossible in Truffle, functions and function calls need to be objects
+HOAS = using the host language's support functions
+therefore explicit closures
 
 *** De Bruijn
 Given an environment stack, indices count from the start of the stack, levels
@@ -271,43 +335,19 @@ Both remote the problem of substitution, can be converted by subtraction.
 
 We use both, indices when quoting evaluated values.
 
-*** Algorithms
-elaboration
+** Type-checking and elaboration
+what is elaboration, why is it slow, glued, nondet, cite Kovacs
 
-** Truffle Interpreter
-I have implemented a dependently typed lambda calculus called LambdaPi based on
-the prior work /A tutorial implementation of a dependently typed lambda calculus/
-cite:loh2010tutorial. The parser and interpreter are written in Kotlin, where
-I will also need to write the JIT implementation. This is a pure interpreter
-that will serve as a baseline for future benchmarks.
+*** Type-checking principles
+bidi, nbe
 
-parser shared with the previous implementation
-
-slightly impractical compared to the functional version, subclasses with methods
-instead of plain functions -> required for truffle annotations
-
-data classes
-
-truffle specifics
-
-inline cache, tail call, trampoline (continuations)
-
-!! show their effect on program graphs
-
-eval/uneval(quote)
-
-evaluation phases - translate to Code, run typecheck, run eval vs glued, ???
-
-native image
-
-*** Closure abstraction
-HOAS vs Closure
-
-HOAS impossible in Truffle, functions and function calls need to be objects
-HOAS = using the host language's support functions
-therefore explicit closures
+** Evaluation principles
+*** Evaluation model
+call-by-need
 
 *** Evaluation model of function application
+closely related to closure abstraction
+
 push-enter - arguments are pushed onto the stack, the function then takes as
 many as it requires
 
@@ -318,16 +358,41 @@ exactly (EVAL), or under-applied (creates a PAP, a closure-like value)
 -- exactly describe the rules from eval-apply paper KNOWNCALL, EXACT, CALLK, PAP
 -- known application ( = known arity), unknown function
 
+** Project overview
+[[comment:Gradle, justify choice of Kotlin, JUnit, ... :inline]]
 
-** Similar implementations
-"I've considered LLVM, WASM backends, but we need to evaluate type-checking
-perf especially, so not relevant - better to compare with existing and/or
-experimental systems"
+ANTLR is the parser to use in JVM
 
-SmallTT, Coq, Agda, GHC - for comparison
+Several ways to consume: listener, visitor - I've used AST transformation which
+is the most compact and most familiar to other DTLC implementations which are
+usually in functional languages
 
-* Evaluation
-** Benchmarks
+(listener - enter/exit function calls, visitor is similar, toAst uses recursive calls)
+
+#+include: "../montuno/src/main/antlr/montuno/Montuno.g4" src antlr -n
+
+** Parser
+
+** Data model
+
+** Pure Interpreter
+modeled using plain functions, using Kotlin's lazy evaluation features
+
+* Evaluation methodology $\equiv$ Designing DTLC benchmarks
+cooltt, smalltt, redtt, cubicaltt, Agda, Idris, ...
+
+We're interested in asymptotics
+** Methodology
+equivalent programs for a few dependently-typed languages
+
+memory profile from GHC's RTS for agda/idris/smalltt (+RTS -p)
+(what about coq? - https://github.com/coq/coq/blob/master/dev/doc/profiling.txt)
+Graal's default memory profiler
+
+hyperfine to benchmark - measures speed
+(what about ~prof~?)
+memory profile from stderr output
+
   - from SmallTT project, from Idris project
   - memory usage (curve)
   - compilation speed (type-heavy test)
@@ -342,17 +407,87 @@ SmallTT, Coq, Agda, GHC - for comparison
 - pairs - nested accessors
 - function types - embed STLC?
 
-** Results
----
+SmallTT, Coq, Agda, GHC - for comparison
 
-** Future work
-good enough?
+* Introducing gradual just-in-time compilation \equiv Adding Truffle to Montuno: $Montuno_{\mathbb{T}}$
+** Self-optimizing interpreters
+*** Classical
 
-LF, techniques, extensions, real language
+*** Tracing
+
+*** Rewriting
+** GraalVM and the Truffle Framework
+*** Intro: ecosystem, purpose, benefits
+ *GraalVM* is a just-in-time optimizing compiler for the Java bytecode. *Truffle* is
+ a set of libraries that expose the internals of the GraalVM compiler, intended
+ for easy implementation of other languages. So far JavaScript, Python, Ruby, R,
+ and WebAssembly have Truffle implementations, and therefore can run on the JVM.
+
+ GraalVM is also intended to allow creating /polyglot applications/ easily,
+ applications that have their parts written in different languages. It is
+ therefore easy to e.g. call R to create visualizations for the results of a
+ Python program, or to call any Truffle language from Java.
+
+ There is also the option to compile a /Native Image/ to eliminate most program
+ start-up costs associated with a just-in-time compiler, pre-compiling the
+ program partially (ahead-of-time).
+
+ From the point of view of a programmer, Truffle makes it possible to write an
+ interpreter, and then slowly add optimizations like program graph rewriting,
+ node specializations, inline instruction caching or others. This seems like a
+ good middle ground between spending large amounts of time on an optimized
+ compiler, and just specifying the semantics of a program in an interpreter that,
+ however, will likely not run quickly.
+
+ While GraalVM/Truffle is open-source and released under GPL v2, an
+ enterprise edition that claims large performance improvements is released
+ commercially.
+
+ #+ATTR_LaTeX: :placement [!htb]
+ #+CAPTION: GraalVM and Truffle (source: oracle.com)
+ [[./img/graalvm.jpg]]
+
+ JIT options - specialization, deoptimization
+ Use cases
+ Potential optimizations
+*** Graal
+replacement for HotSpot VM, implemented in Java (self-hosting)
+
+ marketing texts
+
+ diagrams
+
+ Hotspot's JIT vs Graal's
+
+*** Truffle
+ Intro + motivating multilanguage snippet
+
+[[comment:Self-optimizing AST interpreters (tracing, JIT) :inline]]
+
+ features with code samples
+
+ benchmarks for other languages
+
+** Truffle Interpreter
+evaluation phases - translate to Code, run typecheck, run eval vs glued, ???
+
+slightly impractical compared to the functional version, subclasses with methods
+instead of plain functions -> required for truffle annotations
+
+truffle specifics
+
+inline cache, tail call, trampoline (continuations)
+
+!! show their effect on program graphs
+
+native image
+
+* Optimizations $\equiv$ Making $Montuno_{\mathbb{T}}$ fast
+
+* Results $\equiv$ Is $Montuno_{\mathbb{T}}$ fast enough?
 
 * Conclusion
-
-
+next work: LF, techniques, extensions, real language
 
 
 * (bibliography, start of appendix)                           :ignoreheading:

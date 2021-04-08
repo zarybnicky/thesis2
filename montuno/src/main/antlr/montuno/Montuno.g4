@@ -8,7 +8,8 @@ file : (decls+=top)* EOF;
 top
     : id=IDENT ':' type=term '.' #Decl
     | id=binder (':' type=term)? '=' body=term '.' #Defn
-    | '%nf' term #Elab
+    | '%elaborate' term #Elab
+    | '%normalize' term #Norm
     ;
 
 term
@@ -24,6 +25,7 @@ atom
     | '*' #Star
     | 'Nat' #Nat
     | NAT #LitNat
+    | lang=IDENT '::' id=IDENT #Foreign
     ;
 binder
     : IDENT #Ident

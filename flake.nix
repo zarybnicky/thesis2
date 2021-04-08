@@ -13,8 +13,10 @@
     };
     compiler = "ghc884";
     hsPkgs = pkgs.haskell.packages.${compiler};
+    graal = pkgs.graalvm11-ee;
   in {
     overlay = final: prev: {
+      inherit (prev.callPackage ./dep/graalvm-ee.nix {}) graalvm11-ee;
       haskell = prev.haskell // {
         packageOverrides = prev.lib.composeExtensions (prev.haskell.packageOverrides or (_: _: {})) (hself: hsuper: {
           lph = hself.callCabal2nix "lph" lambdapi {};
@@ -50,12 +52,14 @@
           cp -rv lib/ $out/lib/gradle/
           gradle_launcher_jar=$(echo $out/lib/gradle/lib/gradle-launcher-*.jar)
           test -f $gradle_launcher_jar
-          makeWrapper ${final.graalvm11-ee}/bin/java $out/bin/gradle \
-            --set JAVA_HOME ${final.graalvm11-ee} \
+          makeWrapper ${graal}/bin/java $out/bin/gradle \
+            --set JAVA_HOME ${graal} \
             --add-flags "-classpath $gradle_launcher_jar org.gradle.launcher.GradleMain"
         '';
-        buildInputs = [ final.unzip final.graalvm11-ee final.makeWrapper ];
+        buildInputs = [ final.unzip graal final.makeWrapper ];
       };
+      antlr4 = prev.antlr4.override { jre = graal; };
+      visualvm = prev.visualvm.override { jdk = graal; };
     };
 
     devShell.x86_64-linux = hsPkgs.shellFor {
@@ -67,10 +71,20 @@
         hsPkgs.haskell-language-server
         hsPkgs.stan
         pkgs.kotlin-language-server
-        pkgs.graalvm11-ee
+        graal
         pkgs.gradle
         pkgs.hyperfine
-        (pkgs.antlr4.override { jre = pkgs.graalvm11-ee; })
+        pkgs.antlr4
+        pkgs.visualvm
+        (pkgs.bundlerApp {
+          pname = "seafoam";
+          gemfile = ./dep/seafoam/Gemfile;
+          lockfile = ./dep/seafoam/Gemfile.lock;
+          gemset = ./dep/seafoam/gemset.nix;
+          exes = ["seafoam"];
+          buildInputs = [pkgs.makeWrapper];
+          postBuild = "wrapProgram $out/bin/seafoam --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.graphviz ]}";
+        })
       ];
     };
   };

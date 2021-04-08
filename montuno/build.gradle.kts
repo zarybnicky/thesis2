@@ -39,6 +39,7 @@ dependencies {
     antlr("org.antlr:antlr4:4.8-1")
     api("org.antlr:antlr4-runtime:4.8-1")
     implementation("kotlin-pretty:kotlin-pretty:0.6.0")
+    implementation("com.google.code.gson:gson:2.8.6")
 
     testImplementation(platform("org.junit:junit-bom:5.7.0"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
@@ -170,4 +171,8 @@ tasks.getByName<Jar>("jar") {
         attributes["Class-Path"] =
             configurations.runtimeClasspath.get().files.joinToString(separator = " ") { it.absolutePath }
     }
+}
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.kotlinOptions {
+    freeCompilerArgs = listOf("-Xinline-classes")
 }

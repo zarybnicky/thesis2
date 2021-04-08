@@ -1,5 +1,7 @@
-package montuno
+package montuno.interpreter.simple
 
+import montuno.interpreter.Ix
+import montuno.interpreter.Lvl
 import montuno.syntax.*
 
 sealed class Term
@@ -63,7 +65,7 @@ fun conv(l: Lvl, t: Val, u: Val): Boolean = when {
     else -> false
 }
 
-data class Ctx(val env: Env?, val types: Types?, var loc: Loc, val l: Lvl)
+data class Ctx(val env: Env?, val types: TypeEnv?, var loc: Loc, val l: Lvl)
 fun Ctx.bind(n: String, ty: Val): Ctx =
     Ctx(env + VVar(l), types.cons(n, ty), loc, l + 1)
 fun Ctx.define(n: String, v: Val, ty: Val): Ctx =
@@ -83,7 +85,7 @@ inline fun <A> Ctx.withPos(newLoc: Loc, run: Ctx.() -> A): A {
 }
 
 @Throws(TypeError::class)
-fun Ctx.check(r: Raw, a: Val): Term = when {
+fun Ctx.check(r: PreTerm, a: Val): Term = when {
     r is RLam && a is VPi -> withPos(r.loc) { TLam(r.arg, bind(r.arg, a.ty).check(r.body, a.clo.ap(VVar(l)))) }
     r is RLet -> withPos(r.loc) {
         val ty = check(r.ty, VStar)
@@ -102,7 +104,7 @@ fun Ctx.check(r: Raw, a: Val): Term = when {
 }
 
 @Throws(TypeError::class)
-fun Ctx.infer(r: Raw): Pair<Term, Val> = when (r) {
+fun Ctx.infer(r: PreTerm): Pair<Term, Val> = when (r) {
     is RVar -> types.find(r.n)
     is RLitNat -> TLitNat(r.n) to VNat
     is RApp -> withPos(r.loc) {
@@ -131,13 +133,19 @@ fun Ctx.infer(r: Raw): Pair<Term, Val> = when (r) {
         val (u, uty) = define(r.n, vt, va).infer(r.body)
         TLet(r.n, a, t, u) to uty
     }
+    is RForeign -> TODO("infer(RForeign)")
 }
 
-fun topToExpr(x: Raw, xs: List<RawTop>): Raw = xs.foldRight(x, { l, r -> when (l) {
+fun topToExpr(x: PreTerm, xs: List<TopLevel>): PreTerm = xs.foldRight(x, { l, r -> when (l) {
     is RDefn -> RLet(l.loc, l.n, l.ty ?: RVar(Loc.Unavailable, "_"), l.tm, r)
     is RDecl -> TODO()
     is RElab -> r
+    is RNorm -> r
 }})
+
+class TypeError(message: String, val loc: Loc) : Exception(message) {
+    override fun toString(): String = message.orEmpty()
+}
 
 fun nfMain(input: String) {
     val raw = topToExpr(parseExpr("id ({A B} -> A -> B -> A) const"), parseModule(input))
@@ -154,7 +162,7 @@ fun nfMain(input: String) {
 
 const val ex0 = "foo : * = *. bar : * = id id."
 
-const val ex1 = "%nf id ((A B : *) -> A -> B -> A) const"
+const val ex1 = "%normalize id ((A B : *) -> A -> B -> A) const"
 
 val ex2 = """
     Nat' : * = (N : *) -> (N -> N) -> N -> N.
@@ -176,4 +184,4 @@ val ex4 = """
 
 const val ex3 = "%nf id Nat 5"
 
-fun main() = nfMain(ex1)
+fun main() = nfMain(ex0)

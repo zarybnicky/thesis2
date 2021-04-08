@@ -1,7 +1,6 @@
-package montuno
+package montuno.interpreter.simple
 
 import pretty.*
-import java.lang.StringBuilder
 
 enum class Prec {
     Atom,
@@ -13,7 +12,7 @@ enum class Prec {
 fun <A> par(l: Prec, r: Prec, x: Doc<A>): Doc<A> =
     if (l < r) "(".text() + x + ")".text() else x
 
-fun Term.pretty(ns: Names?, p: Prec = Prec.Atom): Doc<Nothing> = when (this) {
+fun Term.pretty(ns: NameEnv?, p: Prec = Prec.Atom): Doc<Nothing> = when (this) {
     is TVar -> ns[ix].text()
     is TLitNat -> n.toString().text()
     is TApp -> par(p, Prec.App, arg.pretty(ns, Prec.App) + " ".text() + body.pretty(ns, Prec.Atom))
