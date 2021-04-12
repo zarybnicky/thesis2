@@ -6,30 +6,42 @@ package montuno;
 file : (decls+=top)* EOF;
 
 top
-    : id=IDENT ':' type=term '.' #Decl
-    | id=binder (':' type=term)? '=' body=term '.' #Defn
-    | '%elaborate' term #Elab
-    | '%normalize' term #Norm
+    : id=IDENT ':' type=term '.'                   #Decl
+    | id=binder (':' type=term)? '=' defn=term '.' #Defn
+    | '%elaborate' term '.'                        #Elab
+    | '%normalize' term '.'                        #Norm
     ;
-
 term
-    : 'let' name=binder ':' type=term '=' tm=term 'in' body=term #Let
-    | LAMBDA (args+=binder)* '.' body=term #Lam
-    | '(' (dom+=binder)+ ':' kind=term ')' ARROW cod=term #PiExpl
-    | '{' (dom+=binder)+ (':' kind=term)? '}' ARROW cod=term #PiImpl
-    | (spine+=atom)+ (ARROW rest=term)? #App
+    : 'let' id=binder ':' type=term '=' defn=term 'in' body=term #Let
+    | LAMBDA (rands+=lamBind)* '.' body=term                     #Lam
+    | (spine+=piBind)+ ARROW body=term                           #Pi
+    | rator=atom (rands+=arg)* (ARROW body=term)?                #App
+    ;
+arg
+    : '{' (IDENT '=')? term '}' #ArgImpl
+    | atom                      #ArgExpl
+    | '!'                       #ArgStop
+    ;
+piBind
+    : '(' (ids+=binder)+ ':' type=term ')'    #PiExpl
+    | '{' (ids+=binder)+ (':' type=term)? '}' #PiImpl
+    ;
+lamBind
+    : binder                   #LamExpl
+    | '{' binder '}'           #LamImpl
+    | '{' IDENT '=' binder '}' #LamName
     ;
 atom
-    : '(' rec=term ')' #Rec
-    | IDENT #Var
-    | '*' #Star
-    | 'Nat' #Nat
-    | NAT #LitNat
-    | lang=IDENT '::' id=IDENT #Foreign
+    : '(' term ')'             #Rec
+    | IDENT                    #Var
+    | '_'                      #Hole
+    | '*'                      #Star
+    | NAT                      #Nat
+    | '[' IDENT '|' FOREIGN? '|' term ']' #Foreign
     ;
 binder
-    : IDENT #Ident
-    | '_' #Hole
+    : IDENT #Bind
+    | '_' #Irrel
     ;
 
 IDENT : [a-zA-Z] [a-zA-Z0-9']*;
@@ -40,3 +52,4 @@ COMMENT : '--' (~[\r\n])* -> skip;
 NCOMMENT : '{-'~[#] .*? '-}' -> skip;
 LAMBDA : '\\' | 'λ';
 ARROW : '->' | '→';
+FOREIGN : [^|]+;

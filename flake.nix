@@ -21,6 +21,8 @@
         packageOverrides = prev.lib.composeExtensions (prev.haskell.packageOverrides or (_: _: {})) (hself: hsuper: {
           lph = hself.callCabal2nix "lph" lambdapi {};
           smalltt = hself.callCabal2nix "smalltt" smalltt {};
+          primdata = prev.haskell.lib.dontHaddock (hself.callCabal2nix "primdata" "${smalltt}/primdata" {});
+          dynamic-array = hself.callCabal2nix "dynamic-array" "${smalltt}/dynamic-array" {};
         });
       };
 
@@ -64,7 +66,7 @@
 
     devShell.x86_64-linux = hsPkgs.shellFor {
       withHoogle = false;
-      packages = p: [ p.smalltt p.lph ];
+      packages = p: [ p.smalltt p.dynamic-array p.lph ];
       buildInputs = [
         hsPkgs.cabal-install
         hsPkgs.hie-bios

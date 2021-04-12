@@ -17,9 +17,9 @@ inline class Lvl(val it: Int) {
     fun toIx(x: Lvl) = Ix(it - x.it - 1)
 }
 
-typealias LvlSet = BitSet
-
-data class Meta(val i: Int, val j: Int)
+data class Meta(val i: Int, val j: Int) : Comparable<Meta> {
+    override fun compareTo(other: Meta) = compareValuesBy(this, other, { it.i }, { it.j })
+}
 
 enum class Icit { Expl, Impl }
 
@@ -29,5 +29,9 @@ fun Rigidity.meld(that: Rigidity) = when (Rigidity.Flex) {
     else -> that
 }
 
-data class Renaming(val map: Map<Lvl, Lvl>)
-fun Renaming.apply(x: Lvl) = map.getOrDefault(x, x)
+inline class Renaming(val it: Array<Pair<Lvl, Lvl>>)
+fun Renaming.apply(x: Lvl): Int = it.find { it.first == x }?.second?.it ?: -1
+operator fun Renaming.plus(x: Pair<Lvl, Lvl>) = Renaming(it.plus(x))
+
+inline class LvlSet(val it: BitSet)
+fun LvlSet.disjoint(r: Renaming): Boolean = r.it.any { this.it[it.first.it] }

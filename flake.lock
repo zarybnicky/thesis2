@@ -43,11 +43,11 @@
     "smalltt": {
       "flake": false,
       "locked": {
-        "lastModified": 1617289647,
-        "narHash": "sha256-wfkKn4n51dqVHfphWGnupkzx496CRlS9UCmqzsP5XsU=",
+        "lastModified": 1618149383,
+        "narHash": "sha256-s1i2g6fSzd+zjpGI/yq8LNRiKBSD4KLs4NhxTYlSh6w=",
         "owner": "zarybnicky",
         "repo": "smalltt",
-        "rev": "aa9c69715b253d36ca6611155e5b03c9fde86e83",
+        "rev": "9442628bbae1d52e98d19cda1fd65472bbd11d57",
         "type": "github"
       },
       "original": {

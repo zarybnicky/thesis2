@@ -11,7 +11,7 @@ data class TypeEnv(val n: String, val ty: Val, val next: TypeEnv?)
 fun TypeEnv?.cons(n: String, ty: Val): TypeEnv = TypeEnv(n, ty, this)
 fun TypeEnv?.toNames(): NameEnv? = if (this == null) null else NameEnv(n, next.toNames())
 @Throws(TypeCastException::class)
-fun TypeEnv?.find(n: String, i: Int = 0): Pair<Term, Val> = when {
+fun TypeEnv?.find(n: String, i: Int = 0): Pair<TVar, Val> = when {
     this == null -> throw TypeCastException("variable out of scope: $n")
     this.n == n -> TVar(Ix(i)) to this.ty
     else -> next.find(n, i + 1)

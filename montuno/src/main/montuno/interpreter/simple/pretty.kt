@@ -14,7 +14,7 @@ fun <A> par(l: Prec, r: Prec, x: Doc<A>): Doc<A> =
 
 fun Term.pretty(ns: NameEnv?, p: Prec = Prec.Atom): Doc<Nothing> = when (this) {
     is TVar -> ns[ix].text()
-    is TLitNat -> n.toString().text()
+    is TNat -> n.toString().text()
     is TApp -> par(p, Prec.App, arg.pretty(ns, Prec.App) + " ".text() + body.pretty(ns, Prec.Atom))
     is TLam -> {
         var x = ns.fresh(arg)
@@ -29,8 +29,7 @@ fun Term.pretty(ns: NameEnv?, p: Prec = Prec.Atom): Doc<Nothing> = when (this) {
         }
         par(p, Prec.Let, b + ". ".text() + rest.pretty(nsLocal, Prec.Let))
     }
-    is TStar -> "*".text()
-    is TNat -> "Nat".text()
+    is TU -> "*".text()
     is TPi -> when (arg) {
         "_" -> par(p, Prec.Pi, ty.pretty(ns, Prec.App) spaced " ".text() + body.pretty(ns + "_", Prec.Pi))
         else -> {
