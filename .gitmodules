@@ -61,3 +61,6 @@
 [submodule "dep/graalpython"]
 	path = dep/graalpython
 	url = https://github.com/graalvm/graalpython
+[submodule "dep/normalization-bench"]
+	path = dep/normalization-bench
+	url = https://github.com/AndrasKovacs/normalization-bench

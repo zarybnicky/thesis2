@@ -1,9 +1,13 @@
 {
-  inputs.nixpkgs.url = github:NixOS/nixpkgs/master;
+  inputs.nixpkgs.url = github:NixOS/nixpkgs/release-20.09;
   inputs.lambdapi = { url = github:ilya-klyuchnikov/lambdapi/master; flake =  false; };
   inputs.smalltt = { url = github:zarybnicky/smalltt/master; flake = false; };
+  inputs.normbench = { url = github:zarybnicky/normalization-bench/master; flake = false; };
+  inputs.lean.url = github:leanprover/lean4;
+  inputs.lean.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.lean.inputs.nixpkgs-vscode.follows = "nixpkgs";
 
-  outputs = { self, lambdapi, smalltt, nixpkgs }: let
+  outputs = { self, lambdapi, smalltt, lean, normbench, nixpkgs }: let
     inherit (pkgs.nix-gitignore) gitignoreSourcePure;
     getSrc = dir: gitignoreSourcePure [./.gitignore] dir;
     pkgs = import nixpkgs {
@@ -62,31 +66,49 @@
       };
       antlr4 = prev.antlr4.override { jre = graal; };
       visualvm = prev.visualvm.override { jdk = graal; };
+      seafoam = pkgs.bundlerApp {
+        pname = "seafoam";
+        gemfile = ./dep/seafoam/Gemfile;
+        lockfile = ./dep/seafoam/Gemfile.lock;
+        gemset = ./dep/seafoam/gemset.nix;
+        exes = ["seafoam"];
+        buildInputs = [pkgs.makeWrapper];
+        postBuild = "wrapProgram $out/bin/seafoam --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.graphviz ]}";
+      };
+      dotnet-sdk-lts = prev.dotnet-sdk.overrideAttrs (
+        old: rec {
+          version = "3.1.102";
+          src = prev.fetchurl {
+            url = "https://dotnetcli.azureedge.net/dotnet/Sdk/${version}/dotnet-sdk-${version}-linux-x64.tar.gz";
+            sha256 = "e03ceeb5beaf7c228bd8dcbf7712cf12f5ccbfcd6d426afff78bfbd4524ff558";
+          };
+        }
+      );
     };
+    packages.x86_64-linux = { inherit (pkgs) normbench-fsharp; };
 
-    devShell.x86_64-linux = hsPkgs.shellFor {
+    devShell.x86_64-linux = hsPkgs.shellFor rec {
       withHoogle = false;
       packages = p: [ p.smalltt p.dynamic-array p.lph ];
+      LD_LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath buildInputs;
       buildInputs = [
         hsPkgs.cabal-install
         hsPkgs.hie-bios
         hsPkgs.haskell-language-server
-        hsPkgs.stan
         pkgs.kotlin-language-server
         graal
         pkgs.gradle
         pkgs.hyperfine
         pkgs.antlr4
         pkgs.visualvm
-        (pkgs.bundlerApp {
-          pname = "seafoam";
-          gemfile = ./dep/seafoam/Gemfile;
-          lockfile = ./dep/seafoam/Gemfile.lock;
-          gemset = ./dep/seafoam/gemset.nix;
-          exes = ["seafoam"];
-          buildInputs = [pkgs.makeWrapper];
-          postBuild = "wrapProgram $out/bin/seafoam --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.graphviz ]}";
-        })
+        (pkgs.agda.withPackages (p: [ p.standard-library ]))
+        (pkgs.idrisPackages.with-packages (with pkgs.idrisPackages; [ contrib pruviloj ]))
+        lean.defaultPackage.x86_64-linux
+        pkgs.coq
+        pkgs.dotnet-sdk-lts
+        pkgs.ocaml
+        pkgs.sbt
+        pkgs.seafoam
       ];
     };
   };
