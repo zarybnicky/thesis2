@@ -19,25 +19,19 @@ class TopContext {
     fun rigidity(lvl: Lvl) = if (topEntries[lvl.it].defn == null) Rigidity.Rigid else Rigidity.Flex
 
     operator fun get(meta: Meta) = metas[meta.i][meta.j]
-    operator fun set(meta: Meta, tm: Term) = set(meta, MetaSolved(currentPos, tm.gvEval(this, emptyVEnv, emptyGEnv), tm, tm.isUnfoldable()))
+    operator fun set(meta: Meta, tm: Term) {
+        val (i, j) = meta
+        metas[i][j] = MetaSolved(currentPos, tm.gvEval(this, emptyVEnv, emptyGEnv), tm, tm.isUnfoldable())
+    }
     operator fun set(meta: Meta, m: MetaEntry) {
         val (i, j) = meta
-        if (i == metas.size) {
-            metas.add(mutableListOf())
-        }
-        if (j == metas[i].size) metas[i].add(m) else metas[i][j] = m
+        assert(metas[i].size == j)
+        metas[i].add(m)
     }
     fun rigidity(meta: Meta) = if (metas[meta.i][meta.j] is MetaUnsolved) Rigidity.Rigid else Rigidity.Flex
 
     operator fun invoke(pos: Loc) {
         currentPos = pos
-    }
-    inline fun <T> withPos(pos: Loc, x: TopContext.() -> T): T {
-        val oldPos = currentPos
-        currentPos = pos
-        val r = x.invoke(this)
-        currentPos = oldPos
-        return r
     }
 }
 
@@ -54,22 +48,22 @@ inline class NameTable(val it: HashMap<String, List<NameInfo>> = hashMapOf()) {
 
 data class LocalContext(
     val top: TopContext,
+    val nameTable: NameTable,
     val lvl: Lvl = Lvl(0),
     val gVals: GEnv = emptyGEnv,
     val vVals: VEnv = emptyVEnv,
     val types: Array<GluedVal> = arrayOf(),
-    val nameTable: NameTable = NameTable(),
     val names: Array<String> = arrayOf(),
     val boundIndices: IntArray = IntArray(0)
 )
 
 fun LocalContext.localBind(loc: Loc, n: String, inserted: Boolean, gv: GluedVal): LocalContext = LocalContext(
     top,
+    nameTable.withName(n, NILocal(loc, lvl, inserted)),
     lvl + 1,
     gVals.skip(),
     vVals.skip(),
 types + gv,
-    nameTable.withName(n, NILocal(loc, lvl, inserted)),
     names + n,
     boundIndices.plus(lvl.it)
 )
@@ -77,11 +71,11 @@ fun LocalContext.localBindSrc(loc: Loc, n: String, gv: GluedVal) = localBind(loc
 fun LocalContext.localBindIns(loc: Loc, n: String, gv: GluedVal) = localBind(loc, n, true, gv)
 fun LocalContext.localDefine(loc: Loc, n: String, gv: GluedVal, gvty: GluedVal) = LocalContext(
     top,
+    nameTable.withName(n, NILocal(loc, lvl, false)),
     lvl + 1,
     gVals.def(gv.g),
     vVals.def(gv.v),
     types + gvty,
-    nameTable.withName(n, NILocal(loc, lvl, false)),
     names + n,
     boundIndices
 )

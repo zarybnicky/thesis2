@@ -4,7 +4,7 @@ import montuno.interpreter.Icit
 import montuno.interpreter.Ix
 import montuno.interpreter.Lvl
 
-fun VEnv.local(ix: Ix): Val = it[ix.it] ?: vLocal(ix)
+fun VEnv.local(ix: Ix): Lazy<Val> = it[ix.it] ?: lazyOf(vLocal(ix))
 fun GEnv.local(ix: Ix): Glued = it[ix.it] ?: gLocal(ix)
 
 fun TopContext.top(lvl: Lvl): Glued = when (val top = topEntries[lvl.it].defn) {
@@ -12,24 +12,24 @@ fun TopContext.top(lvl: Lvl): Glued = when (val top = topEntries[lvl.it].defn) {
     else -> top.gv.g
 }
 
-fun Term.evalBox(top: TopContext, env: VEnv): Val = when (this) {
+fun Term.evalBox(top: TopContext, env: VEnv): Lazy<Val> = when (this) {
     is TLocal -> env.local(ix)
-    is TTop -> vTop(lvl)
-    is TMeta -> vMeta(meta)
-    else -> eval(top, env)
+    is TTop -> lazyOf(vTop(lvl))
+    is TMeta -> lazyOf(vMeta(meta))
+    else -> lazy { eval(top, env) }
 }
 fun Term.eval(top: TopContext, env: VEnv): Val = when (this) {
-    is TLocal -> env.local(ix)
+    is TLocal -> env.local(ix).value
     is TTop -> vTop(lvl)
     is TMeta -> when (val m = top[meta]) {
-        is MetaSolved -> m.gv.v
+        is MetaSolved -> m.gv.v.value
         else -> vMeta(meta)
     }
     is TApp -> l.eval(top, env).app(top, icit, r.evalBox(top, env))
     is TLam -> VLam(n, icit, VCl(env, tm))
     is TPi -> VPi(n, icit, arg.evalBox(top, env), VCl(env, tm))
     is TFun -> VFun(l.evalBox(top, env), r.evalBox(top, env))
-    is TLet -> tm.eval(top, env.def(v.eval(top, env)))
+    is TLet -> tm.eval(top, env.def(lazy { v.eval(top, env) }))
     is TU -> VU
     is TIrrelevant -> VIrrelevant
     is TForeign -> TODO("VForeign not implemented")
@@ -50,30 +50,30 @@ fun Term.gEval(top: TopContext, env: VEnv, genv: GEnv): Glued = when (this) {
         is MetaSolved -> m.gv.g
         else -> gMeta(meta)
     }
-    is TApp -> l.gEval(top, env, genv).app(top, icit, GluedVal(r.eval(top, env), r.gEvalBox(top, env, genv)))
+    is TApp -> l.gEval(top, env, genv).app(top, icit, GluedVal(lazy { r.eval(top, env) }, r.gEvalBox(top, env, genv)))
     is TLam -> GLam(n, icit, GCl(genv, env, tm))
-    is TPi -> GPi(n, icit, GluedVal(arg.eval(top, env), arg.gEvalBox(top, env, genv)), GCl(genv, env, tm))
-    is TFun -> GFun(GluedVal(l.eval(top, env), l.gEvalBox(top, env, genv)), GluedVal(r.eval(top, env), r.gEvalBox(top, env, genv)))
-    is TLet -> tm.gEval(top, env.def(v.eval(top, env)), genv.def(v.gEvalBox(top, env, genv)))
+    is TPi -> GPi(n, icit, GluedVal(lazy { arg.eval(top, env) }, arg.gEvalBox(top, env, genv)), GCl(genv, env, tm))
+    is TFun -> GFun(GluedVal(lazy { l.eval(top, env) }, l.gEvalBox(top, env, genv)), GluedVal(lazy { r.eval(top, env) }, r.gEvalBox(top, env, genv)))
+    is TLet -> tm.gEval(top, env.def(lazy { v.eval(top, env) }), genv.def(v.gEvalBox(top, env, genv)))
     is TU -> GU
     is TIrrelevant -> GIrrelevant
     is TForeign -> TODO("GForeign not implemented")
 }
 
-fun Term.gvEval(top: TopContext, env: VEnv, genv: GEnv): GluedVal = GluedVal(eval(top, env), gEval(top, env, genv))
+fun Term.gvEval(top: TopContext, env: VEnv, genv: GEnv): GluedVal = GluedVal(lazy { eval(top, env) }, gEval(top, env, genv))
 
 fun GCl.inst(top: TopContext, v: GluedVal): Glued = tm.gEval(top, env.def(v.v), genv.def(v.g))
-fun VCl.inst(top: TopContext, v: Val): Val = tm.eval(top, env.def(v))
+fun VCl.inst(top: TopContext, v: Lazy<Val>): Val = tm.eval(top, env.def(v))
 fun GCl.gvInst(top: TopContext, gv: GluedVal) : GluedVal {
     val venv = env.def(gv.v)
-    return GluedVal(tm.eval(top, venv), tm.gEval(top, venv, genv.def(gv.g)))
+    return GluedVal(lazy { tm.eval(top, venv) }, tm.gEval(top, venv, genv.def(gv.g)))
 }
 
 fun Glued.gvApp(top: TopContext, icit: Icit, r: GluedVal): GluedVal = when (this) {
     is GLam -> cl.gvInst(top, r)
     is GNe -> {
         val vsp = spine.with(icit to r.v)
-        GluedVal(VNe(head, vsp), GNe(head, gspine.with(icit to r.g), vsp))
+        GluedVal(lazyOf(VNe(head, vsp)), GNe(head, gspine.with(icit to r.g), vsp))
     }
     else -> TODO("impossible")
 }
@@ -90,7 +90,7 @@ fun Val.quote(top: TopContext, lvl: Lvl, metaless: Boolean = false): Term = when
             is HMeta -> {
                 val meta = if (metaless) top[v.head.meta] else null
                 when {
-                    metaless && meta is MetaSolved && meta.unfoldable -> meta.gv.v.appSpine(top, v.spine).quote(top, lvl)
+                    metaless && meta is MetaSolved && meta.unfoldable -> meta.gv.v.value.appSpine(top, v.spine).quote(top, lvl)
                     else -> TMeta(v.head.meta)
                 }
             }
@@ -98,13 +98,13 @@ fun Val.quote(top: TopContext, lvl: Lvl, metaless: Boolean = false): Term = when
             is HTop -> TTop(v.head.lvl)
         }
         for ((icit, t) in v.spine.it.reversedArray()) {
-            x = TApp(icit, x, t.quote(top, lvl))
+            x = TApp(icit, x, t.value.quote(top, lvl))
         }
         x
     }
-    is VLam -> TLam(v.n, v.icit, v.cl.inst(top, vLocal(Ix(lvl.it))).quote(top, lvl + 1))
-    is VPi -> TPi(v.n, v.icit, v.ty.quote(top, lvl), v.cl.inst(top, vLocal(Ix(lvl.it))).quote(top, lvl + 1))
-    is VFun -> TFun(v.a.quote(top, lvl), v.b.quote(top, lvl))
+    is VLam -> TLam(v.n, v.icit, v.cl.inst(top, lazyOf(vLocal(Ix(lvl.it)))).quote(top, lvl + 1))
+    is VPi -> TPi(v.n, v.icit, v.ty.value.quote(top, lvl), v.cl.inst(top, lazyOf(vLocal(Ix(lvl.it)))).quote(top, lvl + 1))
+    is VFun -> TFun(v.a.value.quote(top, lvl), v.b.value.quote(top, lvl))
     is VU -> TU
     is VIrrelevant -> TIrrelevant
 }
@@ -127,7 +127,7 @@ fun Glued.quote(top: TopContext, lvl: Lvl): Term = when (this) {
     is GIrrelevant -> TIrrelevant
 }
 
-fun Val.app(top: TopContext, icit: Icit, r: Val) = when (this) {
+fun Val.app(top: TopContext, icit: Icit, r: Lazy<Val>) = when (this) {
     is VLam -> cl.inst(top, r)
     is VNe -> VNe(head, spine.with(icit to r))
     else -> TODO("impossible")
@@ -143,7 +143,7 @@ fun Val.force(top: TopContext): Val = when {
     this is VNe && head is HMeta -> {
         val m = top[head.meta]
         when {
-            m is MetaSolved && m.unfoldable -> m.gv.v.appSpine(top, spine).force(top)
+            m is MetaSolved && m.unfoldable -> m.gv.v.value.appSpine(top, spine).force(top)
             else -> this
         }
     }
@@ -160,7 +160,7 @@ fun Glued.force(top: TopContext): Glued = when {
     this is GNe && head is HMeta -> {
         val m = top[head.meta]
         when {
-            m is MetaSolved && m.unfoldable -> m.gv.g.appSpine(top, gspine, spine).force(top)
+            m is MetaSolved -> m.gv.g.appSpine(top, gspine, spine).force(top)
             else -> this
         }
     }

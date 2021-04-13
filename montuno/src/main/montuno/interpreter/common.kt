@@ -3,8 +3,8 @@ package montuno.interpreter
 import java.util.*
 
 sealed class Either<out L, out R>
-class Left<out L>(val it: L) : Either<L, Nothing>()
-class Right<out R>(val it: R) : Either<Nothing, R>()
+data class Left<out L>(val it: L) : Either<L, Nothing>()
+data class Right<out R>(val it: R) : Either<Nothing, R>()
 
 inline class Ix(val it: Int) {
     operator fun plus(i: Int) = Ix(it + i)
