@@ -12,9 +12,9 @@ interface WithPos {
     val loc: Loc
 }
 sealed class Loc {
-    object Unavailable : Loc()
-    data class Range(val start: Int, val length: Int) : Loc()
-    data class Line(val line: Int) : Loc()
+    object Unavailable : Loc() { override fun toString(): String = "?" }
+    data class Range(val start: Int, val length: Int) : Loc() { override fun toString(): String = "$start:$length" }
+    data class Line(val line: Int) : Loc() { override fun toString(): String = "l$line" }
 
     fun string(source: String): String = when (this) {
         is Unavailable -> "<unavailable>"
@@ -29,8 +29,8 @@ sealed class Loc {
 }
 
 sealed class NameOrIcit
-object NIImpl : NameOrIcit()
-object NIExpl : NameOrIcit()
+object NIImpl : NameOrIcit() { override fun toString(): String = "NIImpl" }
+object NIExpl : NameOrIcit() { override fun toString(): String = "NIExpl" }
 data class NIName(val n: String) : NameOrIcit()
 
 typealias Program = List<TopLevel>
@@ -43,7 +43,7 @@ data class RNorm(override val loc: Loc, val tm: PreTerm) : TopLevel()
 
 sealed class PreTerm : WithPos
 
-data class RVar (override val loc: Loc, val n: String) : PreTerm()
+data class RVar (override val loc: Loc, val n: String) : PreTerm() { override fun toString(): String = "RVar($n)" }
 data class RApp (override val loc: Loc, val ni: NameOrIcit, val rator: PreTerm, val rand: PreTerm) : PreTerm()
 data class RLam (override val loc: Loc, val n: String, val ni: NameOrIcit, val body: PreTerm) : PreTerm()
 data class RFun (override val loc: Loc, val l: PreTerm, val r: PreTerm) : PreTerm()
@@ -83,7 +83,7 @@ fun MontunoParser.TermContext.toAst(): PreTerm = when (this) {
     }
     is MontunoParser.PiContext -> spine.foldRight(body.toAst()) { l, r -> l.toAst()(r) }
     is MontunoParser.AppContext -> {
-        val expr = rands.foldRight(rator.toAst()) { l, r -> l.toAst()(r) }
+        val expr = rands.fold(rator.toAst()) { l, r -> r.toAst()(l) }
         if (body == null) expr else RFun(range(), expr, body.toAst())
     }
     else -> throw UnsupportedOperationException(javaClass.canonicalName)

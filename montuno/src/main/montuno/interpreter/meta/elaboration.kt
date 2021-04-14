@@ -157,7 +157,7 @@ fun LocalContext.unify(lvl: Lvl, unfold: Int, names: Array<String>, r: Rigidity,
             if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(top, w.spine), v)
             else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
 
-        else -> throw FlexRigidError(r, "failed to unify")
+        else -> throw FlexRigidError(r, "failed to unify:\n$v\n$w")
     }
 }
 
@@ -345,9 +345,7 @@ fun LocalContext.check(t: PreTerm, want: GluedVal): Term {
             TLet(t.n, a, tm, u)
         }
         t is RLam && g is GPi && t.ni.match(g) -> TLam(t.n, g.icit, localBindSrc(t.loc, t.n, g.ty).check(t.body, g.cl.gvInst(top, local)))
-        t is RLam && g is GFun && t.ni is NIExpl -> {
-            TLam(t.n, Icit.Expl, localBindSrc(t.loc, t.n, g.a).check(t.body, g.b))
-        }
+        t is RLam && g is GFun && t.ni is NIExpl -> TLam(t.n, Icit.Expl, localBindSrc(t.loc, t.n, g.a).check(t.body, g.b))
         g is GPi && g.icit == Icit.Impl -> TLam(g.n, Icit.Impl, localBindIns(t.loc, g.n, g.ty).check(t, g.cl.gvInst(top, local)))
         t is RHole -> newMeta()
         else -> {
@@ -404,7 +402,8 @@ fun LocalContext.inferVar(n: String): Pair<Term, GluedVal> {
             ni is NITop -> return TTop(ni.lvl) to top.topEntries[ni.lvl.it].type.gv
             ni is NILocal && !ni.inserted -> {
                 val ix = lvl.it - ni.lvl.it - 1
-                return TLocal(Ix(ix)) to types[types.size - ix - 1]
+                println("${types.size}/${lvl.it} - ${ni.lvl.it} - 1 = $ix from ${types.joinToString(", ")}")
+                return TLocal(Ix(ix)) to types[ni.lvl.it]
             }
         }
     }
@@ -501,17 +500,22 @@ fun checkProgram(top: TopContext, p: Program): NameTable {
             }
             is RDefn -> {
                 top(e.loc)
-                val ty = e.ty ?: TODO("pull from TopEntries, Postulate")
-                var a = ctx.check(ty, GVU)
+                var a: Term = if (e.ty != null) {
+                    ctx.check(e.ty, GVU)
+                } else try {
+                    ctx.inferVar(e.n).second.g.quote(top, Lvl(0))
+                } catch (e: ElabError) {
+                    TU
+                }
                 var gva = ctx.gvEval(a)
                 var t = ctx.check(e.tm, gva)
                 ctx.simplifyMetaBlock(top)
                 a = a.inline(top, Lvl(0), emptyVEnv)
-                for ((ix, x) in top.metas.withIndex()) {
-                    println("Block $ix")
-                    for (meta in x) println(x)
-                }
-                println(t)
+//                for ((ix, x) in top.metas.withIndex()) {
+//                    println("Block $ix")
+//                    for (meta in x) println(x)
+//                }
+//                println(t)
                 t = t.inline(top, Lvl(0), emptyVEnv)
                 gva = ctx.gvEval(a)
                 val gvt = ctx.gvEval(t)
@@ -548,8 +552,15 @@ fun nfMain(s: String) {
 }
 
 fun main() = nfMain("""
-    id : {A} → A → A = λ x. x.
-    idTest : {A} → A → A = id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id.
+    rec : * -> *.
+    rec = \x. rec x.
+    
+    const : {A B} (C : *) -> (B -> A) -> A -> (A -> C) -> A = \_ _ a _. a.
+    Nat : * = (n : *) → (n → n) → n → n.
+    zero : Nat = λ n s z. z.
+    suc : Nat → Nat = λ a n s z. s (a n s z).
+    n2 : Nat = λ n s z. s (s z).
+    n5 : Nat = λ n s z. s (s (s (s (s z)))).
 """.trimMargin())
 
 // fun main() = nfMain("Nat : * = (n : *) → (n → n) → n → n")

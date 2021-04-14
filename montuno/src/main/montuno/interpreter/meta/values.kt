@@ -12,7 +12,9 @@ inline class GEnv(val it: Array<Glued?>) // LAZY
 data class VCl(val env: VEnv, val tm: Term)
 data class GCl(val genv: GEnv, val env: VEnv, val tm: Term)
 data class GluedTerm(val tm: Term, val gv: GluedVal)
-data class GluedVal(val v: Lazy<Val>, val g: Glued)
+data class GluedVal(val v: Lazy<Val>, val g: Glued) {
+    override fun toString(): String = "$g" //TODO: ???
+}
 
 val emptyGEnv = GEnv(arrayOf())
 val emptyVEnv = VEnv(arrayOf())
@@ -27,9 +29,9 @@ fun VEnv.skip() = VEnv(it.plus(null))
 fun VEnv.def(x: Lazy<Val>) = VEnv(it.plus(x))
 
 sealed class Head
-data class HMeta(val meta: Meta) : Head()
-data class HLocal(val ix: Ix) : Head()
-data class HTop(val lvl: Lvl) : Head()
+data class HMeta(val meta: Meta) : Head() { override fun toString(): String = "HMeta(${meta.i}, ${meta.j})" }
+data class HLocal(val ix: Ix) : Head() { override fun toString(): String = "HLocal(ix=${ix.it})" }
+data class HTop(val lvl: Lvl) : Head() { override fun toString(): String = "HTop(lvl=${lvl.it})" }
 
 sealed class Val
 data class VNe(val head: Head, val spine: VSpine) : Val()
@@ -40,7 +42,13 @@ object VU : Val() { override fun toString() = "VU" }
 object VIrrelevant : Val() { override fun toString() = "VIrrelevant" }
 
 sealed class Glued
-data class GNe(val head: Head, val gspine: GSpine, val spine: VSpine) : Glued()
+data class GNe(val head: Head, val gspine: GSpine, val spine: VSpine) : Glued() {
+    override fun toString(): String = when (head) {
+        is HLocal -> "GNeLocal(ix=${head.ix.it}, gspine=[${gspine.it.joinToString(", ")}])"
+        is HMeta -> "GNeMeta(meta=${head.meta.i}.${head.meta.j}, gspine=[${gspine.it.joinToString(", ")}])"
+        is HTop -> "GNeTop(lvl=${head.lvl.it}, gspine=[${gspine.it.joinToString(", ")}])"
+    }
+}
 data class GLam(val n: String, val icit: Icit, val cl: GCl) : Glued()
 data class GPi(val n: String, val icit: Icit, val ty: GluedVal, val cl: GCl) : Glued()
 data class GFun(val a: GluedVal, val b: GluedVal) : Glued()
@@ -57,9 +65,9 @@ fun gMeta(meta: Meta) = GNe(HMeta(meta), emptyGSpine, emptyVSpine)
 fun vMeta(meta: Meta) = VNe(HMeta(meta), emptyVSpine)
 
 sealed class Term
-data class TLocal(val ix: Ix) : Term()
-data class TTop(val lvl: Lvl) : Term()
-data class TMeta(val meta: Meta) : Term()
+data class TLocal(val ix: Ix) : Term() { override fun toString() = "TLocal(ix=${ix.it})" }
+data class TTop(val lvl: Lvl) : Term() { override fun toString() = "TTop(lvl=${lvl.it})" }
+data class TMeta(val meta: Meta) : Term() { override fun toString() = "TMeta(${meta.i}, ${meta.j})" }
 data class TLet(val n: String, val ty: Term, val v: Term, val tm: Term) : Term()
 data class TApp(val icit: Icit, val l: Term, val r: Term) : Term()
 data class TLam(val n: String, val icit: Icit, val tm: Term) : Term()

@@ -9,16 +9,19 @@ data class Right<out R>(val it: R) : Either<Nothing, R>()
 inline class Ix(val it: Int) {
     operator fun plus(i: Int) = Ix(it + i)
     operator fun minus(i: Int) = Ix(it - i)
+    override fun toString(): String = "Ix($it)"
 }
 
 inline class Lvl(val it: Int) {
     operator fun plus(i: Int) = Lvl(it + i)
     operator fun minus(i: Int) = Lvl(it - i)
     fun toIx(x: Lvl) = Ix(it - x.it - 1)
+    override fun toString(): String = "Lvl($it)"
 }
 
 data class Meta(val i: Int, val j: Int) : Comparable<Meta> {
     override fun compareTo(other: Meta) = compareValuesBy(this, other, { it.i }, { it.j })
+    override fun toString(): String = "Meta($i, $j)"
 }
 
 enum class Icit { Expl, Impl }

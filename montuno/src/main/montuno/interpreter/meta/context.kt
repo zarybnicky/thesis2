@@ -63,7 +63,7 @@ fun LocalContext.localBind(loc: Loc, n: String, inserted: Boolean, gv: GluedVal)
     lvl + 1,
     gVals.skip(),
     vVals.skip(),
-types + gv,
+    types + gv,
     names + n,
     boundIndices.plus(lvl.it)
 )
