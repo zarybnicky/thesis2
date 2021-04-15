@@ -482,14 +482,13 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, GluedVal> {
     }
 }
 
-fun checkProgram(top: TopContext, p: Program): NameTable {
+fun checkProgram(top: TopContext, p: List<TopLevel>): NameTable {
     val ntbl = NameTable()
     for (e in p) {
         top.metas.add(mutableListOf())
         val ctx = LocalContext(top, ntbl)
         when (e) {
-            is RElab -> TODO("elab")
-            is RNorm -> TODO("norm")
+            is RTerm -> TODO("elab, norm, return")
             is RDecl -> {
                 top(e.loc)
                 var a = ctx.check(e.ty, GVU)
@@ -533,7 +532,7 @@ fun TopContext.show(ntbl: NameTable, tm: Term): String {
 
 fun nfMain(s: String) {
     val top = TopContext()
-    val ntbl = checkProgram(top, parseModule(s))
+    val ntbl = checkProgram(top, parsePreSyntax(s))
     for ((i, topMeta) in top.metas.zip(top.topEntries).withIndex()) {
         val (metaBlock, topEntry) = topMeta
         for ((j, meta) in metaBlock.withIndex()) {
@@ -550,17 +549,3 @@ fun nfMain(s: String) {
         }
     }
 }
-
-fun main() = nfMain("""
-    rec : * -> *.
-    rec = \x. rec x.
-    
-    const : {A B} (C : *) -> (B -> A) -> A -> (A -> C) -> A = \_ _ a _. a.
-    Nat : * = (n : *) → (n → n) → n → n.
-    zero : Nat = λ n s z. z.
-    suc : Nat → Nat = λ a n s z. s (a n s z).
-    n2 : Nat = λ n s z. s (s z).
-    n5 : Nat = λ n s z. s (s (s (s (s z)))).
-""".trimMargin())
-
-// fun main() = nfMain("Nat : * = (n : *) → (n → n) → n → n")

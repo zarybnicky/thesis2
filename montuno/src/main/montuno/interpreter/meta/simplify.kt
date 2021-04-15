@@ -6,15 +6,15 @@ fun Term.inlineSp(top: TopContext, lvl: Lvl, vs: VEnv): Either<Val, Term> = when
     is TMeta -> {
         val it = top[meta]
         when {
-            it is MetaSolved && it.unfoldable -> Left(it.tm.eval(top, emptyVEnv))
-            else -> Right(this)
+            it is MetaSolved && it.unfoldable -> Either.Left(it.tm.eval(top, emptyVEnv))
+            else -> Either.Right(this)
         }
     }
     is TApp -> when (val x = l.inlineSp(top, lvl, vs)) {
-        is Left -> Left(x.it.app(top, icit, lazy { r.eval(top, vs) }))
-        is Right -> Right(TApp(icit, x.it, r.inline(top, lvl, vs)))
+        is Either.Left -> Either.Left(x.it.app(top, icit, lazy { r.eval(top, vs) }))
+        is Either.Right -> Either.Right(TApp(icit, x.it, r.inline(top, lvl, vs)))
     }
-    else -> Right(this.inline(top, lvl, vs))
+    else -> Either.Right(this.inline(top, lvl, vs))
 }
 
 fun Term.inline(top: TopContext, lvl: Lvl, vs: VEnv) : Term = when (this) {
@@ -29,8 +29,8 @@ fun Term.inline(top: TopContext, lvl: Lvl, vs: VEnv) : Term = when (this) {
     }
     is TLet -> TLet(n, ty.inline(top, lvl, vs), v.inline(top, lvl, vs), tm.inline(top, lvl + 1, vs.skip()))
     is TApp -> when (val x = l.inlineSp(top, lvl, vs)) {
-        is Left -> x.it.app(top, icit, lazy { r.eval(top, vs) }).quote(top, lvl)
-        is Right -> TApp(icit, x.it, r.inline(top, lvl, vs))
+        is Either.Left -> x.it.app(top, icit, lazy { r.eval(top, vs) }).quote(top, lvl)
+        is Either.Right -> TApp(icit, x.it, r.inline(top, lvl, vs))
     }
     is TLam -> TLam(n, icit, tm.inline(top, lvl + 1, vs.skip()))
     is TFun -> TFun(l.inline(top, lvl, vs), r.inline(top, lvl, vs))

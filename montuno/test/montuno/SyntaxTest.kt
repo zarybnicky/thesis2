@@ -10,7 +10,7 @@ class SyntaxTest {
     @Test
     fun testLetNatExpr() {
         assertEquals(
-            parseExpr("let i : Nat = 5 in i"),
+            parsePreSyntaxExpr("let i : Nat = 5 in i"),
             RLet(
                 Loc.Range(0, 20),
                 "i",
@@ -24,9 +24,10 @@ class SyntaxTest {
     @Test
     fun testNfTop() {
         assertEquals(
-            parseModule("%elaborate 5."),
-            listOf(RElab(
+            parsePreSyntax("%elaborate 5."),
+            listOf(RTerm(
                 Loc.Range(0, 13),
+                TermAnnotation.Elaborate,
                 RNat(Loc.Range(11, 1), 5)
             )),
         )

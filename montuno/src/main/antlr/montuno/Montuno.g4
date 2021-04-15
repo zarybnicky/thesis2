@@ -3,14 +3,14 @@ grammar Montuno;
 package montuno;
 }
 
-file : (decls+=top)* EOF;
+file : decls+=top ('.' decls+=top)* '.'? EOF;
 
 top
-    : id=IDENT ':' type=term '.'                   #Decl
-    | id=binder (':' type=term)? '=' defn=term '.' #Defn
-    | '%elaborate' term '.'                        #Elab
-    | '%normalize' term '.'                        #Norm
+    : id=IDENT ':' type=term                   #Decl
+    | id=binder (':' type=term)? '=' defn=term #Defn
+    | termAnn=ann? term                        #Expr
     ;
+ann : '%elaborate' | '%normalize' | '%parseOnly' ;
 term
     : 'let' id=binder ':' type=term '=' defn=term 'in' body=term #Let
     | LAMBDA (rands+=lamBind)* '.' body=term                     #Lam

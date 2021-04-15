@@ -36,17 +36,19 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation(kotlin("reflect"))
 
-    antlr("org.antlr:antlr4:4.8-1")
-    api("org.antlr:antlr4-runtime:4.8-1")
+    antlr("org.antlr:antlr4:4.7.2")
+    api("org.antlr:antlr4-runtime:4.7.2")
     implementation("kotlin-pretty:kotlin-pretty:0.6.0")
-    implementation("com.google.code.gson:gson:2.8.6")
+
+    implementation("org.jline:jline-builtins:3.19.0")
+    implementation("org.jline:jline-console:3.19.0")
+    implementation("org.jline:jline-reader:3.19.0")
+    implementation("org.jline:jline-terminal:3.19.0")
+    implementation("org.jline:jline-terminal-jansi:3.19.0")
 
     testImplementation(platform("org.junit:junit-bom:5.7.0"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     testImplementation("org.graalvm.compiler:compiler:$graalVersion")
-
-    arrayOf("asm", "asm-tree", "asm-commons").forEach { implementation("org.ow2.asm:$it:7.1") }
-    implementation("org.fusesource.jansi:jansi:1.18")
 
     compiler("org.graalvm.compiler:compiler:$graalVersion")
     implementation("org.graalvm.compiler:compiler:$graalVersion")
@@ -55,6 +57,7 @@ dependencies {
     implementation("org.graalvm.truffle:truffle-api:$graalVersion")
     kapt("org.graalvm.truffle:truffle-api:$graalVersion")
     kapt("org.graalvm.truffle:truffle-dsl-processor:$graalVersion")
+    compileOnly("org.graalvm.truffle:truffle-tck:${graalVersion}")
 }
 
 java {

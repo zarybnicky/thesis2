@@ -66,8 +66,8 @@ fun Ctx.bind(n: String, ty: Val): Ctx =
 fun Ctx.define(n: String, v: Val, ty: Val): Ctx =
     Ctx(env + v, types.cons(n, ty), loc, l + 1)
 fun Ctx.primitive(n: String, t: String, v: String): Ctx {
-    val typ = infer(parseExpr(t)).first.eval(env)
-    return define(n, check(parseExpr(v), typ).eval(env), typ)
+    val typ = infer(parsePreSyntaxExpr(t)).first.eval(env)
+    return define(n, check(parsePreSyntaxExpr(v), typ).eval(env), typ)
 }
 fun Ctx.show(v: Val): String = v.quote(l).pretty(types.toNames()).toString()
 fun Ctx.show(t: Term): String = t.nf(env).pretty(types.toNames()).toString()
@@ -133,53 +133,19 @@ fun Ctx.infer(r: PreTerm): Pair<Term, Val> = when (r) {
     is RStopMeta -> TODO("infer(RStopMeta)")
 }
 
-fun topToExpr(x: PreTerm, xs: List<TopLevel>): PreTerm = xs.foldRight(x, { l, r -> when (l) {
-    is RDefn -> RLet(l.loc, l.n, l.ty ?: RVar(Loc.Unavailable, "_"), l.tm, r)
-    is RDecl -> TODO()
-    is RElab -> r
-    is RNorm -> r
-}})
-
 class TypeError(message: String, val loc: Loc) : Exception(message) {
     override fun toString(): String = message.orEmpty()
 }
 
 fun nfMain(input: String) {
-    val raw = topToExpr(parseExpr("id ({A B} -> A -> B -> A) const"), parseModule(input))
     val ctx = Ctx(null, null, Loc.Line(0), Lvl(0))
         .primitive("Nat", "*", "*")
         .primitive("id", "(A : *) -> A -> A", "\\A x. x")
         .primitive("const", "(A B : *) -> A -> B -> A", "\\A B x y. x")
     try {
-        val (t, a) = ctx.infer(raw)
+        val (t, a) = ctx.infer(parsePreSyntaxExpr(input))
         print("${ctx.show(t)} : ${ctx.show(a)}")
     } catch (t: TypeError) {
         print("${t}\nin code:\n${t.loc.string(input)}")
     }
 }
-
-const val ex0 = "foo : * = *. bar : * = id id."
-
-const val ex1 = "%normalize id ((A B : *) -> A -> B -> A) const"
-
-val ex2 = """
-    Nat' : * = (N : *) -> (N -> N) -> N -> N.
-    five : Nat' = \N s z. s (s (s (s (s z)))).
-    add  : Nat' -> Nat' -> Nat' = \a b N s z. a N s (b N s z).
-    mul  : Nat' -> Nat' -> Nat' = \a b N s z. a N (b N s) z.
-    ten      : Nat' = add five five.
-    hundred  : Nat' = mul ten ten.
-    thousand : Nat' = mul ten hundred.
-    %nf thousand
-""".trimIndent()
-
-val ex4 = """
-    Vec : * → Nat → * = λ a n. (V : Nat → *) → V 0 → ((n : Nat) → a → V n → V (n + 1)) → V n.
-    vnil : (a : *) → Vec a 0 = λ V n c. n.
-    vcons : (a n : *) → a → Vec a n → Vec a (n + 1) = λ a as V n c. c a (as V n c).
-    %nf vec1 = vcons true (vcons false (vcons true vnil)).
-""".trimIndent()
-
-const val ex3 = "%nf id Nat 5"
-
-fun main() = nfMain(ex0)

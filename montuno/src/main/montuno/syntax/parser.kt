@@ -3,6 +3,7 @@ package montuno.syntax
 import com.oracle.truffle.api.source.Source
 import com.oracle.truffle.api.source.SourceSection
 import montuno.*
+import montuno.interpreter.Either
 import montuno.interpreter.Icit
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -33,13 +34,12 @@ object NIImpl : NameOrIcit() { override fun toString(): String = "NIImpl" }
 object NIExpl : NameOrIcit() { override fun toString(): String = "NIExpl" }
 data class NIName(val n: String) : NameOrIcit()
 
-typealias Program = List<TopLevel>
+enum class TermAnnotation { Elaborate, Normalize, ParseOnly, Nothing }
 
 sealed class TopLevel : WithPos
 data class RDecl(override val loc: Loc, val n: String, val ty: PreTerm) : TopLevel()
 data class RDefn(override val loc: Loc, val n: String, val ty: PreTerm?, val tm: PreTerm) : TopLevel()
-data class RElab(override val loc: Loc, val tm: PreTerm) : TopLevel()
-data class RNorm(override val loc: Loc, val tm: PreTerm) : TopLevel()
+data class RTerm(override val loc: Loc, val ann: TermAnnotation, val tm: PreTerm) : TopLevel()
 
 sealed class PreTerm : WithPos
 
@@ -60,19 +60,39 @@ data class RStopMeta(override val loc: Loc, val body: PreTerm) : PreTerm()
 
 fun ParserRuleContext.range() = Loc.Range(this.start.startIndex, this.stop.stopIndex - this.start.startIndex + 1)
 
-fun parseExpr(input: String): PreTerm =
-    MontunoParser(CommonTokenStream(MontunoLexer(CharStreams.fromString(input)))).term().toAst()
-fun parseModule(input: String): List<TopLevel> =
+fun parsePreSyntax(input: String): List<TopLevel> =
     MontunoParser(CommonTokenStream(MontunoLexer(CharStreams.fromString(input)))).file().toAst()
+
+fun parsePreSyntax(input: Source): List<TopLevel> = parsePreSyntax(input.characters.toString())
+
+fun parsePreSyntaxExpr(input: String): PreTerm {
+    val src = parsePreSyntax(input)
+    val last = src.last()
+    if (last !is RTerm) throw RuntimeException("expression must be last")
+    var root = last.tm
+    for (l in src.reversed()) {
+        root = when (l) {
+            is RDefn -> RLet(l.loc, l.n, l.ty ?: RHole(Loc.Unavailable), l.tm, root)
+            else -> throw RuntimeException("only definitions supported")
+        }
+    }
+    return root
+}
 
 fun MontunoParser.FileContext.toAst(): List<TopLevel> = decls.map { it.toAst() }
 
 fun MontunoParser.TopContext.toAst(): TopLevel = when (this) {
     is MontunoParser.DeclContext -> RDecl(range(), id.text, type.toAst())
     is MontunoParser.DefnContext -> RDefn(range(), id.text, type?.toAst(), defn.toAst())
-    is MontunoParser.ElabContext -> RElab(range(), term().toAst())
-    is MontunoParser.NormContext -> RNorm(range(), term().toAst())
+    is MontunoParser.ExprContext -> RTerm(range(), termAnn.toAst() ?: TermAnnotation.Nothing, term().toAst())
     else -> throw UnsupportedOperationException(javaClass.canonicalName)
+}
+
+fun MontunoParser.AnnContext?.toAst(): TermAnnotation = when (this?.text) {
+    "%elaborate" -> TermAnnotation.Elaborate
+    "%normalize" -> TermAnnotation.Normalize
+    "%parseOnly" -> TermAnnotation.ParseOnly
+    else -> TermAnnotation.Nothing
 }
 
 fun MontunoParser.TermContext.toAst(): PreTerm = when (this) {

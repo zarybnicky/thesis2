@@ -2,9 +2,18 @@ package montuno.interpreter
 
 import java.util.*
 
-sealed class Either<out L, out R>
-data class Left<out L>(val it: L) : Either<L, Nothing>()
-data class Right<out R>(val it: R) : Either<Nothing, R>()
+sealed class Either<out L, out R> {
+    data class Left<out L>(val it: L) : Either<L, Nothing>()
+    data class Right<out R>(val it: R) : Either<Nothing, R>()
+    fun asLeft(): L? = when (this) {
+        is Left -> it
+        is Right -> null
+    }
+    fun asRight(): R? = when (this) {
+        is Left -> null
+        is Right -> it
+    }
+}
 
 inline class Ix(val it: Int) {
     operator fun plus(i: Int) = Ix(it + i)
