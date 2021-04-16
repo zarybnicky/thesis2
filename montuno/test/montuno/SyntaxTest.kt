@@ -24,10 +24,10 @@ class SyntaxTest {
     @Test
     fun testNfTop() {
         assertEquals(
-            parsePreSyntax("%elaborate 5."),
+            parsePreSyntax("%elaborate 5"),
             listOf(RTerm(
                 Loc.Range(0, 13),
-                TermAnnotation.Elaborate,
+                Command.Elaborate,
                 RNat(Loc.Range(11, 1), 5)
             )),
         )

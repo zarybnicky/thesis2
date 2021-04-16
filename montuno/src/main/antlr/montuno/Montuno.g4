@@ -3,14 +3,12 @@ grammar Montuno;
 package montuno;
 }
 
-file : decls+=top ('.' decls+=top)* '.'? EOF;
-
+file : END* decls+=top? (END+ decls+=top)* END* EOF ;
 top
     : id=IDENT ':' type=term                   #Decl
     | id=binder (':' type=term)? '=' defn=term #Defn
-    | termAnn=ann? term                        #Expr
+    | cmd=COMMAND? term                        #Expr
     ;
-ann : '%elaborate' | '%normalize' | '%parseOnly' ;
 term
     : 'let' id=binder ':' type=term '=' defn=term 'in' body=term #Let
     | LAMBDA (rands+=lamBind)* '.' body=term                     #Lam
@@ -46,10 +44,14 @@ binder
 
 IDENT : [a-zA-Z] [a-zA-Z0-9']*;
 NAT : [0-9]+;
+COMMAND : '%elaborate' | '%normalize' | '%parse';
 
-WS : [ \t\r\n] -> skip;
-COMMENT : '--' (~[\r\n])* -> skip;
-NCOMMENT : '{-'~[#] .*? '-}' -> skip;
+END : (SEMICOLON | NEWLINE) NEWLINE*;
+fragment SEMICOLON : ';';
+fragment NEWLINE : '\r'? '\n' | '\r';
+SPACES : [ \t] -> skip;
+LINE_COMMENT : '--' (~[\r\n])* -> skip;
+BLOCK_COMMENT : '{-'~[#] .*? '-}' -> skip;
 LAMBDA : '\\' | 'λ';
 ARROW : '->' | '→';
 FOREIGN : [^|]+;

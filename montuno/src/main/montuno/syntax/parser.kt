@@ -8,6 +8,7 @@ import montuno.interpreter.Icit
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.tree.TerminalNode
 
 interface WithPos {
     val loc: Loc
@@ -34,12 +35,12 @@ object NIImpl : NameOrIcit() { override fun toString(): String = "NIImpl" }
 object NIExpl : NameOrIcit() { override fun toString(): String = "NIExpl" }
 data class NIName(val n: String) : NameOrIcit()
 
-enum class TermAnnotation { Elaborate, Normalize, ParseOnly, Nothing }
+enum class Command { Elaborate, Normalize, ParseOnly, Nothing }
 
 sealed class TopLevel : WithPos
 data class RDecl(override val loc: Loc, val n: String, val ty: PreTerm) : TopLevel()
 data class RDefn(override val loc: Loc, val n: String, val ty: PreTerm?, val tm: PreTerm) : TopLevel()
-data class RTerm(override val loc: Loc, val ann: TermAnnotation, val tm: PreTerm) : TopLevel()
+data class RTerm(override val loc: Loc, val cmd: Command, val tm: PreTerm) : TopLevel()
 
 sealed class PreTerm : WithPos
 
@@ -84,15 +85,15 @@ fun MontunoParser.FileContext.toAst(): List<TopLevel> = decls.map { it.toAst() }
 fun MontunoParser.TopContext.toAst(): TopLevel = when (this) {
     is MontunoParser.DeclContext -> RDecl(range(), id.text, type.toAst())
     is MontunoParser.DefnContext -> RDefn(range(), id.text, type?.toAst(), defn.toAst())
-    is MontunoParser.ExprContext -> RTerm(range(), termAnn.toAst() ?: TermAnnotation.Nothing, term().toAst())
+    is MontunoParser.ExprContext -> RTerm(range(), toCommand(COMMAND()), term().toAst())
     else -> throw UnsupportedOperationException(javaClass.canonicalName)
 }
 
-fun MontunoParser.AnnContext?.toAst(): TermAnnotation = when (this?.text) {
-    "%elaborate" -> TermAnnotation.Elaborate
-    "%normalize" -> TermAnnotation.Normalize
-    "%parseOnly" -> TermAnnotation.ParseOnly
-    else -> TermAnnotation.Nothing
+fun toCommand(s: TerminalNode?) = when (s?.text) {
+    "%elaborate" -> Command.Elaborate
+    "%normalize" -> Command.Normalize
+    "%parse" -> Command.ParseOnly
+    else -> Command.Nothing
 }
 
 fun MontunoParser.TermContext.toAst(): PreTerm = when (this) {

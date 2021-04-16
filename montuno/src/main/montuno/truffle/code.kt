@@ -50,7 +50,7 @@ abstract class Term(val loc: Loc?) : Node(), InstrumentableNode {
 
     fun getLexicalScope(frame: Frame): MaterializedFrame? = frame.arguments.getOrNull(0) as MaterializedFrame?
 }
-object TU : Term(null) {
+class TU(loc: Loc? = null) : Term(null) {
     override fun execute(frame: VirtualFrame): Any = VU
 }
 class TNat(val n: Int, loc: Loc? = null) : Term(loc) {
@@ -72,16 +72,16 @@ class TLam(
 fun toExecutableNode(p: TopLevel): Term = when (p) {
     is RDecl -> TODO()
     is RDefn -> TODO()
-    is RTerm -> when (p.ann) {
-        TermAnnotation.Elaborate -> TODO()
-        TermAnnotation.Normalize -> TODO()
-        TermAnnotation.ParseOnly -> TString(p.tm.toString())
-        TermAnnotation.Nothing -> toExecutableNode(p.tm)
+    is RTerm -> when (p.cmd) {
+        Command.Elaborate -> TODO()
+        Command.Normalize -> TODO()
+        Command.ParseOnly -> TString(p.tm.toString())
+        Command.Nothing -> toExecutableNode(p.tm)
     }
 }
 
 fun toExecutableNode(p: PreTerm): Term = when (p) {
-    is RU -> TU
+    is RU -> TU(p.loc)
     is RVar -> TODO()
     is RNat -> TNat(p.n, p.loc)
     is RLam -> TLam(arrayOf(), 1, Truffle.getRuntime().createCallTarget(toExecutableNode(p.body) as RootNode), p.loc)
@@ -103,7 +103,7 @@ class ProgramRootNode(
 ) : RootNode(l, fd) {
     @ExplodeLoop
     override fun execute(frame: VirtualFrame): Any {
-        var res: Any = TU
+        var res: Any = VU
         for (n in nodes) {
             res = n.execute(executionFrame)
         }

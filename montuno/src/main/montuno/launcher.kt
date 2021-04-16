@@ -100,6 +100,7 @@ class Launcher : AbstractLanguageLauncher() {
             exitProcess(0)
         } catch (e: PolyglotException) {
             handlePolyglotException(e)
+            exitProcess(-1)
         }
     }
 
@@ -166,18 +167,14 @@ fun handlePolyglotException(e: PolyglotException) {
     }
     println(if (e.isHostException) e.asHostException().toString() else e.message)
     stackTrace.forEach { println("  at $it") }
-    exitProcess(-1)
 }
 
 // https://github.com/ValV/testline/blob/master/src/main/kotlin/testline/Example.kt
 fun repl(eval: (String) -> Unit) {
     Logger.getLogger("org.jline").level = Level.SEVERE
-    val builder = TerminalBuilder.builder().jansi(true)
-    val completer: Completer? = null
-    val terminal = builder.build()
     val reader = LineReaderBuilder.builder()
-        .terminal(terminal)
-        .completer(completer)
+        .terminal(TerminalBuilder.builder().jansi(true).build())
+        .completer(null)
         .build()
     while (true) {
         try {
