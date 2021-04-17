@@ -2,6 +2,7 @@ package montuno.interpreter.meta
 
 import montuno.interpreter.Lvl
 import montuno.interpreter.Meta
+import montuno.interpreter.NameTable
 import montuno.interpreter.Rigidity
 import montuno.syntax.Loc
 import montuno.syntax.WithPos
@@ -32,17 +33,6 @@ class TopContext {
 
     operator fun invoke(pos: Loc) {
         currentPos = pos
-    }
-}
-
-inline class NameTable(val it: HashMap<String, List<NameInfo>> = hashMapOf()) {
-    fun addName(n: String, ni: NameInfo) {
-        it[n] = it.getOrDefault(n, listOf()) + ni
-    }
-    fun withName(n: String, ni: NameInfo): NameTable {
-        val y = HashMap(it)
-        y[n] = y.getOrDefault(n, listOf()) + ni
-        return NameTable(y)
     }
 }
 

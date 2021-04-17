@@ -28,8 +28,8 @@ class MontunoLanguage : TruffleLanguage<MontunoContext>() {
     override fun parse(request: ParsingRequest): CallTarget {
         CompilerAsserts.neverPartOfCompilation()
         val pre = parsePreSyntax(request.source)
-        val root = ProgramRootNode(this, FrameDescriptor(), pre.map { toExecutableNode(it) }.toTypedArray(), currentContext.globalFrame)
-        return Truffle.getRuntime().createCallTarget(root)
+        val nodes = pre.map { toExecutableNode(it, this) }.toTypedArray()
+        return ProgramRootNode(this, FrameDescriptor(), nodes, currentContext.globalFrame).target
     }
 
     companion object {

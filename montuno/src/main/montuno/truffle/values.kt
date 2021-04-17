@@ -5,9 +5,14 @@ import com.oracle.truffle.api.RootCallTarget
 import com.oracle.truffle.api.dsl.ImplicitCast
 import com.oracle.truffle.api.dsl.TypeCheck
 import com.oracle.truffle.api.dsl.TypeSystem
+import com.oracle.truffle.api.interop.ArityException
 import com.oracle.truffle.api.interop.InteropLibrary
 import com.oracle.truffle.api.interop.TruffleObject
+import com.oracle.truffle.api.interop.UnsupportedTypeException
 import com.oracle.truffle.api.library.ExportLibrary
+import com.oracle.truffle.api.library.ExportMessage
+import com.oracle.truffle.api.nodes.ExplodeLoop
+import kotlin.jvm.Throws
 
 @TypeSystem(
     VClosure::class,
@@ -32,12 +37,29 @@ open class Types {
     }
 }
 
-object VU
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+object VU : TruffleObject {
+    override fun toString() = "VU"
+}
 
 @CompilerDirectives.ValueType
 @ExportLibrary(InteropLibrary::class)
 data class VClosure (
     @JvmField @CompilerDirectives.CompilationFinal(dimensions = 1) val papArgs: Array<Any?>,
     @JvmField val arity: Int,
+    @JvmField val maxArity: Int,
     @JvmField val callTarget: RootCallTarget
-) : TruffleObject
+) : TruffleObject {
+    @ExportMessage
+    fun isExecutable() = true
+
+    @ExportMessage
+    @ExplodeLoop
+    @Throws(ArityException::class, UnsupportedTypeException::class)
+    fun execute(vararg arguments: Any?): Any? {
+        val len = arguments.size
+        if (len > maxArity) throw ArityException.create(maxArity, len)
+        return callTarget.call(arguments) //TODO: PAP, exact, overapplied
+    }
+}

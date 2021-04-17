@@ -7,6 +7,9 @@ import com.oracle.truffle.api.instrumentation.*
 import com.oracle.truffle.api.nodes.*
 import com.oracle.truffle.api.profiles.BranchProfile
 import com.oracle.truffle.api.source.SourceSection
+import montuno.interpreter.Lvl
+import montuno.interpreter.NameTable
+import montuno.interpreter.meta.*
 import montuno.syntax.*
 
 //@TypeSystemReference(Types::class)
@@ -34,7 +37,7 @@ import montuno.syntax.*
 @NodeInfo(language = "montuno")
 @TypeSystemReference(Types::class)
 abstract class Term(val loc: Loc?) : Node(), InstrumentableNode {
-    public constructor(that: Term) : this(that.loc)
+    constructor(that: Term) : this(that.loc)
 
     abstract fun execute(frame: VirtualFrame): Any
 
@@ -50,7 +53,7 @@ abstract class Term(val loc: Loc?) : Node(), InstrumentableNode {
 
     fun getLexicalScope(frame: Frame): MaterializedFrame? = frame.arguments.getOrNull(0) as MaterializedFrame?
 }
-class TU(loc: Loc? = null) : Term(null) {
+class TU(loc: Loc? = null) : Term(loc) {
     override fun execute(frame: VirtualFrame): Any = VU
 }
 class TNat(val n: Int, loc: Loc? = null) : Term(loc) {
@@ -65,33 +68,99 @@ class TLam(
     @CompilerDirectives.CompilationFinal var callTarget: RootCallTarget,
     loc: Loc? = null
 ) : Term(loc) {
-    override fun execute(frame: VirtualFrame) = VClosure(arrayOf(), arity, callTarget)
-    override fun executeClosure(frame: VirtualFrame): VClosure = VClosure(arrayOf(), arity, callTarget)
+    override fun execute(frame: VirtualFrame) = VClosure(arrayOf(), arity, arity, callTarget)
+    override fun executeClosure(frame: VirtualFrame): VClosure = VClosure(arrayOf(), arity, arity, callTarget)
 }
 
-fun toExecutableNode(p: TopLevel): Term = when (p) {
-    is RDecl -> TODO()
-    is RDefn -> TODO()
+//class TLam(val arity: Int, val function: VClosure, loc: Loc? = null) : Term(loc) {
+//    @CompilerDirectives.CompilationFinal var isScopeSet = false
+//    @Specialization
+//    fun getMumblerFunction(virtualFrame: VirtualFrame): Any {
+//        if (!isScopeSet) {
+//            CompilerDirectives.transferToInterpreterAndInvalidate()
+//            function.setLexicalScope(virtualFrame.materialize())
+//            isScopeSet = true
+//        }
+//        return function
+//    }
+//}
+class TApp(
+    @Node.Child var rator: Term,
+    @Node.Children val rands: Array<Term>,
+    loc: Loc? = null,
+    tail_call: Boolean = false
+) : Term(loc) {
+    @Child private var dispatch: Dispatch = DispatchNodeGen.create()
+    @ExplodeLoop private fun executeRands(frame: VirtualFrame): Array<Any?> = rands.map { it.executeAny(frame) }.toTypedArray()
+    override fun execute(frame: VirtualFrame): Any = dispatch.executeDispatch(rator.executeClosure(frame).callTarget, executeRands(frame))
+    override fun hasTag(tag: Class<out Tag>?) = tag == StandardTags.CallTag::class.java || super.hasTag(tag)
+}
+abstract class TVar(private val slot: FrameSlot, loc: Loc? = null) : Term(loc) {
+    @Specialization() //(replaces = ["readInt", "readBoolean"])
+    protected fun read(frame: VirtualFrame): Any? = frame.getValue(slot)
+    override fun isAdoptable() = false
+}
+
+fun toExecutableNode(p: TopLevel, l: MontunoLanguage): Term = when (p) {
+    is RDecl -> TODO("RDecl")
+    is RDefn -> TODO("RDefn")
     is RTerm -> when (p.cmd) {
-        Command.Elaborate -> TODO()
-        Command.Normalize -> TODO()
+        Command.Elaborate -> TODO("Elaborate")
+        Command.Normalize -> TODO("Normalize")
         Command.ParseOnly -> TString(p.tm.toString())
-        Command.Nothing -> toExecutableNode(p.tm)
+        Command.Nothing -> LocalContext(l).toExecutableNode(p.tm)
     }
 }
 
-fun toExecutableNode(p: PreTerm): Term = when (p) {
-    is RU -> TU(p.loc)
-    is RVar -> TODO()
-    is RNat -> TNat(p.n, p.loc)
-    is RLam -> TLam(arrayOf(), 1, Truffle.getRuntime().createCallTarget(toExecutableNode(p.body) as RootNode), p.loc)
-    is RApp -> TODO()
-    is RLet -> TODO()
-    is RFun -> TODO()
-    is RPi -> TODO()
-    is RHole -> TODO()
-    is RStopMeta -> TODO()
-    is RForeign -> TODO()
+// LocalContext = language, nameTable, frameDescriptor
+data class LocalContext(
+    val l: MontunoLanguage,
+    val ntbl: NameTable = NameTable(),
+    val fd: FrameDescriptor = FrameDescriptor(),
+    val fdLvl: Lvl = Lvl(0)
+)
+fun <A> LocalContext.withName(n: String, ni: NameInfo, f: () -> A): A = ntbl.withName(n, ni, f)
+
+fun LocalContext.toExecutableNode(p: PreTerm): Term {
+    return when (p) {
+        is RU -> TU(p.loc)
+        is RVar -> {
+            for (ni in ntbl[p.n].asReversed()) when {
+                ni is NITop -> TODO("Call Top")
+                ni is NILocal && !ni.inserted -> return TVarNodeGen.create(fd.findFrameSlot(ni.lvl), p.loc)
+            }
+            throw RuntimeException("Variable ${p.n} out of scope")
+        }
+        is RNat -> TNat(p.n, p.loc)
+        is RLam -> {
+            fd.addFrameSlot(fdLvl, FrameSlotKind.Object)
+            val root = FunctionRootNode(l, fd, arrayOf(withName(p.n, NILocal(p.loc, fdLvl, false)) { toExecutableNode(p.body) }))
+            TLam(arrayOf(), 1, Truffle.getRuntime().createCallTarget(root), p.loc)
+        }
+        is RApp -> TApp(toExecutableNode(p.rand), arrayOf(toExecutableNode(p.rator)), p.loc, false)
+        is RLet -> TODO("RLet")
+        is RFun -> TODO("RFun")
+        is RPi -> TODO("RPi")
+        is RHole -> TODO("RHole")
+        is RStopMeta -> TODO("RStopMeta")
+        is RForeign -> TODO("RForeign")
+    }
+}
+
+@TypeSystemReference(Types::class)
+class FunctionRootNode(
+    l: TruffleLanguage<*>?,
+    fd: FrameDescriptor,
+    @Children val nodes: Array<Term>
+): RootNode(l, fd) {
+    @ExplodeLoop
+    override fun execute(frame: VirtualFrame): Any {
+        var res: Any = VU
+        for (n in nodes) {
+            res = n.execute(frame)
+        }
+        return res
+    }
 }
 
 @TypeSystemReference(Types::class)
@@ -101,6 +170,8 @@ class ProgramRootNode(
     @Children val nodes: Array<Term>,
     private val executionFrame: MaterializedFrame
 ) : RootNode(l, fd) {
+    val target = Truffle.getRuntime().createCallTarget(this)
+    override fun isCloningAllowed() = true
     @ExplodeLoop
     override fun execute(frame: VirtualFrame): Any {
         var res: Any = VU
@@ -112,31 +183,6 @@ class ProgramRootNode(
 }
 
 //TODO: ClosureRootNode, FunctionRootNode, BuiltinRootNode
-
-//open class App(
-//    @field:Child var rator: Code,
-//    @field:Children val rands: Array<Code>,
-//    loc: Loc? = null,
-//    tail_call: Boolean = false
-//) : Code(loc) {
-//    @Child private var dispatch: Dispatch = DispatchNodeGen.create()
-//
-//    @ExplodeLoop
-//    private fun executeRands(frame: VirtualFrame): Array<Any?> = rands.map { it.executeAny(frame) }.toTypedArray()
-//
-//    override fun execute(frame: VirtualFrame): Any {
-//        val fn = rator.executeClosure(frame)
-//        return dispatch.executeDispatch(fn.callTarget, executeRands(frame))
-//    }
-//
-//    override fun hasTag(tag: Class<out Tag>?) = tag == StandardTags.CallTag::class.java || super.hasTag(tag)
-//}
-//
-//abstract class Var protected constructor(private val slot: FrameSlot, loc: Loc? = null) : Code(loc) {
-//    @Specialization() //(replaces = ["readInt", "readBoolean"])
-//    protected fun read(frame: VirtualFrame): Any? = frame.getValue(slot)
-//    override fun isAdoptable() = false
-//}
 
 @ReportPolymorphism
 abstract class Dispatch : Node() {

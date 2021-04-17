@@ -254,13 +254,13 @@ fun LocalContext.gvUnify(lvl: Lvl, names: Array<String>, a: GluedVal, b: GluedVa
         v is GU && w is GU -> {}
 
         v is GNe && w is GNe && v.head is HMeta && w.head is HMeta -> when {
-            v.head.meta < w.head.meta -> solve(lvl, names, w.head.meta, w.spine, w.gspine, GluedVal(a.v, v))
-            v.head.meta > w.head.meta -> solve(lvl, names, v.head.meta, v.spine, v.gspine, GluedVal(b.v, w))
+            v.head.meta < w.head.meta -> solve(lvl, names, w.head.meta, w.gspine, GluedVal(a.v, v))
+            v.head.meta > w.head.meta -> solve(lvl, names, v.head.meta, v.gspine, GluedVal(b.v, w))
             else -> gvUnifySp(lvl, names, v.gspine, w.gspine, v.spine, w.spine)
         }
 
-        v is GNe && v.head is HMeta -> solve(lvl, names, v.head.meta, v.spine, v.gspine, GluedVal(b.v, w))
-        w is GNe && w.head is HMeta -> solve(lvl, names, w.head.meta, w.spine, w.gspine, GluedVal(a.v, v))
+        v is GNe && v.head is HMeta -> solve(lvl, names, v.head.meta, v.gspine, GluedVal(b.v, w))
+        w is GNe && w.head is HMeta -> solve(lvl, names, w.head.meta, w.gspine, GluedVal(a.v, v))
 
         v is GLam && w is GLam -> gvUnify(lvl + 1, names + v.n, v.cl.gvInst(top, local), w.cl.gvInst(top, local))
         v is GLam -> gvUnify(lvl + 1, names + v.n, v.cl.gvInst(top, local), w.gvApp(top, v.icit, local))
@@ -301,7 +301,7 @@ fun LocalContext.gvUnifySp(lvl: Lvl, names: Array<String>, ga: GSpine, gb: GSpin
     }
 }
 
-fun LocalContext.solve(lvl: Lvl, names: Array<String>, occurs: Meta, vsp: VSpine, gsp: GSpine, v: GluedVal) {
+fun LocalContext.solve(lvl: Lvl, names: Array<String>, occurs: Meta, gsp: GSpine, v: GluedVal) {
     val (renC, vC) = contract(gsp.check(top), v.v.value)
     val errRef = ErrRef()
     val rhs = vC.quoteSolution(top, lvl, names, occurs, renC, errRef)
@@ -396,8 +396,7 @@ fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, GluedVal>): Pair<T
 }
 
 fun LocalContext.inferVar(n: String): Pair<Term, GluedVal> {
-    val v = nameTable.it.getOrElse(n) { throw ElabError(null, this, "Variable $n out of scope") }
-    for (ni in v) {
+    for (ni in nameTable[n].asReversed()) {
         when {
             ni is NITop -> return TTop(ni.lvl) to top.topEntries[ni.lvl.it].type.gv
             ni is NILocal && !ni.inserted -> {

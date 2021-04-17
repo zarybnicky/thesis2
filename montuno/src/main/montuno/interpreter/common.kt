@@ -1,5 +1,6 @@
 package montuno.interpreter
 
+import montuno.interpreter.meta.NameInfo
 import java.util.*
 
 sealed class Either<out L, out R> {
@@ -39,6 +40,27 @@ enum class Rigidity { Rigid, Flex }
 fun Rigidity.meld(that: Rigidity) = when (Rigidity.Flex) {
     this -> Rigidity.Flex
     else -> that
+}
+
+inline class NameTable(val it: HashMap<String, MutableList<NameInfo>> = hashMapOf()) {
+    fun addName(n: String, ni: NameInfo) {
+        val l = it.getOrPut(n, { mutableListOf() })
+        l.add(ni)
+    }
+    fun withName(n: String, ni: NameInfo): NameTable {
+        val y = HashMap(it)
+        val l = it.getOrPut(n, { mutableListOf() })
+        l.add(ni)
+        return NameTable(y)
+    }
+    inline fun <A> withName(n: String, ni: NameInfo, f: () -> A): A {
+        val l = it.getOrPut(n, { mutableListOf() })
+        l.add(ni)
+        val r = f.invoke()
+        l.remove(ni)
+        return r
+    }
+    operator fun get(n: String): List<NameInfo> = it.getOrDefault(n, listOf())
 }
 
 inline class Renaming(val it: Array<Pair<Lvl, Lvl>>)
