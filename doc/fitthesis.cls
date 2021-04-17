@@ -49,12 +49,9 @@
 %-----------------------------------------------------------------------------
 % Balicky / Packages
 %-----------------------------------------------------------------------------
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage[english]{babel}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
+\usepackage[english,czech]{babel}
 \usepackage{textcomp}
+
 \usepackage{cmap}
 \usepackage{url}
 \usepackage{ragged2e}
@@ -62,6 +59,37 @@
 \usepackage{etoolbox}
 \usepackage{graphicx}
 \usepackage{pdfpages}
+\usepackage[figure,table,listing]{totalcount}
+%\usepackage[]{opensans}
+\usepackage{float}
+\usepackage{calc}
+\usepackage{longtable,booktabs}
+\usepackage{xcolor,colortbl}
+\usepackage{multirow}
+\usepackage{tabularx}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{unicode-math}
+\usepackage{fontspec}
+\setmainfont[Ligatures=TeX]{texgyrepagella-regular.otf}
+\setmathfont{texgyrepagella-math.otf}
+
+\usepackage{minted}
+\usepackage{tikz}
+\usepackage{tikz-cd}
+\usepackage{bussproofs}
+
+% \renewcommand{\rmdefault}{lmr} %zavede Latin Modern Roman jako rm / set Latin Modern Roman as rm
+% \renewcommand{\sfdefault}{qhv} %zavede TeX Gyre Heros jako sf
+% \renewcommand{\ttdefault}{lmtt}% zavede Latin Modern tt jako tt
+
+
+\DeclareUrlCommand\url{\def\UrlLeft{<}\def\UrlRight{>} \urlstyle{tt}}
+\def\UrlBreaks{\do\/\do-}
+
+\RequirePackage{titletoc}
+
 
 \ifczech
   \main@language{czech}
@@ -930,36 +958,17 @@ Management}{\@fit@EN}%
 \makeatother
 
 
-% Balíčky
-% Packages
-\usepackage[english]{babel}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc} %kodovani / encoding
 \usepackage[]{opensans}
-\usepackage{cmap}
-\usepackage{float}
-\usepackage{calc}
-\usepackage{longtable,booktabs}
-\usepackage{xcolor,colortbl}
-\usepackage{multirow}
-\usepackage{tabularx}
-\usepackage{ragged2e}
-\usepackage{graphicx}
 \usepackage{url}
 \DeclareUrlCommand\url{\def\UrlLeft{<}\def\UrlRight{>} \urlstyle{tt}}
 \def\UrlBreaks{\do\/\do-}
 
 \usepackage{blindtext}
-\usepackage{listings}
 \usepackage[toc,page,header]{appendix}
 \RequirePackage{titletoc}
 \ifczech
   \usepackage{ae}
 \fi
-
-\renewcommand{\rmdefault}{lmr} %zavede Latin Modern Roman jako rm / set Latin Modern Roman as rm
-\renewcommand{\sfdefault}{qhv} %zavede TeX Gyre Heros jako sf
-\renewcommand{\ttdefault}{lmtt}% zavede Latin Modern tt jako tt
 
 %--------------------------------------------------------
 % Oprava pro Čechy a Slováky -- vyžaduje aktuální balíčky!
@@ -988,79 +997,6 @@ Management}{\@fit@EN}%
 \definecolor{gray}{rgb}{0.4,0.4,0.4}
 \definecolor{darkblue}{rgb}{0.0,0.0,0.6}
 \definecolor{cyan}{rgb}{0.0,0.6,0.6}
-
-\lstset{
-  basicstyle=\ttfamily,
-  columns=fullflexible,
-  showstringspaces=false,
-  commentstyle=\color{gray}\upshape,
-  captionpos=b
-}
-
-\lstdefinestyle{csh}{language=[Sharp]C,
-  showspaces=false,
-  showtabs=false,
-  breaklines=false,
-  showstringspaces=false,
-  breakatwhitespace=true,
-  escapeinside={(*@}{@*)},
-  commentstyle=\color{greencomments},
-  keywordstyle=\color{bluekeywords},
-  stringstyle=\color{redstrings},
-  basicstyle=\ttfamily,
-  captionpos=b,
-  numbers=left,
-  frame=single,
-}
-
-\lstdefinelanguage{XML}
-{
-  morestring=[b]",
-  morestring=[s]{>}{<},
-  morecomment=[s]{<?}{?>},
-  stringstyle=\color{black},
-  identifierstyle=\color{darkblue},
-  keywordstyle=\color{cyan},
-  morekeywords={xmlns,version,type} % list your attributes here
-}
-
-\lstdefinestyle{npl}{language=c,
-  showspaces=false,
-  showtabs=false,
-  breaklines=true,
-  showstringspaces=false,
-  breakatwhitespace=true,
-  escapeinside={(*@}{@*)},
-  commentstyle=\color{greencomments},
-  keywordstyle=\color{bluekeywords},
-  stringstyle=\color{redstrings},
-  basicstyle=\ttfamily,
-  captionpos=b,
-  numbers=left,
-  frame=single,
-  morekeywords={UINT8, UINT16, UINT32, INT8, INT16, INT32, Post, Properties, Protocol, AsciiString, String, StringTerm, BLOB, FormatString, this},
-}
-
-
-\lstdefinestyle{c++}{language=c,
-  showspaces=false,
-  showtabs=false,
-  breaklines=true,
-  showstringspaces=false,
-  breakatwhitespace=true,
-  escapeinside={(*@}{@*)},
-  commentstyle=\color{greencomments},
-  keywordstyle=\color{bluekeywords},
-  stringstyle=\color{redstrings},
-  basicstyle=\ttfamily,
-  captionpos=b,
-  numbers=left,
-  frame=single,
-  morekeywords={UINT8, UINT16, UINT32, INT8, INT16, INT32, Post, Properties, Protocol, AsciiString, String, StringTerm, BLOB, FormatString, this},
-}
-
-%END Jan Pluskal (ipluskal) listings
-
 
 %\usepackage[colorinlistoftodo, disable]{todonotes}
 \usepackage[colorinlistoftodos]{todonotes}

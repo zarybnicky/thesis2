@@ -91,6 +91,7 @@
       withHoogle = false;
       packages = p: [ p.smalltt p.dynamic-array p.lph ];
       LD_LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath buildInputs;
+      FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [pkgs.lmodern] ++ pkgs.texlive.tex-gyre.pkgs; };
       buildInputs = [
         hsPkgs.cabal-install
         hsPkgs.hie-bios
