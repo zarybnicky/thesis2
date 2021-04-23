@@ -68,12 +68,16 @@
 \usepackage{multirow}
 \usepackage{tabularx}
 
+\usepackage{fontspec}
+\usepackage{microtype}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{unicode-math}
-\usepackage{fontspec}
 \setmainfont[Ligatures=TeX]{texgyrepagella-regular.otf}
+\setmonofont{texgyrecursor-regular.otf}
 \setmathfont{texgyrepagella-math.otf}
+\setmathfont{Asana-Math.otf}[range={\setminus} ]
+\setmathfont{XITSMath-Regular.otf}[range={"2A3E}, BoldFont=XITSMath-Bold.otf ]
 
 \usepackage{minted}
 \usepackage{tikz}
