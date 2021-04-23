@@ -15,4 +15,7 @@ auto/
 *.bbl
 *.lof
 *.lol
+*.tdo
 \#*
+doc/DP-thesis.pdf
+doc/DP-thesis.tex

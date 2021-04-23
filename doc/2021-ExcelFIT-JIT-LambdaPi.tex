@@ -49,58 +49,8 @@ So what? How useful is this to Science and to the reader?
 
 \section{Introduction}
 
-\textbf{[Motivation]} What is the raison d'\^{e}tre of your project? Why should anyone care? No general meaningless claims. Make bulletproof arguments for the importance of your work.
-
-\textbf{[Problem definition]} What exactly are you solving? What is the core and what is a bonus? What parameters should a proper solution of the problem have? Define the problem precisely and state how its solution should be evaluated.
-
-\textbf{[Existing solutions]} Discuss existing solutions, be fair in identifying their strengths and weaknesses. Cite important works from the field of your topic. Try to define well what is the \textit{state of the art}. You can include a Section 2 titled ``Background'' or ``Previous Works'' and have the details there and make this paragraph short. Or, you can enlarge this paragraph to a whole page. In many scientific papers, \emph{this} is the most valuable part if it is written properly.
-
-\textbf{[Our solution]} Make a quick outline of your approach -- pitch your solution.  The solution will be described later in detail, but give the reader a very quick overview now.
-
-\textbf{[Contributions]} Sell your solution. Pinpoint your achievements. Be fair and objective.
 
 
-The aim of this work is to create an efficient compiler for a language with
-dependent types. Compiling dependently-typed languages, compared to simply-typed
-or untyped languages, comes with large performance penalties, often making large
-non-trivial programs hard to write due to the compiler running out of memory or
-taking minutes to compile.
-https://github.com/agda/agda/issues/514#issuecomment-129023737
-https://github.com/idris-lang/Idris2/issues/964
-On the other hand, programming language research projects place more and more
-demands on the compiler  (cubical, univalence, ... CITE)
-
-The goal of this project is to create a compiler for a dependently-typed
-language that outperforms existing compilers at, in particular, the speed of
-type-checking and compilation; evaluation speed of the resulting program is not
-as important for our benchmarks. Special attention will be on the asymptotics,
-as the implementation platform brings rather large constant factors.
-
-This work is a successor to the Cadenza project (cite) which implements a
-simply-typed lambda calculus with extensions in the Truffle framework. While it
-is unfinished and did not show promising performance compared to other
-simply-typed lambda calculus implementations according to its creator Edward
-Kmett, my work attempts to apply its ideas to the dependently-typed lambda
-calculus, where the presence of type-level computation should lead to larger
-gains.
-
-I have not found another attempt to apply just-in-time compilation in the
-implementation of a language with dependent types and in type-level
-computations in particular. I assume that it is due to the fact that the Truffle
-project is not well-known and implementing a just-in-time compiler without it is
-not straightforward.
-
---- Using the technique of just-in-time compilation we can avoid the performance
-problems associated with dependent type-checking by rewriting inefficient parts
-of the control-flow graph during compilation.
-
---- The Truffle language implementation framework gives us a way of turning an
-interpreter into a compiler with few changes, and allows us to rewrite the
-control-flow graph and just-in-time compilation process during runtime.
-
---- This is a novel approach to a problem all current dependently-typed
-languages face and, if successful, will bring immediate benefits to programming
-language implementers.
 
 
 \section{How To Use This Template}

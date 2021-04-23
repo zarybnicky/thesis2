@@ -63,9 +63,9 @@ class TString(val n: String, loc: Loc? = null) : Term(loc) {
     override fun execute(frame: VirtualFrame) = n
 }
 class TLam(
-    @CompilerDirectives.CompilationFinal(dimensions = 1) val captures: Array<FrameSlot>,
+    @field:CompilerDirectives.CompilationFinal(dimensions = 1) val captures: Array<FrameSlot>,
     private val arity: Int,
-    @CompilerDirectives.CompilationFinal var callTarget: RootCallTarget,
+    @field:CompilerDirectives.CompilationFinal var callTarget: RootCallTarget,
     loc: Loc? = null
 ) : Term(loc) {
     override fun execute(frame: VirtualFrame) = VClosure(arrayOf(), arity, arity, callTarget)
@@ -85,8 +85,8 @@ class TLam(
 //    }
 //}
 class TApp(
-    @Node.Child var rator: Term,
-    @Node.Children val rands: Array<Term>,
+    @field:Child var rator: Term,
+    @field:Children val rands: Array<Term>,
     loc: Loc? = null,
     tail_call: Boolean = false
 ) : Term(loc) {
@@ -151,7 +151,7 @@ fun LocalContext.toExecutableNode(p: PreTerm): Term {
 class FunctionRootNode(
     l: TruffleLanguage<*>?,
     fd: FrameDescriptor,
-    @Children val nodes: Array<Term>
+    @field:Children val nodes: Array<Term>
 ): RootNode(l, fd) {
     @ExplodeLoop
     override fun execute(frame: VirtualFrame): Any {
@@ -167,7 +167,7 @@ class FunctionRootNode(
 class ProgramRootNode(
     l: TruffleLanguage<*>?,
     fd: FrameDescriptor,
-    @Children val nodes: Array<Term>,
+    @field:Children val nodes: Array<Term>,
     private val executionFrame: MaterializedFrame
 ) : RootNode(l, fd) {
     val target = Truffle.getRuntime().createCallTarget(this)
@@ -219,4 +219,12 @@ class IndirectCallerNode() : Node() {
     companion object {
         @JvmStatic fun create() = IndirectCallerNode()
     }
+}
+
+abstract class Issue : Node() {
+    abstract fun execute(frame: VirtualFrame, foo: Unit, newFrame: MaterializedFrame)
+    @Specialization(guards=["newFrame.getArguments().length == 2"])
+    fun do2Args(frame: VirtualFrame, foo: Unit, newFrame: MaterializedFrame) {}
+    @Specialization(guards=["newFrame.getArguments().length == 3"])
+    fun do3Args(frame: VirtualFrame, foo: Unit, newFrame: MaterializedFrame) {}
 }

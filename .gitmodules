@@ -4,48 +4,59 @@
 [submodule "dep/grammars-v4"]
 	path = dep/grammars-v4
 	url = https://github.com/antlr/grammars-v4
+        ignore = dirty
 [submodule "dep/lambdapi"]
 	path = dep/lambdapi
 	url = https://github.com/ilya-klyuchnikov/lambdapi/
+        ignore = dirty
 [submodule "dep/pi-forall"]
 	path = dep/pi-forall
 	url = https://github.com/sweirich/pi-forall/
+        ignore = dirty
 [submodule "dep/compilers-course"]
 	path = dep/compilers-course
 	url = https://github.com/h0tk3y/compilers-course
+        ignore = dirty
 [submodule "dep/simplelanguage"]
 	path = dep/simplelanguage
 	url = https://github.com/graalvm/simplelanguage
+        ignore = dirty
 [submodule "dep/normalization-by-evaluation"]
 	path = dep/normalization-by-evaluation
 	url = https://gist.github.com/ekmett/492f05ee9d9be5c964de67598577df1f
 [submodule "dep/fsharp-tapl"]
 	path = dep/fsharp-tapl
 	url = https://github.com/jack-pappas/fsharp-tapl
+        ignore = dirty
 [submodule "dep/smalltt"]
 	path = dep/smalltt
 	url = https://github.com/zarybnicky/smalltt
 [submodule "dep/truffleruby"]
 	path = dep/truffleruby
 	url = https://github.com/oracle/truffleruby
+        ignore = dirty
 [submodule "dep/setoidtt"]
 	path = dep/setoidtt
 	url = https://github.com/AndrasKovacs/setoidtt
 [submodule "dep/trufflesqueak"]
 	path = dep/trufflesqueak
 	url = https://github.com/hpi-swa/trufflesqueak
+        ignore = dirty
 [submodule "dep/graalphp"]
 	path = dep/graalphp
 	url = https://github.com/abertschi/graalphp
+        ignore = dirty
 [submodule "dep/mumbler"]
 	path = dep/mumbler
 	url = https://github.com/cesquivias/mumbler
 [submodule "dep/TruffleSOM"]
 	path = dep/TruffleSOM
 	url = https://github.com/smarr/TruffleSOM
+        ignore = dirty
 [submodule "dep/graaljs"]
 	path = dep/graaljs
 	url = https://github.com/oracle/graaljs
+        ignore = dirty
 [submodule "dep/yona"]
 	path = dep/yona
 	url = https://github.com/yona-lang/yona/
@@ -58,9 +69,11 @@
 [submodule "dep/fastr"]
 	path = dep/fastr
 	url = https://github.com/oracle/fastr
+        ignore = dirty
 [submodule "dep/graalpython"]
 	path = dep/graalpython
 	url = https://github.com/graalvm/graalpython
+        ignore = dirty
 [submodule "dep/normalization-bench"]
 	path = dep/normalization-bench
 	url = https://github.com/AndrasKovacs/normalization-bench
