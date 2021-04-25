@@ -63,6 +63,7 @@
 [submodule "dep/enso"]
 	path = dep/enso
 	url = https://github.com/enso-org/enso
+        ignore = dirty
 [submodule "dep/prolog-truffle"]
 	path = dep/prolog-truffle
 	url = https://gitlab.forge.hefr.ch/tony.licata/prolog-truffle
@@ -77,3 +78,9 @@
 [submodule "dep/normalization-bench"]
 	path = dep/normalization-bench
 	url = https://github.com/AndrasKovacs/normalization-bench
+[submodule "dep/peacod"]
+	path = dep/peacod
+	url = https://github.com/sstewartgallus/peacod
+[submodule "dep/cadenza"]
+	path = dep/cadenza
+	url = https://github.com/ekmett/cadenza
