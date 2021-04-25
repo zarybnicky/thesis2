@@ -80,6 +80,7 @@
 \setmathfont{XITSMath-Regular.otf}[range={"2A3E}, BoldFont=XITSMath-Bold.otf ]
 
 \usepackage{minted}
+\setminted{fontsize=\small}
 \usepackage{tikz}
 \usepackage{tikz-cd}
 \usepackage{bussproofs}

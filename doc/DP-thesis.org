@@ -8,6 +8,7 @@ org-wc-display
 18.4. 3600w? (Σ36p)
 19.4. 4000w? (Σ40p)
 22.4. 5200w
+24.4. 6700w
 
 minimum: 12,500
 target: 17,500
@@ -36,17 +37,6 @@ maximum: 30,000
 \iftwoside\cleardoublepage\fi
 \setlength{\parskip}{0.5\bigskipamount}
 #+END_EXPORT
-
-* (Recommended introduction structure)                             :noexport:
-*Motivation* What is the raison d'\^{e}tre of your project? Why should anyone care? No general meaningless claims. Make bulletproof arguments for the importance of your work.
-
-*Problem definition* What exactly are you solving? What is the core and what is a bonus? What parameters should a proper solution of the problem have? Define the problem precisely and state how its solution should be evaluated.
-
-*Existing solutions* Discuss existing solutions, be fair in identifying their strengths and weaknesses. Cite important works from the field of your topic. Try to define well what is the \textit{state of the art}. You can include a Section 2 titled ``Background'' or ``Previous Works'' and have the details there and make this paragraph short. Or, you can enlarge this paragraph to a whole page. In many scientific papers, \emph{this} is the most valuable part if it is written properly.
-
-*Our solution* Make a quick outline of your approach -- pitch your solution.  The solution will be described later in detail, but give the reader a very quick overview now.
-
-*Contributions* Sell your solution. Pinpoint your achievements. Be fair and objective.
 
 * (Recommended thesis structure)                                   :noexport:
 1. "Úvod do knížečky", jedna strana, bez podkapitol
@@ -81,181 +71,200 @@ maximum: 30,000
 *Side outcome:* compilation of all the relevant concepts.
 
 * Introduction
-** (Old)
-When creating small experimental or research languages, writing a compiler may
-be too much effort for the expected gain. On the other hand an interpreter is
-usually not as performant as its creators may require for more computationally
-intensive tasks.
+#+COMMENT: Motivation: why this project? Why should anyone care?
 
-There is a potential third way, proposed by Yoshihiko Futamura in the 1970s,
-called the Futamura projection (or partial program evaluation), wherein an
-interpreter is specialized in conjunction with the source code of a program,
-yielding an executable. Some parts of the interpreter may be specialized, some
-optimized, some left off entirely. Depending on the quality of the specializer,
-the gains may be several orders of magnitude.
+Proof assistants like Coq, Agda or Idris, or other languages with dependent
+types allow programmers to write provably correct-by-construction code in a
+manner similar to a dialog with the compiler cite:norell08_agda_tutorial. They
+also face serious performance issues when applied to problems or systems on a
+large-enough scale cite:gross21_performance. Their performance grows
+exponentially with the number of lines of code in the worst case
+cite:nawaz19_survey_provers, which is a significant barrier to their use. While
+many of the performance issues are fundamentally algorithmic, a better runtime
+system would improve the rest. However, custom runtime systems or more capable
+optimizing compilers are time-consuming to build and maintain. This thesis seeks
+to answer the question of whether just-in-time compilation can help to improve the
+performance of such systems.
 
-The goal of my thesis is to evaluate whether the GraalVM/Truffle platform is
-suitable enough to act as a specializer for functional languages, in particular
-for the dependently-typed lambda calculus.  To illustrate in Figure
-\ref{fig:futamora}, the question is whether the path \textit{Native
-Image\textrightarrow Result} is fast enough compared to the path
-\textit{Executable\textrightarrow Result}.
+Moving from custom runtime systems to general language platforms like e.g., the
+Java Virtual Machine (JVM) or RPython [[inline:Cite]], has improved the performance
+of several dynamic languages: project like TruffleRuby, FastR, or PyPy. It has
+allowed these languages to re-use the optimization machinery provided by these
+platforms, improve their performance, and simplify their runtime systems.
 
-#+BEGIN_EXPORT latex
-\begin{figure}
-\centering
-\begin{tikzcd}
-{} & Program
- \arrow[bend right]{ld}{Compiler}
- \arrow[bend right=67]{dd}{Interpreter}
- \arrow[bend left]{rd}{Partial Evaluation}
- \arrow[bend left=67]{dd}{JIT} & {} \\
-Executable \arrow[bend right]{rd}{Run} & {} & Native\ Image \arrow[bend left]{ld}{Run}
- \\ {} & Result & {}
-\end{tikzcd}
-\caption{Methods of program execution}
-\label{fig:futamora}
-\end{figure}
-#+END_EXPORT
+#+COMMENT: Problem definition: What exactly are you solving? What is the core and what is a bonus? What parameters should a proper solution to the problem have?
 
-Truffle has already been used rather successfully for the (mostly) imperative
-languages Ruby, Python, R, Java, and WebAssembly, but (purely-)functional
-languages differ in their evaluation model and in particular the required
-allocation throughput, so it is still an open question whether GraalVM is a good
-enough fit.
+As there are no standard benchmarks for dependently typed languages, we design a
+small, dependently-typed core language to see if using specific just-in-time
+(JIT) compilation techniques produces asymptotic runtime improvements in the
+performance of βη-normalization, which is a large part of the elaboration
+process and is also the part that can most likely benefit from JIT compilation. inline:Nongoals
 
-The desired outcome---at least, of the first part of my thesis---is a set of
-implementations, and a set of benchmarks demonstrating a positive or a negative
-result.  If the result is positive, there are many potential follow-up tasks:
-implementing a different, more complex language, maybe a language to be
-interpreted into the dependently-typed lambda calculus to attempt the approach
-implemented in the /Collapsing Tower of Interpreters/ cite:amin18_collapsing_towers,
-or experimenting with different runtime models - all depending on the results of
-this preliminary proof of concept.
+#+COMMENT: Existing solutions: be fair in identifying their strengths and weaknesses. Cite important works from the field of your topic. Try to define well what is the state of the art.
 
-In the best case, the JIT-compiled program would be as close in performance to a
-program processed by a hand-crafted compiler as possible (not including JIT
-warm-up), and I would spend the second half of my thesis on different topics
-(like provably-correct program transformations) instead of hand-optimizing the
-primitive operations - I should find out which it is going to be as soon in the
-second term as possible.
+State of the art proof assistants like Coq, Agda, Idris, or others is what we
+can compare our results with. There is also a large number of research projects
+being actively developed in this area; Lean is a notable one that I found too
+late in my thesis to incorporate its ideas. However, the primary evaluation will
+be against the most well established proof assistants.
 
-As far as I am aware, there are no other native just-in-time compiled
-implementations of the dependently-typed lambda calculus, with the exception of
-the preliminary investigations done by the originator of this idea
-cite:kmett_2019, although there are a few projects implementing a lambda
-calculus directly to the Java Virtual Machine byte code..
+inline:reformulate As for the languages that use Truffle, the language implementation framework
+that allows interpreters to use the JIT optimization capabilities of GraalVM, an
+alternative implementation of the Java Virtual Machine: there are numerous
+general-purpose functional languages, the most prominent of which are
+TruffleRuby and FastR. Both were reimplemented on the Truffle platform,
+resulting in significant performance improvements[fn:7][fn:8]. We will
+investigate the optimization techniques they used, and reuse those that are
+applicable to our language.
 
-** (New-ish)
-The aim of this work is to create an efficient compiler for a language with
-dependent types. Compiling dependently-typed languages, compared to simply-typed
-or untyped languages, comes with large performance penalties, often making large
-non-trivial programs hard to write due to the compiler running out of memory or
-taking minutes to compile.
-https://github.com/agda/agda/issues/514#issuecomment-129023737
-https://github.com/idris-lang/Idris2/issues/964
-On the other hand, programming language research projects place more and more
-demands on the compiler (cubical, univalence, ... CITE)
+There is also a number of functional languages on the Java Virtual Platform that
+do not use the Truffle platform, like Clojure, Scala or Kotlin, as well as
+purely functional languages like Eta or Frege. All of these languages compile
+directly to JVM byte code: we may compare our performance against their
+implementation, but we would not be able to use their optimization
+techniques. As far as I am aware, there are no implementations of the
+dependently-typed lambda calculus that use JIT compilation.
 
-The goal of this project is to create a compiler for a dependently-typed
-language that outperforms existing compilers at, in particular, the speed of
-type-checking and compilation; evaluation speed of the resulting program is not
-as important for our benchmarks. Special attention will be on the asymptotics,
-as the implementation platform brings rather large constant factors.
+The closest project to this one is Cadenza cite:kmett_2019, which served as the
+main inspiration for this thesis. Cadenza is an implementation of the
+simply-typed lambda calculus on the Truffle framework. While it is unfinished
+and did not show as promising performance compared to other simply-typed lambda
+calculus implementations as its author hoped, this project applies similar ideas
+to the dependently-typed lambda calculus, where the presence of type-level
+computation should lead to larger gains.
 
-This work is a successor to the Cadenza project (cite) which implements a
-simply-typed lambda calculus with extensions in the Truffle framework. While it
-is unfinished and did not show promising performance compared to other
-simply-typed lambda calculus implementations according to its creator Edward
-Kmett, my work attempts to apply its ideas to the dependently-typed lambda
-calculus, where the presence of type-level computation should lead to larger
-gains.
+#+COMMENT: Our solution: Make a quick outline of your approach, pitch your solution
 
-[[comment:This work builds on the pedagogic and algorithmic work on DTT by A.K.]]
+In this thesis, I will use the Truffle framework to evaluate how well are the
+optimizations provided by the just-in-time compiler GraalVM suitable to the
+domain of dependently-typed languages. GraalVM helps to turn slow interpreter
+code into efficient machine code by means of /partial evaluation./ [[inline:Cite
+GraalVM]] During partial evaluation, specifically the second Futamura projection
+cite:latifi19_futamura, an interpreter is specialized together with the source
+code of a program, yielding executable code. Parts of the interpreter could be
+specialized, some optimized, and some could be left off entirely. Depending on
+the quality of the specializer, this may result in performance gains of several
+orders of magnitude.
 
-I have not found another attempt to apply just-in-time compilation in the
-implementation of a language with dependent types and in type-level computations
-in particular, despite the fact that adding just-in-time compilation to the
-type-checking phase of compilation seems natural in the context of
-dependently-typed languages where type-level computation is available. I assume
-that it is due to the fact that the Truffle project is aimed primarily at
-imperative languages and mapping functional concepts is not straightforward
-([[comment:luna :inline]]) - and implementing a standalone just-in-time compiler is not
-straightforward.
+Truffle makes this available to language creators, they only need to create an
+interpreter for their language. It also allows such interpreters to take
+advantage of GraalVM's /polyglot/ capabilities, and directly interoperate with
+other JVM-based languages, their code and values
+inline:CitePolyglot. Development tooling can also be derived for Truffle
+languages rather easily cite:stolpe19_environment. Regardless of whether Truffle
+can improve their performance, both of these features would benefit
+dependently-typed or experimental languages.
 
-Improving the algorithms for type-checking is an active area of research, but
-implementing them in a more dynamic manner (beyond just changing the data
-structures) is not something I have found.
+#+COMMENT: Contributions: Sell your solution. Pinpoint your achievements. Be fair and objective.
 
---- Using the technique of just-in-time compilation we can avoid the performance
-problems associated with dependent type-checking by rewriting inefficient parts
-of the control-flow graph during compilation.
+While this project was originally intended just as a λΠ calculus compiler and an
+efficient runtime, it has ended up much larger due to a badly specified
+assignment. I also needed to study type theory and type checking and elaboration
+algorithms that I have used in this thesis, and which form a large part of
+chapters ref:lambda and ref:interpreter.
 
---- The Truffle language implementation framework gives us a way of turning an
-interpreter into a compiler with few changes, and allows us to rewrite the
-control-flow graph and just-in-time compilation process during runtime.
-
---- This is a novel approach to a problem all current dependently-typed
-languages face and, if successful, will bring immediate benefits to programming
-language implementers.
-
-[[comment:In addition, easy prototyping, stepping block for other projects (efficient LF/Twelf, ...)]]
-
-smalltt a step in another direction
-
-** New-er
-*Problem statement:*
-- Just-in-time compilation has proven itself in mainstream languages (from Java, Python, ...).
-- Virtual machines and/or optimizing compilers are expensive to maintain
-- Can we use Truffle to reuse the optimizing machinery of the Java Virtual
-  Machine in other languages.
-
-*Caveat*: Originally intended just as a compiler + efficient dependent λ-calculus
-runtime, but due to a badly specified assignment, I had also needed to study
-type theories and in particular type elaboration, which I have also attempted to
-use in this thesis.
-
-*Why?* Dependent types give more guarantees, enable correct-by-construction code,
-and a way of working that resembles a dialog with the compiler. [[comment:What are
-notable use cases? What's been proven in Coq?]], hot ML research area (cubical,
-path, ...) (look in Kovacs' materials)
-
-*How?* Lambda calculus with types and extensions.
-- What does it look like?
-- Show realistic λ calculus code (Church encoding + μ)
-- Adding types and their effect on computability, examples of extensions (Π, Σ,
-  μ), complete system ΠΣ, Type:Type
-
-*What are we doing?* Systems like this (proof assistants) exist and are relatively
-widely used. Performance is a serious concern when proving properties of larger
-systems ([[comment:Google Decoders :inline]]) and although a large part of it are
-algorithmic problems, just-in-time compilation has not been previously
-investigated as a possible part of the solution - which is a question that this
-thesis attempts to evaluate.
-
-[[comment:Specifically, Truffle is X, can do Y, Z (claims)]]
-
-Truffle also brings Native Image and polyglot capabilities, which would be
-beneficial whether the performance benefits are visible or not.
-
-[[comment:Describe thesis structure/outline, why not the typical theory/research,
-implementation, evaluation?]]
+Starting from basic λ calculus theory and building up to the systems of the
+lambda cube, we specify the syntax and semantics of a small language that I
+refer to as Montuno (Chapter ref:lambda). We go through the principles of λ
+calculus evaluation, type checking and elaboration, implement an interpreter for
+Montuno in a functional style (Chapter ref:interpreter), and design a set of
+benchmarks to evaluate the language's performance (Chapter ref:bench).  In the
+second half of the thesis, we evaluate the capabilities offered by Truffle and
+the peculiarities of Truffle languages (Chapter ref:truffle), implement an
+interpreter for Montuno on the Truffle framework (Chapter ref:jit-interpreter),
+and apply various JIT optimizations to it (Chapter ref:optimizations). After
+evaluating our overall results, we close with a large list of possible follow-up
+work (Chapter ref:evaluation).
 
 * Language specification: λΠ calculus with extensions
+  :PROPERTIES:
+  :CUSTOM_ID: lambda
+  :END:
 ** Introduction
-[[comment:To reiterate, the core language of proof assistants (1 para)]]
+[[todo:To reiterate, the core language of proof assistants (1 para)]]
 
-[[comment:More powerful than simple type systems but potentially not decidable (1 para)]]
+[[todo:More powerful than simple type systems but potentially not decidable (1 para)]]
 
-[[comment:Why not reuse Agda's core language? Goal is minimal lang + extensions (2 paras)]]
+[[todo:Why not reuse Agda's core language? Goal is minimal lang + extensions (2 paras)]]
+
+ref:rosetta
+ref:curry-howard
+
+#+label: rosetta
+#+CAPTION: The correspondence between mathematical logic and type theory
+#+ATTR_LaTeX: :options [!htpb]
+#+begin_figure latex
+\begin{center}
+\begin{tabular}{c|c}
+Logic & Type theory \\\hline\\[-1em]
+\shortstack{$⊤$ \\ true} &
+\shortstack{$()$ \\ unit type} \\[7pt]
+\shortstack{$⊥$ \\ false} &
+\shortstack{$∅$ \\ empty type} \\[7pt]
+\shortstack{$p ∧ q$ \\ conjunction} &
+\shortstack{$a × b$ \\ sum type} \\[7pt]
+\shortstack{$p ∨ q$ \\ disjunction} &
+\shortstack{$a + b$ \\ product type} \\[7pt]
+\shortstack{$p ⇒ q$ \\ implication} &
+\shortstack{$a → b$, $a^b$ \\ exponential (function) type} \\[7pt]
+\shortstack{$∀x ∈ A, p$ \\ universal quantification} &
+\shortstack{$Π_{x : A}B(x)$ \\ dependent product type} \\[7pt]
+\shortstack{$∃x ∈ A, p$ \\ existential quantification} &
+\shortstack{$Σ_{x : A}B(x)$ \\ dependent sum type} \\[7pt]
+\end{tabular}
+\end{center}
+#+end_figure
+
+#+label: curry-howard
+#+CAPTION: Curry-Howard correspondence
+#+ATTR_LaTeX: :options [!htpb]
+#+begin_figure latex
+\begin{center}
+\begin{tabular}{c|c}
+\shortstack{
+\AxiomC{}
+\UnaryInfC{$Γ₁, α, Γ₂ ⊢ α$}
+\DisplayProof \\ axiom} &
+\shortstack{
+\AxiomC{}
+\UnaryInfC{$Γ₁, x : α, Γ₂ ⊢ x : α$}
+\DisplayProof \\ variable} \\[7pt]
+
+\shortstack{
+\AxiomC{$Γ, α ⊢ β$}
+\UnaryInfC{$Γ ⊢ α → β$}
+\DisplayProof \\ implication introduction} &
+\shortstack{
+\AxiomC{$Γ, x : α ⊢ t : β$}
+\UnaryInfC{$Γ ⊢ λx. t: α → β$}
+\DisplayProof \\ abstraction} \\[7pt]
+
+\shortstack{
+\AxiomC{$Γ ⊢ α → β$}
+\AxiomC{$Γ ⊢ α$}
+\BinaryInfC{$Γ ⊢ β$}
+\DisplayProof \\ modus ponens} &
+\shortstack{
+\AxiomC{$Γ ⊢ t : α → β$}
+\AxiomC{$Γ ⊢ u : α$}
+\BinaryInfC{$Γ ⊢ t u : β$}
+\DisplayProof \\ application} \\[7pt]
+\end{tabular}
+\end{center}
+#+end_figure
 
 ** λ calculus
 The untyped lambda calculus is a simple language consisting of just three kinds
 of forms: variables, function application, and abstraction. [...]
 
-[[comment:Why λ-calculus, what is it (2 para)]]
+Introuced in XXXX, originally intended as a vehicle to model computatoinal
+science, since then used fo modelling XYZ
 
-[[comment:Describe syntax (1 para)]]
+Several types of notation, Church, Curry, de Bruijn, ... We will use Church.
+
+[[todo:Why λ-calculus, what is it (2 para)]]
+
+[[todo:Describe syntax (1 para)]]
 
 #+CAPTION: Untyped λ-calculus
 #+ATTR_LaTeX: :options [!htpb]
@@ -267,16 +276,16 @@ e & ::= & x            & \text{variable} \\
 \end{array}\]
 #+end_figure
 
-[[comment:Examples - Church encoding (three columns, trivial examples)]]
+[[todo:Examples - Church encoding (three columns, trivial examples)]]
 ** λ→ calculus
-[[comment:Typed λ-calculus + syntax (3 para)]]
+[[todo:Typed λ-calculus + syntax (3 para)]]
 
 The simply-typed λ-calculus introduces the concept of types, which have separate
 syntax and semantics from the language of terms. The language of terms is
 extended with a fourth kind of term, type annotation. The language of types is
 the universal or base type, and an arrow from between types.
 
-[[comment:This language is not turing-complete, must terminate]]
+[[todo:This language is not turing-complete, must terminate]]
 
 #+CAPTION: Simply typed lambda calculus
 #+ATTR_LaTeX: :options [!htpb]
@@ -293,68 +302,75 @@ e & ::= & x     & \text{variable} \\
 \end{array}\]
 #+end_figure
 
-[[comment:What are derivation rules, describe the symbols (1 para)]]
+[[todo:What are derivation rules, describe the symbols (1 para)]]
 
 \missingfigure{Write out the simplest derivation rules (5-6 items, half a page)}
 
-[[comment:Mention explicit substitution, that in the above it is just a part of the metatheory (para)]]
+[[todo:Mention explicit substitution, that in the above it is just a part of the metatheory (para)]]
 
 \missingfigure{Write out explicit substitution example (1 figure)}
 
-[[comment:Typing rules - same as the above, just describe types (1 short para)]]
+[[todo:Typing rules - same as the above, just describe types (1 short para)]]
 
-[[comment:Close the above, motivating example what is it good for? (1 para + 1 figure)]]
+[[todo:Close the above, motivating example what is it good for? (1 para + 1 figure)]]
 ** Lambda cube
-[[comment:Brief lambda cube intro show what's out there (3 para)]]
+[[todo:Brief lambda cube intro show what's out there (3 para)]]
 
 \missingfigure{Lambda cube}
 
-[[comment:Derivation rules added by the lambda cube + options, 2 columns]]
+[[todo:Derivation rules added by the lambda cube + options, 2 columns]]
 
-[[comment:In the rest of the thesis we will work with λω (1 para)]]
+[[todo:In the rest of the thesis we will work with λω (1 para)]]
 ** Extensions
-[[comment:Intro - comparison table with logic/tt, Pi/Sigma, forall/exists, ... (3 paras)]]
+[[todo:Intro - comparison table with logic/tt, Pi/Sigma, forall/exists, ... (3 paras)]]
 
 *** Π-types
 dependent product type, dependent function type
 
-[[comment:generalization of the function space (2 paras)]]
+[[todo:generalization of the function space (2 paras)]]
 
 $Π(n:ℕ). Vec(ℝ, n)$ vs $Π(n:ℕ). ℝ$
 
-[[comment:grammar, specific example (2 figures)]]
+[[todo:grammar, specific example (2 figures)]]
 
 Allows inductive types, eliminators, Church
 
 *** Σ-types
 dependent sum type, dependent pair type
 
-[[comment:Dependent tuple/product/sum (2 para)]]
+[[todo:Dependent tuple/product/sum (2 para)]]
 
 $(a, b) : Σ_{x:A}. B(x)$
 
-[[comment:grammar, specific example (2 figures)]]
+[[todo:grammar, specific example (2 figures)]]
 
 Allows datatypes/records, Cat + Functor?
 
 *** μ-types
-[[comment:Recursive type, box/unbox (2 paras)]]
+[[todo:Recursive type, box/unbox (2 paras)]]
 
-[[comment:Type-level recursion, fixpoint, grammar (2 paras)]]
+[[todo:Type-level recursion, fixpoint, grammar (2 paras)]]
 
 \missingfigure{Motivating example - from PiSigma?}
 
 *** Type in Type
-[[comment:Universes, what is the hierarchy used for (2 para)]]
+[[todo:Universes, what is the hierarchy used for (2 para)]]
 
-[[comment:Weakening (cite PiSigma) but practical simplification (2 para)]]
+[[todo:Weakening (cite PiSigma) but practical simplification (2 para)]]
 
 \missingfigure{Counter-example with multiple universes}
+
+*** Implicit arguments
+[[todo:In brief - arguments that the compiler will fill in for us, type arguments
+Agda et al. have it. (2 paras)]]
+
+[[todo:Figure - implicit/braced arguments of an ~id~]]
+
 ** Operations
 *** Reduction
-[[comment:α, β, η, ... (3 items)]]
+[[todo:α, β, η, ... (3 items)]]
 
-[[comment:Same for all of the calculi (right?)]]
+[[todo:Same for all of the calculi (right?)]]
 
 - Equivalences:
   - α-equivalence = structural, allows α-renaming
@@ -362,15 +378,15 @@ Allows datatypes/records, Cat + Functor?
     α-equivalence of β-normal forms
   - η-equivalence = allows η-reduction (f ≡ λx. f x)
 
-[[comment:Equality, equivalence, structural, nominal (2 para)]]
+[[todo:Equality, equivalence, structural, nominal (2 para)]]
 
 *** Normal forms
-[[comment:Normal forms - nf, hnf, whnf (3 items, describe)]]
+[[todo:Normal forms - nf, hnf, whnf (3 items, describe)]]
 
 \missingfigure{Show off a normal form derivation - which operation is used when}
 
 *** Evaluation models
-[[comment:Evaluation models - CBN, CBV, CBPV (3 paras, 1 figure)]]
+[[todo:Evaluation models - CBN, CBV, CBPV (3 paras, 1 figure)]]
 
 Call-by-need - a computation happens in the place where a value is used, and not
 created (~const 5 expensiveFunc~ doesn't /force/ the expensive computation)
@@ -401,7 +417,7 @@ B & ::= & F A | Π(i∈I)B_i | A → B
 - computation of type $FA$ produces a value of type A
 - computation Π pops a tag $i$ from operand stack, then is a computation of type $B$
 - computation A → B pops a value of type A, then behaves as type B
-[[comment:https://www.cs.bham.ac.uk/~pbl/papers/tlca99.pdf]]
+[[todo:https://www.cs.bham.ac.uk/~pbl/papers/tlca99.pdf]]
 
 ** Type checking, inference, elaboration
 - type checking ( = determining whether a program is well-typed)
@@ -410,70 +426,31 @@ B & ::= & F A | Π(i∈I)B_i | A → B
 - elaboration = convert a partially specified expression into a complete,
   type-correct form (http://leodemoura.github.io/files/elaboration.pdf)
 
-[[comment:Describe the nomenclature (3 para)]]
+[[todo:Describe the nomenclature (3 para)]]
 
 *** Bidirectional typing
 Bidirectional typing (https://www.cl.cam.ac.uk/~nk480/bidir-survey.pdf) = now
 standard approach, combines type-checking and inference, simpler to implement
 even if inference is not required
 
-[[comment:Intro, motivation, list alternatives, pros and cons (2 para)]]
+[[todo:Intro, motivation, list alternatives, pros and cons (2 para)]]
 
-[[comment:Sketch the process? Write out lambda + app rules? (half a page)]]
+[[todo:Sketch the process? Write out lambda + app rules? (half a page)]]
 
 *** Conversion checking
 Conversion checking = type (or expression) equivalence checking, includes
 evaluation (NbE = full comparison of normal forms), checking equivalence "as
 described in the previous section"
 
-[[comment:Describe motivation for NbE, the process, what is a neutral, eval/quote (3 paras)]]
+[[todo:Describe motivation for NbE, the process, what is a neutral, eval/quote (3 paras)]]
 
 \missingfigure{neutral terms}
 
 *** Glued values
 
-[[comment:Performance optimization, unfolding choice]]
+[[todo:Performance optimization, unfolding choice]]
 ** Our syntax
-[[comment:Putting this all together, we get...]]
-
-\missingfigure{The entire grammar}
-
-[[comment:The complete inference and evaluation rules are in Appendix X]]
-
-This looks nice: https://homepages.inf.ed.ac.uk/wadler/papers/mpc-2019/unraveling.pdf
-
-[[comment:Extend with builtins/primitives/wired-in types, FFI with truffle, hole?]]
-* Language implementation: Montuno
-** Introduction
-We will first create an interpreter for Montuno as specified in the assignment,
-and also because evaluation and elaboration algorithms from the literature are
-quite naturally translated to a functional-style program, which is not really
-possible in Truffle, the target implementation.
-
-[[comment:Demonstrate the 1 to 1 equivalence of funs and algos]]
-
-Also, there are plenty of pedagogic typed λ-calculus implementations in
-Haskell and other functional languages, which are often literal translations of
-such algorithms.
-
-[[comment:Structure - parse, presyntax, bi-di, syntax, eval, nametable, REPL/UI (2 paras)]]
-
-[[comment:Technologies, motivate (Gradle, Kotlin, JUnit, JLine, ANTLR) (2 paras + overview table)]]
-
-[[comment:Justify Kotlin - authors don't recommend but usable and many times shorter (citation?) (1 para)]]
-
-Kotlin seems not to be recommended by Truffle authors
-(https://github.com/oracle/graal/issues/1228), but there are several languages
-implemented in Kotlin, which suggests there are no severe problems.
-
-** Parser
-[[comment:Quick look, not the important part. Concerns - associativity, position tracking, error recovery (3 paras)]]
-
-ANTLR is the parser to use in JVM. Several ways to consume: listener, visitor -
-I've used AST transformation which is the most compact and most familiar to
-other DTLC implementations which are usually in functional languages.
-(listener - enter/exit function calls, visitor is similar, toAst uses recursive
-calls)
+[[todo:Putting this all together, we get...]]
 
 #+begin_src antlr
   FILE
@@ -521,11 +498,85 @@ calls)
   // pragma, command discussed in text
 #+end_src
 
+[[todo:The complete inference and evaluation rules are in Appendix X]]
+
+This looks nice: https://homepages.inf.ed.ac.uk/wadler/papers/mpc-2019/unraveling.pdf
+
+[[todo:Extend with builtins/primitives/wired-in types, FFI with truffle, hole?]]
+* Language implementation: Montuno
+  :PROPERTIES:
+  :CUSTOM_ID: interpreter
+  :END:
+** Introduction
+We will first create an interpreter for Montuno as specified in the assignment,
+and also because evaluation and elaboration algorithms from the literature are
+quite naturally translated to a functional-style program, which is not really
+possible in Truffle, the target implementation, where annotated classes are the
+main building block.
+
+The Truffle implementation, which we will see in the following chapters, has a
+much higher conceptual overhead as we will need to care about low-level
+implementation details, e.g. implementing the actual function calls. In this
+interpreter, though, we will simply use the features of our host language.
+
+We will use Kotlin as our language of choice, as it is a middle ground between
+plain Java and functional JVM-based languages like Scala or Clojure. While the
+main target language of Truffle is Java, Kotlin also supports class and object
+annotations on which the Truffle DSL is based [fn:1]. Functional style, on the other
+hand, makes our implementation of the algorithms simpler and more
+concise [fn:6].
+
+The choice of the platform (JVM) and the language (Kotlin) also clarifies the
+choice of supporting libraries. In general, we are focused on the algorithmic
+part of the implementation, and not on speed or conciseness, which means that we
+can simplify our choices by using the most widely used libraries:
+- Gradle as the build system,
+- JUnit as the testing framework,
+- ANTLR as the parser generator,
+- JLine as the command-line interface library.
+
+Truffle authors recommend against using many external libraries in the
+internals of the interpreter, as the techniques the libraries use may not
+work well with Truffle. This means that we need to design our own supporting
+data structures based on the primitive structures provided directly by Java.
+
+The overall program flow of our interpreter will not be unusual for
+interpreters:
+- receive some input from the user, either from a file, or from an interactive
+  prompt;
+- parse the textual content into an intermediate representation;
+- if we are in batch mode, sequentially process the top-level statements,
+  accumulating the entries processed so far into a global table of names. Given
+  a top-level definition containing a type and a term, we will:
+  - /check/ that the type provided has the kind ⋆
+  - /infer/ the type of the term
+  - /check/ whether the provided and inferred types can be unified
+  - /simplify/ both the type and term, and store them into the global name-table.
+- if we are in interactive mode, normalize the expression given and print it
+  out;
+- if we encounter an ~elaborate~ or ~normalize~ command, print out the full or
+  normalized form of the expression.
+
+#+label: main-sigs
+#+caption: Simplified signatures of the principal functions
+#+begin_src kotlin
+fun infer(pre: PreTerm): Pair<Term, Val>
+fun check(pre: PreTerm, wanted: Val): Term
+fun eval(term: Term): Val
+fun quote(value: Val): Term
+#+end_src
+
+Throughout this process, we will evaluate and quote ~Terms~ from and into
+~Values~. The signatures of the most important functions are mentioned in Listing
+ref:main-sigs. These are the main parts of our interpreter--and the main
+component of evaluation is function application, which is what we will focus on
+first.
+
 ** Representing functions
 The main requirement for a λ calculus runtime system is fast function
 evaluation, which is where we will start.
 
-[[comment:Three constructs - lam, app, var (1 para)]]
+[[todo:Three constructs - lam, app, var (1 para)]]
 
 A closure consists of an unapplied function, and an environment that /closes over/
 the free variables used in the function.
@@ -540,28 +591,28 @@ this is not possible in for us, where function calls need to be nodes in the
 program graph and therefore objects, as we will see in Chapter [[ref:truffle]], so
 we will represent closures using explicit closures in the pure interpreter as well.
 
-[[comment:Cite Kovacs benchmarks where HOAS on GHC wins]]
+[[todo:Cite Kovacs benchmarks where HOAS on GHC wins]]
 
-[[comment:HOAS vs Closure code example]]
+[[todo:HOAS vs Closure code example]]
 
-[[comment:Single versus multi-argument (1 para)]]
+[[todo:Single versus multi-argument (1 para)]]
 
-[[comment:Resulting data structure (TLam, VLam, VCl) (1 figure)]]
+[[todo:Resulting data structure (TLam, VLam, VCl) (1 figure)]]
 
 ** Representing environments and variables
 The way we define functions leads us to environments (Γ), which is a context
 where we will look for variables.
 
-[[comment:Named versus nameless representation (2 paras, example)]]
+[[todo:Named versus nameless representation (2 paras, example)]]
 
-As we saw in [[comment:Where's WHNF? :inline]], evaluation in λ-calculus is defined
+As we saw in [[inline:Where's WHNF?]], evaluation in λ-calculus is defined
 in terms of α- and β-reductions. Verifying expression equivalence also uses
 variable renaming. However, traversing the entire expression in the course of
 function application and applying substitution is not efficient and there are
 several alternative ways.
 
-[[comment:Find de Bruijn motivating example]]
-[[comment:Find side-by-side dB examples]]
+[[todo:Find de Bruijn motivating example]]
+[[todo:Find side-by-side dB examples]]
 
 All three of them mentioned here work by replacing variable names with their
 indices in a variable stack, informally /counting the lambdas/.
@@ -576,34 +627,114 @@ a stable context, levels without a stable context.
 
 We use both, indices when quoting evaluated values.
 
-[[comment:Environments - arrays, cons lists, stack, mutable/immutable (2 paras)]]
+[[todo:Environments - arrays, cons lists, stack, mutable/immutable (2 paras)]]
 
-[[comment:Snippet of code - binding a variable, looking up a variable (1 figure)]]
+[[todo:Snippet of code - binding a variable, looking up a variable (1 figure)]]
 
 ** Evaluation algorithm
-[[comment:Equals (W)(H)NF, Single-variable functions - trivial transcription (1 para)]]
+[[todo:Equals (W) (H) NF, Single-variable functions - trivial transcription (1 para)]]
 
-[[comment:What are our neutrals (1 para?)]]
+[[todo:What are our neutrals (1 para?)]]
 
-[[comment:Eval Quote, very briefly (2 paras)]]
+[[todo:Eval Quote, very briefly (2 paras)]]
 
-[[comment:Extensions (Pi, Sigma, Eta, ...) (2 paras)]]
+[[todo:Extensions (Pi, Sigma, Eta) (2 paras)]]
+
+** Parser
+Lexical and syntactic analysis is not the focus of this work, so simply I chose
+the most prevalent parsing library in Java-based languages which seems to be
+ANTLR [fn:2]. It comes with a large library of languages and protocols from
+which to take inspiration [fn:3], so creating a parser for our language was not
+hard, despite me only having prior experience with parser combinator libraries
+and not parser generators.
+
+ANTLR provides has two recommended ways of consuming the result of parsing using
+classical design patterns: a listener and a visitor. I have used neither as they
+were needlessly verbose or limiting [fn:4].
+
+I have instead implemented a custom recursive-descent AST transformation that
+converts ~ParseContexts~ created by ANTLR into our ~Presyntax~ data type that we can
+see in Listing ref:presyntax. This is actually a slightly simplified version
+compared to the original as I have omitted the portion that tracks which
+position of the input file corresponds to each subtree, which is later used for
+type error reporting.
+
+#+label: presyntax
+#+caption: The ~Presyntax~ data type
+#+begin_src kotlin
+  sealed class TopLevel
+  data class RDecl(val n: String, val type: PreTerm) : TopLevel()
+  data class RDefn(val n: String, val type: PreTerm?, val term: PreTerm) : TopLevel()
+  data class RTerm(val cmd: Command, val term: PreTerm) : TopLevel()
+
+  sealed class PreTerm
+
+  data class RVar(val n: String) : PreTerm()
+  data class RNat(val n: Int) : PreTerm()
+  object RU : PreTerm()
+  object RHole : PreTerm()
+
+  data class RApp(
+      val icit: Icit, val rator: PreTerm, val rand: PreTerm
+  ) : PreTerm()
+  data class RLam(
+      val name: String, val icit: Icit, val body: PreTerm
+  ) : PreTerm()
+  data class RFun(
+      val domain: PreTerm, val codomain: PreTerm
+  ) : PreTerm()
+  data class RPi(
+      val name: String, val icit: Icit, val type: PreTerm, val body: PreTerm,
+  ) : PreTerm()
+  data class RLet(
+      val name: String, val type: PreTerm, val defn: PreTerm, val body: PreTerm,
+  ) : PreTerm()
+  data class RForeign(
+      val lang: String, val eval: String, val type: PreTerm
+  ) : PreTerm()
+#+end_src
+
+The data structures are represented in a way that Kotlin
+recommends [fn:5]--using /data classes/. These are classes whose primary purpose
+is to hold data, so called Data Transfer Objects (DTOs), and that have special
+language support in Kotlin. We have a ~TopLevel~ class with three children that
+represent: definitions that assign a value to a name, optionally with a type;
+declarations (sometimes called postulates) that only assign a type to a name;
+and commands like ~%normalize~ that we will see in later sections.
+
+Their ancestor is a ~sealed class~ which tells the compiler there will only ever
+be the subclasses defined in this module. In particular, this means that in any
+pattern match on the type of a ~TopLevel~ object we only ever need to handle three
+cases.
+
+The remaining classes generally map to elements from the language syntax as
+specified in the previous section: a λ abstraction, function application, Π
+abstraction, a ~let~ local binding. The ~RFun~ class is a specialization of the ~RPi~
+class that binds an unnamed, non-dependent type argument.
+
+We will not use these classes immediately--only in Chapter ref:elaboration will
+we implement a way to convert this pre-syntax into correct-by-construction
+~Syntax~ objects which can be evaluated and quoted.
 
 ** Type checking and elaboration
-[[comment:Approach - infer, check + eval/quote used, global contexts (2 paras)]]
+   :PROPERTIES:
+   :CUSTOM_ID: elaboration
+   :END:
 
-[[comment:Metavariables and holes, sequential processing (1 para)]]
+[[todo:Approach - infer, check + eval/quote used, global contexts (2 paras)]]
 
-[[comment:How do we do unification (2 paras + 1 figure)]]
+[[todo:Metavariables and holes, sequential processing (1 para)]]
 
-[[comment:Glued values - optimistic optimization (3 paras + 1 figure)]]
+[[todo:How do we do unification (2 paras + 1 figure)]]
+
+[[todo:Glued values - optimistic optimization (3 paras + 1 figure)]]
 
 ** User interface
 REPL
 
-[[comment:This is our UI (plus batch CLI launcher), what does JLine require? (2 paras)]]
+[[todo:This is our UI (plus batch CLI launcher), what does JLine require (2 paras)]]
 
-[[comment:State keeping - load, reload + querying the global state (1 para)]]
+[[todo:State keeping - load, reload + querying the global state (1 para)]]
 
 commands:
 - ~:l~ create a NameTable
@@ -616,21 +747,24 @@ commands:
 \missingfigure{Example CLI session}
 
 ** Results
-[[comment:Quick look at everything that this toy can do (2-3 examples?)]]
+[[todo:Quick look at everything that this toy can do (2-3 examples?)]]
 
 Evaluation, simplification, elaboration with holes, unification using eqRefl
 
 Error reporting
 
 * Designing elaboration and evaluation benchmarks
+  :PROPERTIES:
+  :CUSTOM_ID: bench
+  :END:
 ** Tasks
 equivalent programs for a few dependently-typed languages
 
-[[comment: Agda, Idris + cooltt, smalltt, redtt, cubicaltt, ... (2 paras)]]
+[[todo: Agda, Idris + cooltt, smalltt, redtt, cubicaltt, ... (2 paras)]]
 
-[[comment:Also mainstream functional languages - Clojure, GHC, ... (1 para)]]
+[[todo:Also mainstream functional languages - Clojure, GHC, ... (1 para)]]
 
-[[comment:We're interested in asymptotics - effects of JIT, not constant factors (1 para)]]
+[[todo:We're interested in asymptotics - effects of JIT, not constant factors (1 para)]]
 
 - evaluation, normal form, simplification
 - elaboration, filling holes
@@ -663,18 +797,18 @@ memory profile from stderr output
   - evaluation speed (compute-heavy test)
 
 ** Results: a starting point
-[[comment:Results]]
+[[todo:Results]]
 
-* Adding JIT compilation to Montuno: $Montuno_{Truffle}$
+* Adding JIT compilation to Montuno: MontunoTruffle
   :PROPERTIES:
   :CUSTOM_ID: truffle
   :END:
 ** Just-in-time compilation
-[[comment:Mention the general JIT theory - classical, tracing, rewriting]]
+[[todo:Mention the general JIT theory - classical, tracing, rewriting]]
 
-[[comment:Mention partial evaluation, Futamora projections (2 paras + 3 items + example)]]
+[[todo:Mention partial evaluation, Futamora projections (2 paras + 3 items + example)]]
 
-[[comment:Where is the partial evaluation in Graal (1 para)]]
+[[todo:Where is the partial evaluation in Graal (1 para)]]
 
 Graal compiles "hot code" to machine code by partially evaluating it. Partial
 evaluation is TODO (Futamora). In particular, in dynamic languages it helps to
@@ -682,11 +816,11 @@ eliminate dynamic dispatch / megamorphic call overhead.
 
 ** GraalVM and the Truffle Framework
 *** GraalVM
-[[comment:Re-read, simplify (what is it, why we want to use it, what specifically do we use?)]]
+[[todo:Re-read, simplify (what is it, why we want to use it, what specifically do we use?)]]
 
 *GraalVM* is an Oracle research project that was originally created as a
-replacement for the HotSpot virtual machine written in C++. [[comment:Cite Oracle
-:inline]] It has since expanded to include other features novel to the Java world.
+replacement for the HotSpot virtual machine written in C++. [[inline:Cite Oracle]]
+It has since expanded to include other features novel to the Java world.
 
 #+LABEL: graal
 #+ATTR_LaTeX: :placement [!htb]
@@ -701,12 +835,12 @@ uses the JVM Compiler Interface which allows the main JVM to offload compilation
 to external Java code. It can also use C1 (the old JVM JIT) which implies tiered
 compilation (...disabled with ~-XX:-TieredCompilation~). When using the GraalVM,
 the only JVMCI-compatible compiler is Graal, so automatically
-used. [[comment:Simplify language :inline]]
+used. [[inline:Simplify language]]
 
 *SubstrateVM* is an alternative virtual machine that uses aggressive ahead-of-time
-compilation [[comment:Cite SubstrateVM :inline]] of Java bytecode into a standalone
+compilation [[inline:Cite SubstrateVM]] of Java bytecode into a standalone
 executables, a so-called /Native Image. The project aims to guarantee fast
-start-up times, relatively small binary files, and low memory footprint---as
+start-up times, relatively small binary files, and low memory footprint--as
 opposed to slow start-up times due to JIT compilation and large memory usage
 common to JVM-based languages.
 
@@ -722,9 +856,9 @@ gain:
 - the ability to gradually add optimizations like program graph rewriting,
   node specializations, or inline instruction caching
 
-[[comment:Images from file:///home/inuits/Downloads/graalvm-190721074229.pdf]]
+[[todo:Images from file:///home/inuits/Downloads/graalvm-190721074229.pdf]]
 
-[[comment:images from https://www.slideshare.net/jexp/polyglot-applications-with-graalvm]] 
+[[todo:images from https://www.slideshare.net/jexp/polyglot-applications-with-graalvm]]
 
 GraalVM is also intended to allow creating /polyglot applications/ easily,
 applications that have their parts written in different languages. It is
@@ -766,25 +900,26 @@ typecasts, ... We can also hand-tune the code, adding our hand-generated
 bytecode into the mix.
 
 *** Truffle
-[[comment:Introduce Truffle specifically, polyglot, graph (de)optimization (3 paras + code sample)]]
+[[todo:Introduce Truffle specifically, polyglot, graph (de)optimization (3 paras + code sample)]]
 
-[[comment:It really is fast enough - FastR, Python benchmarks (2 paras + graph)]]
+[[todo:It really is fast enough - FastR, Python benchmarks (2 paras + graph)]]
 
 ** Features common to Truffle languages
 *** General features
-[[comment:What does a typical Truffle language look like? (1 para)]]
+[[todo:What does a typical Truffle language look like? (1 para)]]
 
-[[comment:"We can look at a piece of Ruby code as a graph" (1 para + graph)]]
+[[todo:"We can look at a piece of Ruby code as a graph" (1 para + graph)]]
 
 Another visualization option: Seafoam
 
 #+COMMENT: https://norswap.com/truffle-tutorial/ (done)
 
-[[comment:Introduce the canonical example - Literal and addition, trivial execute() (1 para, 1 figure)]]
+[[todo:Introduce the canonical example - Literal and addition, trivial execute
+fn (1 para, 1 figure)]]
 
 *** Type specialization
 
-[[comment:Type system]]
+[[todo:Type system]]
 
 Basic case is type specialization - when an addition node only encounters
 integers, there is no need to generate machine code for floats, doubles, or
@@ -871,7 +1006,7 @@ IGV receives JIT compilation output - shows the Graal graphs produced during
 optimization. Compilation is only triggered after a certain threshold of calls,
 so we need to run a call target more than just once.
 
-comment:Graal-graph
+todo:Graal-graph
 
 Another option: a CountNode (public int counter; execute = counter++). Green ==
 state, grey is floating (not flow dependent), blue lines represent data flow
@@ -893,19 +1028,19 @@ MaterializedFrame - an explicit Java Object on the heap, created from a
 VirtualFrame by calling ~frame.materialize()~
 
 *** Dispatch
-[[comment:dispatchNode, frames, argument passing, ExecutableNode, RootNode, CallTarget]]
+[[todo:dispatchNode, frames, argument passing, ExecutableNode, RootNode, CallTarget]]
 
 - RootNode - can be made into a CallTarget. is at the root of a graph, "starting
   point of a function/program/builtin", "callable AST"
 
 *** Caching
-[[comment:@Cached()]]
+[[todo:@Cached()]]
 
 *** Polyglot
-[[comment:ValueTypes, InteropLibrary]]
+[[todo:ValueTypes, InteropLibrary]]
 
 *** Structure
-[[comment:Common components - Launcher, LanguageRegistration, Nodes, Values, REPL (5 items)]]
+[[todo:Common components - Launcher, LanguageRegistration, Nodes, Values, REPL (5 items)]]
 
 Engine, Context, TruffleLanguage, Instrument
 
@@ -937,7 +1072,7 @@ interpreter does not have to implement thunks/delayed evaluation.
 Simple node system compared to other implementations:
 - types are double and Closure (trivial wrapper around a RootCallTarget and a MaterializedFrame)
 - VarExpr searches for a variable in all nested frames by string name
-- Data objects are a HashMap 
+- Data objects are a HashMap
 - ClosureNode materializes the entire current frame
 - AppNode executes a closure, and calls the resulting function with a { frame, arg }
 - CallRootNode copies its single argument to the frame
@@ -994,9 +1129,12 @@ Generating function application looks like:
 A very late addition to this list, this is a project that originally rejected
 Truffle (and dependent types in general, if I recall correctly) and used Haskell
 instead. However, the project Luna was renamed to Enso, and rebuilt from scratch
-using Truffle and Scala not long before my thesis deadline. 
+using Truffle and Scala not long before my thesis deadline.
 
-* Language implementation: Montuno_{Truffle}
+* Language implementation: MontunoTruffle
+  :PROPERTIES:
+  :CUSTOM_ID: jit-interpreter
+  :END:
 ** Introduction
 Truffle is not primarily aimed at statically-typed languages or functional
 languages. Its most easily accessible benefits lie in speculative optimization
@@ -1010,11 +1148,11 @@ e.g. GHC and runtime optimizations done by Graal. An example would be
 unfolding/inlining, where the compiler needs to make a single decision of
 whether to replace a call to a function with its definition -- a decision that
 depends on the size of the definition, whether they are in the same module, and
-other heuristics (comment:https://www.microsoft.com/en-us/research/wp-content/uploads/2002/07/inline.pdf). A Truffle interpreter would be able to postpone the decision
+other heuristics (inline:https://www.microsoft.com/en-us/research/wp-content/uploads/2002/07/inline.pdf). A Truffle interpreter would be able to postpone the decision
 until execution time, when the definition could be inlined if the call happened
 enough times.
 
-[[comment:mental model = graph through which values flow, values may contain graphs]]
+[[todo:mental model = graph through which values flow, values may contain graphs]]
 
 Its execution model is a tree of nodes where each node has a single operation
 ~execute~ with multiple specializations. The elaboration/evaluation algorithm from
@@ -1031,7 +1169,7 @@ a value-level Term, and a CallTarget that produces its value with regard to the
 current environment. We can also embed the bidirectional elaboration algorithm
 itself, as a mixture of infer/check nodes.
 
-[[comment:Move this elsewhere ↓]]
+[[todo:Move this elsewhere ↓]]
 
 There are several concerns here:
 - algorithmic improvement is asymptotic -- the better algorithm, the better we
@@ -1045,7 +1183,7 @@ The representation is also quite different from the functional interpreter where
 we've used functions and data classes, as in Truffle, all values and operations
 need to be classes.
 
-[[comment:Restructure, clarify]]
+[[todo:Restructure, clarify]]
 Specific changes:
 - everything is a class, rewrite functions/operations as classes/nodes
 - annotations everywhere
@@ -1053,12 +1191,19 @@ Specific changes:
 - lazy values need to be different
 - ???
 
+** Parser
+ParsingRequest/InlineParsingRequest
+
+[[todo: need to perform elaboration inside a programRootNode (not while parsing)]]
+
+[[todo:stmt;stmt;expr -> return a value]]
+
 ** Representing functions
 As with the previous interpreter, we will start with function calls.
 
-[[comment:dispatch, invoke, call Nodes, argument schema (copying), ?]]
+[[todo:dispatch, invoke, call Nodes, argument schema (copying), ?]]
 
-[[comment:eta is TailCallException (2 para + example)]]
+[[todo:eta is TailCallException (2 para + example)]]
 
 Passing arguments - the technical problem of copying arguments to a new stack
 frame in the course of calling a function.
@@ -1082,19 +1227,28 @@ Several parts of creating an AST for function calls:
 - dispatch, invoke, call nodes???
 
 ** Representing environments and variables
-[[comment:We need to use arrays, Collections are not recommended]]
+[[todo:We need to use arrays, Collections are not recommended]]
 
-[[comment:Frames and frame descriptors for local/global variable]]
+[[todo:Frames and frame descriptors for local/global variable]]
 
-[[comment:References, indices, uninitialized references]]
+[[todo:References, indices, uninitialized references]]
 
 ** Evaluation order
-[[comment:We need to defer computations as late as possible - unused values that
+[[todo:We need to defer computations as late as possible - unused values that
 will be eliminated (1 para)]]
 
-[[comment:CBPV concepts, thunks with CallTargets (3 paras, example)]]
+[[todo:CBPV concepts, thunks with CallTargets (3 paras, example)]]
 
 ** Calling convention
+[[todo:the need for the distinction - in languages with currying]]
+
+[[todo:the eval/apply paper is a recipe for a stack-based implementation of
+currying and helpful in our case when we need explicitly manage our stack via
+Frames as opposed to the interpreter where we relied on the host language for
+this functionality]]
+
+cite:marlow04_fast_curry
+
 push-enter - arguments are pushed onto the stack, the function then takes as
 many as it requires
 
@@ -1102,58 +1256,120 @@ eval-apply - the caller sees the arity of the function and then decides whether
 it is over-applied (evaluates the function and creates a continuation), appllied
 exactly (EVAL), or under-applied (creates a PAP, a closure-like value)
 
-[[comment:exactly describe the rules from eval-apply paper KNOWNCALL, EXACT, CALLK, PAP]]
+[[todo:exactly describe the rules from eval-apply paper KNOWNCALL, EXACT, CALLK, PAP]]
 
-[[comment:known application ( = known arity), unknown function]]
+[[todo:known application ( = known arity), unknown function]]
 
 ** Value types
-[[comment:Data classes with call targets]]
+[[todo:Data classes with call targets]]
 
-[[comment:...depends on what will work]]
+[[todo:...depends on what will work]]
 
 ** Polyglot
-[[comment:...depends on whether I'll do polyglot or not]]
+[[todo:...depends on whether I'll do polyglot or not]]
 
 ** Implementation
-[[comment:How to connect this together?]]
+[[todo:How to connect this together?]]
 
 evaluation phases - translate to Code, run typecheck, run eval vs glued, ???
 
-[[comment:How to edit the REPL]]
+[[todo:How to edit the REPL]]
 
-[[comment:Language registration in mx/gu]]
+[[todo:Language registration in mx/gu]]
 
 ** Results
-[[comment:Same evaluation as in previous section]]
+[[todo:Same evaluation as in previous section]]
 
-[[comment:how fast are we now? Are there any space/time leaks?]]
+[[todo:how fast are we now? Are there any space/time leaks?]]
 
-[[comment:show graphs: id, const, const id; optimized graphs]]
+[[todo:show graphs: id, const, const id; optimized graphs]]
 
-* Optimizations: Making $Montuno_{Truffle}$ fast
+* Optimizations: Making MontunoTruffle fast
+   :PROPERTIES:
+   :CUSTOM_ID: optimizations
+   :END:
 ** Possible performance problem sources
-[[comment:Reiterate JGross again]]
+[[todo:Reiterate JGross again]]
 
-[[comment:how to find out whether X is relevant to us or not? How to prove the effect of JIT?]]
+[[todo:how to find out whether X is relevant to us or not? How to prove the effect of JIT?]]
 
-[[comment:Show asymptotes - binders, terms, sizes]]
-[[comment:Show the graphs - large values, many iterations (warmup), sharing]]
+[[todo:Show asymptotes - binders, terms, sizes]]
+[[todo:Show the graphs - large values, many iterations (warmup), sharing]]
 ** Possible optimizations
-[[comment:What does Enso do?]]
-[[comment:What can we do?]]
+[[todo:What does Enso do?]]
+[[todo:What can we do?]]
 
-[[comment:Show before and afters for each optimization]]
+[[todo:Show before and afters for each optimization]]
 
 ** Optimizing function dispatch
-[[comment:lambda merging, eta expansion]]
+[[todo:lambda merging, eta expansion]]
 
 ** Caching, sharing
-[[comment:sharing common values, multiple references to the same object]]
+[[todo:sharing common values, multiple references to the same object]]
 
 ** Common FP optimizations
-[[comment:floating, inlining by hand]]
+[[todo:floating, inlining by hand]]
 
 ** Specializations
+*** Truffle recommended optimizations
+The optimization workflow recommended by the Truffle developers is as follows:
+1. Run with a profiler to sample the application and identify responsible
+   compilation units. Use a sampling delay (--cpusampler.Delay=MILLISECONDS) to
+   only profile after warmup. See the Profiling guide.
+2. Understand what is being compiled and look for deoptimizations. Methods that
+   are listed to run mostly in the interpreter likely have a problem with
+   deoptimization.
+3. Simplify the code as much as possible where it still shows the performance
+   problem.
+4. Enable performance warnings and list boundary calls.
+5. Dump the Graal graph of the responsible compilation unit and look at the
+   phase After TruffleTier.
+   1. Look at the Graal graphs at the phases After TruffleTier and After
+      PartialEscape and check if it is what you would expect. If there are nodes
+      there that you don't want to be there, think about how to guard against
+      including them. If there are more complex nodes there than you want, think
+      about how to add specialisations that generate simpler code. If there are
+      nodes you think should be there in a benchmark that are not, think about
+      how to make values dynamic so they are not optimized away.
+6. Search for Invoke nodes in the Graal IR. Invoke nodes that are not
+   representing guest language calls should be specialized away. This may not be
+   always possible, e.g., if the method does I/O.
+7. Search for control flow splits (red lines) and investigate whether they
+   result from control flow caused by the guest application or are just
+   artifacts from the language implementation. The latter should be avoided if
+   possible.
+8. Search for indirections in linear code (Load and LoadIndexed) and try to
+   minimize the code. The less code that is on the hot-path the better.
+
+---
+[[todo:More on splitting!]]
+
+- ~--engine.TraceCompilation~ prints a line for each method compilation
+- ~--engine.TraceCompilationDetail~ prints a line for compilation queuing, start, and finish
+- ~--engine.TraceCompilationAST~ prints the entire compiled AST
+- ~--engine.TraceInlining~ prints inlining decision details
+- ~--engine.TraceSplitting~ prints splitting decisions
+- ~--engine.TraceTransferToInterpreter~ prints a stack trace for each explicit invalidation
+- ~--engine.TracePerformanceWarnings=(call|instanceof|store|all)~
+  - ~call~ prints when PE cannot inline a call
+  - ~instanceof~ prints when PE cannot resolve virtual ~instanceof~ to a specific type
+  - ~store~ prints when PE store location argument is not compilation final
+- ~--engine.CompilationStatistics~ prints total compilation statistics
+- ~--engine.CompilationStatisticDetails~ prints compilation histograms for each node
+- ~--engine.TraceMethodExpansion=truffleTier~ prints a tree of all expanded Java methods
+- ~--engine.TraceNodeExpansion=truffleTier~ prints a tree of all expanded Nodes
+- ~--engine.MethodExpansionStatistics=truffleTier~ prints total Graal nodes produced by a method
+- ~--engine.NodeExpansionStatistics=truffleTier~ also includes Graal specializations
+- ~--engine.InstrumentBoundaries~ prints info about boundaries encountered (should be minimized)
+- ~--engine.InstrumentBranches~ prints info about branch profiles
+- ~--engine.SpecializationStatistics~ prints details about specializations performed
+- ~--vm.XX:+TraceDeoptimization~ prints all deoptimizations
+- ~--vm.XX:+TraceDeoptimizationDetails~ prints all deoptimizations with details
+
+It is also possible to control what is being compiled, add details to IGV graphs
+dumped, and print the exact assembly produced: see
+https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md.
+
 *** How to debug specializations
 *Specialization histogram:* If compiled with
 ~-Atruffle.dsl.GenerateSpecializationStatistics=true~ and executed with
@@ -1169,7 +1385,7 @@ maybe include the table?
 Truffle will only execute the last, most generic specialization, and will
 ignore all fast path specializations.
 ** (Profiling)
-[[comment:then, what tools to use to find the problems]]
+[[todo:then, what tools to use to find the problems]]
 
 *** Ideal Graph VIsualizer
 A graphical program that serves to visualize the process of Truffle graph
@@ -1194,10 +1410,13 @@ can create a so-called flamegraph with the results of the sampling.
 #+COMMENT: https://github.com/eregon/FlameGraph/blob/graalvm/stackcollapse-graalvm.rb
 
 * Evaluation (and next work): Is $Montuno_{Truffle}$ fast enough?
+  :PROPERTIES:
+  :CUSTOM_ID: evaluation
+  :END:
 ** Evaluation
-[[comment:Total evaluations, performance matrix]]
+[[todo:Total evaluations, performance matrix]]
 
-[[comment:Compare asymptotics now, with Agda, ...]]
+[[todo:Compare asymptotics now, with Agda, ...]]
 ** Next work
 FFI, tooling
 
@@ -1205,7 +1424,7 @@ More type extensions OR totality (as a proof assistent)
 
 Finite types, universes, no type in type, HoTT, CoC
 
-[[comment:Is this useful at all? What's the benefit for the world? (in evaluation)]]
+[[todo:Is this useful at all? What's the benefit for the world? (in evaluation)]]
 
 next work: LF, techniques, extensions, real language
 
@@ -1246,3 +1465,24 @@ bibliography:bibliography.bib
 ...
 * Grammar
 #+include: "../montuno/src/main/antlr/montuno/Montuno.g4" src antlr -n
+
+* Footnotes
+
+[fn:8] FastR is between 50 to 85x faster than GNU R, depending on the source. cite:fumero17_jit_gpu
+
+[fn:7] Unfortunately, there are no officially published benchmarks, but a number
+of articles claim that TruffleRuby is 10-30x faster than the official C
+implementation. cite:shopify2020
+
+[fn:6]Kotlin authors claim 40% reduction in the number of lines of code, (from
+https://kotlinlang.org/docs/faq.html)
+[fn:5]https://kotlinlang.org/docs/idioms.html
+[fn:4] In particular, ANTLR-provided visitors require that all return values
+share a common super-class. Listeners don't allow return values and would
+require explicit parse tree manipulation.
+[fn:3]https://github.com/antlr/grammars-v4/
+[fn:2]https://www.antlr.org/
+[fn:1]Even though Kotlin seems not to be recommended by Truffle authors, there
+are several languages implemented in it, which suggests there are no severe
+problems.  "[...] and Kotlin might use abstractions that don't properly
+partially evaluate." (from https://github.com/oracle/graal/issues/1228)
