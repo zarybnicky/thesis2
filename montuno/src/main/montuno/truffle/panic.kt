@@ -1,0 +1,18 @@
+package montuno.truffle
+
+import com.oracle.truffle.api.CompilerDirectives
+
+internal class Panic(message: String? = null) : RuntimeException(message) {
+    internal constructor(message: String? = null, cause: Throwable?): this(message) {
+        initCause(cause)
+    }
+    companion object { const val serialVersionUID : Long = 1L }
+}
+fun panic(msg: String, base: Throwable?): Nothing {
+    CompilerDirectives.transferToInterpreter()
+    throw Panic(msg, base)
+}
+val todo: Nothing get() {
+    CompilerDirectives.transferToInterpreter()
+    throw TODO()
+}

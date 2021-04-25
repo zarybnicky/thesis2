@@ -15,7 +15,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop
 import kotlin.jvm.Throws
 
 @TypeSystem(
-    ValCl::class,
     Val::class,
     Glued::class,
     GluedVal::class,

@@ -1,6 +1,6 @@
 package montuno
 
-import montuno.truffle.MontunoLanguage
+import montuno.truffle.Language
 import org.graalvm.launcher.AbstractLanguageLauncher
 import org.graalvm.options.OptionCategory
 import org.graalvm.polyglot.Context
@@ -15,8 +15,6 @@ import java.util.ArrayList
 import java.util.logging.Level
 import java.util.logging.Logger
 import kotlin.system.exitProcess
-import montuno.interpreter.simple.nfMain as nfMainSimple
-import montuno.interpreter.meta.nfMain as nfMainMeta
 
 const val defn1 = """
     id : {A} -> A -> A = \x. x.
@@ -72,7 +70,7 @@ class Launcher : AbstractLanguageLauncher() {
     private var file: File? = null
 
     override fun getDefaultLanguages(): Array<String> = arrayOf(languageId) // "js","r","ruby"};
-    override fun getLanguageId() = MontunoLanguage.LANGUAGE_ID
+    override fun getLanguageId() = Language.LANGUAGE_ID
 
     override fun launch(contextBuilder: Context.Builder) {
         contextBuilder.arguments(languageId, programArgs)

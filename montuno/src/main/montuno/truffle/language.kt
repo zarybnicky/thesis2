@@ -12,17 +12,17 @@ import java.nio.charset.StandardCharsets
 
 
 @TruffleLanguage.Registration(
-        id = MontunoLanguage.LANGUAGE_ID,
+        id = Language.LANGUAGE_ID,
         name = "Montuno",
         version = "0.1",
         interactive = true,
         internal = false,
-        defaultMimeType = MontunoLanguage.MIME_TYPE,
-        characterMimeTypes = [MontunoLanguage.MIME_TYPE],
+        defaultMimeType = Language.MIME_TYPE,
+        characterMimeTypes = [Language.MIME_TYPE],
         contextPolicy = TruffleLanguage.ContextPolicy.SHARED,
         fileTypeDetectors = [MontunoDetector::class]
 )
-class MontunoLanguage : TruffleLanguage<MontunoContext>() {
+class Language : TruffleLanguage<MontunoContext>() {
     override fun createContext(env: Env): MontunoContext = MontunoContext(this)
     override fun isObjectOfLanguage(obj: Any): Boolean = false
     override fun parse(request: ParsingRequest): CallTarget {
@@ -33,13 +33,13 @@ class MontunoLanguage : TruffleLanguage<MontunoContext>() {
     }
 
     companion object {
-        val currentContext: MontunoContext get() = getCurrentContext(MontunoLanguage::class.java)
+        val currentContext: MontunoContext get() = getCurrentContext(Language::class.java)
         const val LANGUAGE_ID = "montuno"
         const val MIME_TYPE = "application/x-montuno"
     }
 }
 
-class MontunoContext(val language: MontunoLanguage) {
+class MontunoContext(val language: Language) {
     var globalFrame: MaterializedFrame
     init {
         val frameDescriptor = FrameDescriptor()
@@ -54,11 +54,11 @@ class MontunoDetector : TruffleFile.FileTypeDetector {
     override fun findEncoding(@Suppress("UNUSED_PARAMETER") file: TruffleFile): Charset = StandardCharsets.UTF_8
     override fun findMimeType(file: TruffleFile): String? {
         val name = file.name ?: return null
-        if (name.endsWith(".mn")) return MontunoLanguage.MIME_TYPE
+        if (name.endsWith(".mn")) return Language.MIME_TYPE
         try {
             file.newBufferedReader(StandardCharsets.UTF_8).use { fileContent ->
                 if ((fileContent.readLine() ?: "").matches("^#!/usr/bin/env montuno".toRegex()))
-                    return MontunoLanguage.MIME_TYPE
+                    return Language.MIME_TYPE
             }
         } catch (e: IOException) { // ok
         } catch (e: SecurityException) { // ok
@@ -79,7 +79,7 @@ data class Add(var lhs: Exp<Int>, var rhs: Exp<Int>) : Exp<Int>() {
     override fun apply(frame: VirtualFrame): Int = lhs.apply(frame) + rhs.apply(frame)
 }
 
-class TestRootNode(language: MontunoLanguage) : RootNode(language) {
+class TestRootNode(language: Language) : RootNode(language) {
     private var fn = SomeFun(language)
     private var ct: DirectCallNode? = null
     override fun execute(frame: VirtualFrame): Int {
@@ -99,7 +99,7 @@ class TestRootNode(language: MontunoLanguage) : RootNode(language) {
     }
 }
 
-class SomeFun(language: MontunoLanguage) : RootNode(language) {
+class SomeFun(language: Language) : RootNode(language) {
     private var repeating = DummyLoop()
     private var loop: LoopNode = Truffle.getRuntime().createLoopNode(repeating)
     override fun execute(frame: VirtualFrame): Int {

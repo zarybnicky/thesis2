@@ -101,7 +101,7 @@ abstract class TVar(private val slot: FrameSlot, loc: Loc? = null) : Term(loc) {
     override fun isAdoptable() = false
 }
 
-fun toExecutableNode(p: TopLevel, l: MontunoLanguage): Term = when (p) {
+fun toExecutableNode(p: TopLevel, l: Language): Term = when (p) {
     is RDecl -> TODO("RDecl")
     is RDefn -> TODO("RDefn")
     is RTerm -> when (p.cmd) {
@@ -114,7 +114,7 @@ fun toExecutableNode(p: TopLevel, l: MontunoLanguage): Term = when (p) {
 
 // LocalContext = language, nameTable, frameDescriptor
 data class LocalContext(
-    val l: MontunoLanguage,
+    val l: Language,
     val ntbl: NameTable = NameTable(),
     val fd: FrameDescriptor = FrameDescriptor(),
     val fdLvl: Lvl = Lvl(0)
