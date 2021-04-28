@@ -9,10 +9,46 @@ org-wc-display
 19.4. 4000w? (Σ40p)
 22.4. 5200w
 24.4. 6700w
+25.4. 7200w (Σ56p)
+26.4. 7660w (Σ59p)
+27.4. 8800w (Σ64p)
 
 minimum: 12,500
 target: 17,500
 maximum: 30,000
+
+- cite:guallart15_overview_types - oveview
+
+- cite:mouton19_urilang - URI language, experience report
+- cite:feichtinger15_clojure - TruffleClojure
+- cite:bove08_atwork - Dependent Types at Work
+- cite:ferreira14_bidi - elaboration, bi-di
+- cite:dunfield19_bidi - full rules, polarized??
+- cite:gross14_coq_experience - Coq experience, a few reasons, comparison
+- cite:grimmer15_polyglot - Polyglot + OSM intro
+- cite:lescanne95_levels - de Bruijn levels-only, substitution algorithm
+- cite:altenkirch16_nbe - NbE for dependent types including sums, renamings!
+- cite:christiansen19_nbe_haskell - Haskell simple NbE
+- cite:eisenberg20_stitch - motivation for indices/levels + motivation for
+  dependent types (an interpreter), exact algorithm description, CSE?
+- cite:wurthinger17_partial_eval - Truffle boundaries
+- cite:wimmer17_deoptimization - deoptimization, on-stack replacement
+- cite:vergu19_scopes - OSM for frames/scopes, eval methodology of Truffle
+  (Krum?), JIT
+- cite:kovacs20_implicit - implicits (example, algo), rules+grammar!!!,
+  metacontext+weakening, issues!!!, telescopes, benchmarks!!!
+- cite:levy99_cbpv - thunk, forcing,
+- cite:abel17_decidability - contexts, normals, whnf, typed reduction rules (no subject reduction)
+- cite:hughes82_supercombinators - CAFs? Lazy evaluation?
+- cite:blaguszewski10_llvm - potential optimizations, LLVM impl, closures
+- cite:reid98_resumable_holes - concurrency & parallelism in GHC evaluation
+- cite:gratzer19_modal_types - Tm, NfTm, NbTm; NfVal, NeVal, Val split, NbE well-written, normals, closures
+- cite:ariola97_cbn - ...call-by-need
+- cite:kamareddine01_de_bruijn - pros&cons of de Bruijn
+- cite:kaposi19_gluing - gluing formalism + algo + definitions
+- cite:zheng17_deoptimization - benchmark modes
+- cite:schilling13_tracing_jit - ??? (related work)
+
 #+END_COMMENT
 * (front matter)                                              :ignoreheading:
 #+LANGUAGE: en
@@ -135,22 +171,22 @@ computation should lead to larger gains.
 
 #+COMMENT: Our solution: Make a quick outline of your approach, pitch your solution
 
-In this thesis, I will use the Truffle framework to evaluate how well are the
-optimizations provided by the just-in-time compiler GraalVM suitable to the
-domain of dependently-typed languages. GraalVM helps to turn slow interpreter
-code into efficient machine code by means of /partial evaluation./ [[inline:Cite
-GraalVM]] During partial evaluation, specifically the second Futamura projection
-cite:latifi19_futamura, an interpreter is specialized together with the source
-code of a program, yielding executable code. Parts of the interpreter could be
-specialized, some optimized, and some could be left off entirely. Depending on
-the quality of the specializer, this may result in performance gains of several
-orders of magnitude.
+inline:Rephrase In this thesis, I will use the Truffle framework to evaluate how
+well are the optimizations provided by the just-in-time compiler GraalVM
+suitable to the domain of dependently-typed languages. GraalVM helps to turn
+slow interpreter code into efficient machine code by means of /partial evaluation/
+cite:wurthinger13_graal. During partial evaluation, specifically the second
+Futamura projection cite:latifi19_futamura, an interpreter is specialized
+together with the source code of a program, yielding executable code. Parts of
+the interpreter could be specialized, some optimized, and some could be left off
+entirely. Depending on the quality of the specializer, this may result in
+performance gains of several orders of magnitude.
 
 Truffle makes this available to language creators, they only need to create an
 interpreter for their language. It also allows such interpreters to take
 advantage of GraalVM's /polyglot/ capabilities, and directly interoperate with
 other JVM-based languages, their code and values
-inline:CitePolyglot. Development tooling can also be derived for Truffle
+cite:sipek19_polyglot. Development tooling can also be derived for Truffle
 languages rather easily cite:stolpe19_environment. Regardless of whether Truffle
 can improve their performance, both of these features would benefit
 dependently-typed or experimental languages.
@@ -165,7 +201,7 @@ chapters ref:lambda and ref:interpreter.
 
 Starting from basic λ calculus theory and building up to the systems of the
 lambda cube, we specify the syntax and semantics of a small language that I
-refer to as Montuno (Chapter ref:lambda). We go through the principles of λ
+refer to as Montuno (Chapter~ref:lambda). We go through the principles of λ
 calculus evaluation, type checking and elaboration, implement an interpreter for
 Montuno in a functional style (Chapter ref:interpreter), and design a set of
 benchmarks to evaluate the language's performance (Chapter ref:bench).  In the
@@ -181,22 +217,24 @@ work (Chapter ref:evaluation).
   :CUSTOM_ID: lambda
   :END:
 ** Introduction
-[[todo:To reiterate, the core language of proof assistants (1 para)]]
+Proof assistants like Agda or Idris are built around a fundamental principle
+called the Curry-Howard correspondence that connects type theory and
+mathematical logic, demonstrated in Figure ref:ch-logic. In simplified terms it
+says that given a language with a self-consistent type system, writing a
+well-typed program is equivalent to proving its correctness
+cite:baez10_rosetta. It is often shown on the correspondence between natural
+deduction and the simply-typed λ calculus, as in Figure ref:ch-deduction. Proof
+assistants often have a small core language around which they are build:
+e.g. Coq is build around the Calculus of Inductive Constructions, which is a
+higher-order typed λ calculus.
 
-[[todo:More powerful than simple type systems but potentially not decidable (1 para)]]
-
-[[todo:Why not reuse Agda's core language? Goal is minimal lang + extensions (2 paras)]]
-
-ref:rosetta
-ref:curry-howard
-
-#+label: rosetta
-#+CAPTION: The correspondence between mathematical logic and type theory
+#+label: ch-logic
+#+CAPTION: Curry-Howard correspondence between mathematical logic and type theory
 #+ATTR_LaTeX: :options [!htpb]
 #+begin_figure latex
 \begin{center}
 \begin{tabular}{c|c}
-Logic & Type theory \\\hline\\[-1em]
+Mathematical logic & Type theory \\\hline\\[-1em]
 \shortstack{$⊤$ \\ true} &
 \shortstack{$()$ \\ unit type} \\[7pt]
 \shortstack{$⊥$ \\ false} &
@@ -215,12 +253,13 @@ Logic & Type theory \\\hline\\[-1em]
 \end{center}
 #+end_figure
 
-#+label: curry-howard
-#+CAPTION: Curry-Howard correspondence
+#+label: ch-deduction
+#+CAPTION: Curry-Howard correspondence between natural deduction and the simply-typed λ calculus
 #+ATTR_LaTeX: :options [!htpb]
 #+begin_figure latex
 \begin{center}
 \begin{tabular}{c|c}
+Natural deduction & λ→ calculus \\\hline\\[-1em]
 \shortstack{
 \AxiomC{}
 \UnaryInfC{$Γ₁, α, Γ₂ ⊢ α$}
@@ -253,52 +292,198 @@ Logic & Type theory \\\hline\\[-1em]
 \end{center}
 #+end_figure
 
+Compared to the type systems in languages like Java, systems like this enable
+encoding much more information in the types. We can see the usual example of a
+list with a known length in Figure ref:idris-vect: the type ~Vect~ has two
+parameters, one is the length of the list as a Peano number, the other is the type of its
+elements. Using this we can define safe indexing operators like ~head~, which
+is only applicable to non-empty lists, or ~index~, where the index must be given as a
+finite number between zero and the length of the list. List concatenation uses
+arithmetic on the type level, and it is possible to explicitly prove that
+concatenation preserves list length.
+
+#+label: idris-vect
+#+caption: Vectors with explicit length in the type, source: the Idris ~base~ library
+#+begin_src idris
+  data Vect : (len : Nat) -> (elem : Type) -> Type where
+    Nil  : Vect Z elem
+    (::) : (x : elem) -> (xs : Vect len elem) -> Vect (S len) elem
+
+  -- Definitions elided
+
+  head : Vect (S len) elem -> elem
+  index : Fin len -> Vect len elem -> elem
+
+  (++) : (xs : Vect m elem) -> (ys : Vect n elem) -> Vect (m + n) elem
+  proofConcatLength
+    : {m, n : Nat} -> {A : Type} -> (xs : Vect n A) -> (ys : Vect m A)
+      -> length (xs ++ ys) = length xs + length ys
+#+end_src
+
+On the other hand, these languages are often restricted in some ways. General
+Turing-complete languages allow non-terminating programs which leads to a
+inconsistent type system, and so proof assistants use various ways of keeping
+the logic sound and consistent. Idris, for example, is requires that functions
+are total. It uses a termination checker, checking that recursive functions use
+only structural or primitive recursion, in order to ensure that type-checking
+stays decidable.
+
+Our goal in this chapter is to specify a minimal dependently-typed core
+language, so that we can create an interpreter for is, and write some
+computationally interesting programs in it. To do that, we first need to cover
+the concepts that we will need in later parts of the thesis.
+
 ** λ calculus
-The untyped lambda calculus is a simple language consisting of just three kinds
-of forms: variables, function application, and abstraction. [...]
+We will start from the untyped lambda calculus, as it is the language that all
+following ones will build upon. Introduced in the 1930s by Alonzo Church as a
+model of computation. It is a very simple language that consists of only three
+constructions: abstraction, application, and variables, written as in Figure
+ref:untyped. [[inline:Multiple notations, different uses]]
 
-Introuced in XXXX, originally intended as a vehicle to model computatoinal
-science, since then used fo modelling XYZ
-
-Several types of notation, Church, Curry, de Bruijn, ... We will use Church.
-
-[[todo:Why λ-calculus, what is it (2 para)]]
-
-[[todo:Describe syntax (1 para)]]
-
-#+CAPTION: Untyped λ-calculus
+#+label: untyped
+#+CAPTION: λ-calculus written using two different notations
 #+ATTR_LaTeX: :options [!htpb]
 #+begin_figure latex
-\[\begin{array}{ccll}
-e & ::= & x            & \text{variable} \\
-  & |   & e_1~e_2      & \text{application} \\
-  & |   & \lambda x. e & \text{abstraction}
-\end{array}\]
+\begin{subfigure}[t]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  e & ::= & v   & \text{variable} \\
+    & |   & M~N & \text{application} \\
+    & |   & λv.~M & \text{abstraction}
+  \end{array}\]
+  \caption{Standard (Church) notation}
+\end{subfigure}
+\begin{subfigure}[t]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  e & ::= & v     \\
+    & |   & (N)~M \\
+    & |   & [v]~M
+  \end{array}\]
+  \caption{De Bruijn notation}
+\end{subfigure}
 #+end_figure
 
-[[todo:Examples - Church encoding (three columns, trivial examples)]]
+The λ abstraction $λx.~t$ represents a program that, when applied to the
+expression $x$, returns the term $t$. For example, the expression $(λx.x(x))(t)$
+produces the expression $t(t)$. This step, applying a λ abstraction to an term,
+is called /β reduction/, and it is the basic /rewrite rule/ of λ calculus.
+
+Another way of saying that is that the x is assigned/replaced with the
+expression T, and it is written as the substitution $M[x≔T]$
+
+We however need to ensure that the variables don't overlap. If they do, we need
+to rename them. (Free variables, bound variables) This is called /α conversion/ or
+α renaming. (The expression t[s/x] denotes the result of taking a term t and
+replacing every free occurence of the variable x by the term s.)
+
+Reduction of a term in the form of $λx.T(x)$ to $T$--that is, a function that receives
+an argument and directly applies $T$ to it--is called /η reduction/.
+
+By repeatedly reducing an expression--applying functions to arguments and α
+renaming variables if necessary, we get a /β normal form/. This normal form is
+unique (up to α-conversion), according to the Church-Rossier theorem.
+
+We will need to check whether two λ expressions are equal.
+
+While in general, it is impractical to check whether two functions are equal in
+general programming languages (intensional equality) (they may be written in a
+different way but behave the same = extensionally equal), we will need to check whether two λ
+expressions are equivalent.
+
+Structural equality ( = same symbols) is not fitting, so α-equivalence of
+β-normal forms is generally used, meaning that the terms are α-convertible to
+one another (formally represented by variable permutation). We will see a
+simpler way of expressing equivalence in a later chapter.
+
+As simple as it seems, we can encode logic, arithmetic, or data structures in
+such a language. In Figure ref:church we can see natural numbers (a), addition
+(b), booleans (c), and lists (d) inline:MissingChurch. Right-associative.
+
+#+label: church
+#+CAPTION: Church encoding of various concepts
+#+ATTR_LaTeX: :options [!htpb]
+#+begin_figure latex
+\begin{subfigure}[t]{.5\textwidth}\centering
+  \[\begin{array}{ccl}
+  0 & = & λf.λx.~x \\
+  1 & = & λf.λx.~f~x
+  \end{array}\]
+  \caption{Natural numbers}
+\end{subfigure}
+\begin{subfigure}[t]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  succ & = & λn.λf.λx.f~(n~f~x) \\
+  plus & = & λm.λn.m~succ~n
+  \end{array}\]
+  \caption{Simple arithmetic}
+\end{subfigure}
+\begin{subfigure}[t]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  true & = & λx.λy.x \\
+  false & = & λx.λy.y \\
+  not & = & λp.p~false~true \\
+  and & = & λp.λq.p~q~p \\
+  ifElse & = & λp.λa.λb.p~a~b
+  \end{array}\]
+  \caption{Logic}
+\end{subfigure}
+\begin{subfigure}[t]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  cons & = & λf.λx.λy.f~x~y \\
+  fst & = & λp.p~true \\
+  snd & = & λp.p~false \\
+  \end{array}\]
+  \caption{Pairs}
+\end{subfigure}
+#+end_figure
+
+The ω combinator ($ω = λx.x~x$) produces an infinite term (what?). Applying it
+to itself produces a /divergent/ term whose evaluation cannot terminate as $ω~ω
+⇒_β ω~ω$.
+
+Also notable is the Y combinator $Y = λf.(λx.f (x x)) (λx.f (x x))$. We can
+directly encode general recursion in λ calculus. Notable because it is
+impossible in λ→ calculus without extensions. $Y~f ⇒ f(Y~f) ⇒ f(f(Y~f)) ⇒ ...$.
+
 ** λ→ calculus
-[[todo:Typed λ-calculus + syntax (3 para)]]
+It is often useful, though, to describe the kinds of objects we work
+with. Already, in the previous examples we could see that reading such code can
+get confusing: a boolean is a function of two parameters, a pair is a function
+of three arguments, but the first one should be a boolean and the other two
+contents of the pair...
 
-The simply-typed λ-calculus introduces the concept of types, which have separate
-syntax and semantics from the language of terms. The language of terms is
-extended with a fourth kind of term, type annotation. The language of types is
-the universal or base type, and an arrow from between types.
+The simply typed λ calculus, also written λ→ as "→" is the connector used in
+types, introduces the concept of types. We have a set of basic types that are
+connected into terms using →, and type annotation or assignment $x : A$.  We now
+have two languages connected by a type judgment, the language of terms, and the
+language of types.
 
-[[todo:This language is not turing-complete, must terminate]]
+There are two ways of specifying the simply-typed λ calculus: λ→-Church, and
+λ→-Curry. Church-style is also called system of typed terms as we have terms
+that include type information, and we say $λx : A.x : A → A$. Curry-style is
+also called the system of typed assignment as we assign types to untyped
+λ-terms, and we say $λx.x : A → A$ cite:barendregt92_typed.
 
-#+CAPTION: Simply typed lambda calculus
+There are systems that are not expressible in Curry-style, and vice versa.
+Church-style is be required if type inference is not decidable, such as the
+Calculus of Constructions. Curry-style is interesting for programming, we want
+to omit type information; and we will see how to manipulate programs specified
+in this way in following chapters re:type elaboration.
+
+We will use Church-style here, but our language will be Curry-style, so that we
+incorporate elaboration into the interpreter.
+
+#+CAPTION: Simply-typed λ calculus
 #+ATTR_LaTeX: :options [!htpb]
 #+begin_figure latex
 \[\begin{array}{ccll}
-e & ::= & x     & \text{variable} \\
-  & |   & e_1~e_2 & \text{application} \\
-  & |   & λ x. e & \text{abstraction} \\
-  & |   & x:τ     & \text{annotation}
+e & ::= & v     & \text{variable} \\
+  & |   & M~N   & \text{application} \\
+  & |   & λx.~t & \text{abstraction} \\
+  & |   & x:τ   & \text{annotation}
 \end{array}\]
 \[\begin{array}{ccll}
-\tau & ::= & α           & \text{base type} \\
-     & |   & τ → τ' & \text{composite type}
+τ & ::= & β      & \text{base types} \\
+  & |   & τ → τ' & \text{composite type}
 \end{array}\]
 #+end_figure
 
@@ -312,8 +497,12 @@ e & ::= & x     & \text{variable} \\
 
 [[todo:Typing rules - same as the above, just describe types (1 short para)]]
 
+[[todo:This language is not turing-complete, must terminate]]
+
 [[todo:Close the above, motivating example what is it good for? (1 para + 1 figure)]]
 ** Lambda cube
+Introduce sorts: Sorts: types, kinds. ⋆, □.
+
 [[todo:Brief lambda cube intro show what's out there (3 para)]]
 
 \missingfigure{Lambda cube}
@@ -322,10 +511,42 @@ e & ::= & x     & \text{variable} \\
 
 [[todo:In the rest of the thesis we will work with λω (1 para)]]
 ** Extensions
-[[todo:Intro - comparison table with logic/tt, Pi/Sigma, forall/exists, ... (3 paras)]]
+Type constructors:
+- formation, a way to construct new types (if A and B are types, then Bᴬ is a type)
+- introduction, ways to construct terms of these types (if (x:A)⊢(b:B), then λx.b:Bᴬ)
+- elimination, ways to use them to construct other terms (if a:A and f:Bᴬ, then f(a):B)
+- computation, what happens when intro&elim ((λx.b)(a) computes to b[x≔a])
+- η-conversion, neutrals rules?
+
+- positive type: defined by introductions: coproduct, empty type
+- negative type: defined by eliminations: function, product
+
+*** Product types
+non-dependent product type
+
+$p : A × B$, $p ≔ (a, b)$
+
+projections $π₁ : A × B → A$, $π₁ (a, b) ≔ a$
+
+η rule: $(π₁~p, π₂~p) ≔ p$
+
+$curry : A × B → C → A → B → C$, $curry f ≔ λx.λy.f (x, y)$
+
+$uncurry : A → B → C → A × B → C$, $curry f ≔ λx.f (π₁ x) (π₂ y)$
+
+- formation: A:⋆ and B:⋆ | A×B:⋆
+- construction: a:A and b:B | (a, b):A×B
+- elimination: if p:A×B, then fst(p):A and snd(p):B
+- computation: fst(a, b) is a, snd(a, b) is b
 
 *** Π-types
 dependent product type, dependent function type
+
+$∀x:A,P(x) ≡ Π_{x:A}B(x)$
+
+- $x:A ⊢ B(x):Type$ introduces a universe type, its elements are types
+- can apply Λ-abstraction, $Λx.B(x) : Typeᴬ$
+- Type : Type leads to paradoxes
 
 [[todo:generalization of the function space (2 paras)]]
 
@@ -335,16 +556,101 @@ $Π(n:ℕ). Vec(ℝ, n)$ vs $Π(n:ℕ). ℝ$
 
 Allows inductive types, eliminators, Church
 
-*** Σ-types
-dependent sum type, dependent pair type
+- formation: if (x:A)⊢(B(x):Type), then Π_{x:A}B(x):Type
+- construction: if (x:A)⊢(b:B(x)), then λx.b:Π_{x:A}B(x)
+- elimination: if a:A and f:Π_{x:A}B(x), then f(a):B(a)
+- computation: (λx.b)(a) computes to b[x≔a]
 
-[[todo:Dependent tuple/product/sum (2 para)]]
+*** Coproduct types
+Sum types
+
+Set magnitude
+
+- formation: if A and B are types, A+B is a type
+- construction: if a:A, then inl(a):A+B, is b:B, then inr(b):A+B
+- elimination: if p:A+B, and (x:A)⊢(c_A:C) and (y:B)⊢(c_B:C), then case(p,c_A,c_B):C
+- computation: case(inl(a),c_A,c_B) => c_A[x≔a], same for b
+
+- ($case_{A,B,C} : (A → C) → (B → C) → (A + B → C) by$
+- $case f g (inl a) ≔ f a$
+- $case f g (inr b) ≔ g b$ ?)
+
+*** Σ-types
+[[todo:Dependent tuple/pair/product/sum (2 para)]]
+
+generalization of the coproduct type
+
+$∃x:A,P(x) ≡ Σ_{x:A}B(x)$
 
 $(a, b) : Σ_{x:A}. B(x)$
 
 [[todo:grammar, specific example (2 figures)]]
 
 Allows datatypes/records, Cat + Functor?
+
+#+label: ch-deduction
+#+CAPTION: Dependent sum type
+#+ATTR_LaTeX: :options [!htpb]
+#+begin_figure latex
+\begin{subfigure}[t]{.32\textwidth}\centering\[
+\AxiomC{$Γ ⊢ A : ⋆$}
+\AxiomC{$Γ, x : A ⊢ B : ⋆$}
+\BinaryInfC{$Γ ⊢ Σ_{x : A}B : ⋆$}
+\DisplayProof\]\caption{Type}
+\end{subfigure}
+\begin{subfigure}[t]{.68\textwidth}\centering\[
+\AxiomC{$Γ ⊢ a : A$}
+\AxiomC{$Γ, x : A ⊢ B : ⋆$}
+\AxiomC{$Γ ⊢ b : B[x ≔ a]$}
+\TrinaryInfC{$Γ ⊢ (a, b) : Σ_{x : A}B$}
+\DisplayProof\]\caption{Constructor}
+\end{subfigure}
+\begin{subfigure}[t]{.32\textwidth}\centering\[
+\AxiomC{$Γ ⊢ p : Σ_{x : A}B$}
+\UnaryInfC{$Γ ⊢ fst p : A$}
+\DisplayProof\]\caption{\texttt{fst} Eliminator}
+\end{subfigure}
+\begin{subfigure}[t]{.32\textwidth}\centering\[
+\AxiomC{$Γ ⊢ p : Σ_{x : A}B$}
+\UnaryInfC{$Γ ⊢ snd p : B[x ≔ fst p]$}
+\DisplayProof\]\caption{\texttt{snd} Eliminator}
+\end{subfigure}
+\begin{subfigure}[t]{.5\textwidth}\centering\[
+\AxiomC{$Γ ⊢ a : A$}
+\AxiomC{$Γ, x : A ⊢ B : ⋆$}
+\AxiomC{$Γ ⊢ b : B[x ≔ a]$}
+\TrinaryInfC{$Γ ⊢ fst(a, b) ≡ a : A$}
+\DisplayProof\]\caption{\texttt{fst} β-reduction}
+\end{subfigure}
+\begin{subfigure}[t]{.5\textwidth}\centering\[
+\AxiomC{$Γ ⊢ a : A$}
+\AxiomC{$Γ, x : A ⊢ B : ⋆$}
+\AxiomC{$Γ ⊢ b : B[x ≔ a]$}
+\TrinaryInfC{$Γ ⊢ snd(a, b) ≡ b : B$}
+\DisplayProof\]\caption{\texttt{snd} β-reduction}
+\end{subfigure}
+\begin{subfigure}[t]{.32\textwidth}\centering\[
+\AxiomC{$Γ ⊢ p : Σ_{x : A}B$}
+\UnaryInfC{$Γ ⊢ (fst p, snd p) : Σ_{x : A}B$}
+\DisplayProof\]\caption{η-conversion}
+\end{subfigure}
+#+end_figure
+
+*** =-types (?)
+- formation: if A:⋆, a:A, b:A, then (a=b):⋆
+- construction: if a:A, then refl_a:(a=a)
+- elimination:
+  - if (x:A),(y:A),(p:(x=y)) ⊢ C(x,y,p) : ⋆
+  - and (x:A) ⊢ d(x) : C(x,x,refl_x)
+  - then (x:A),(y:A),(p:(x=y)) ⊢ J(d;x,y,p) : C(x,y,p)
+- computation: J(d;a,a,refl_a) computes to d(a)
+
+*** Naturals
+- formation: $⊢ ℕ : ⋆$
+- construction: 0:ℕ, and (x:ℕ)⊢(s(x):ℕ)
+- elimination: if $c₀:C(0)$ and (x:ℕ),(r:C(x))⊢(cₛ:C(s(x))), then for p:ℕ we have $rec(p,c₀,cₛ):C(p)$
+- computation: rec(0,c₀,cₛ) ≔ c₀, rec(s(n),c₀,cₛ) ≔ cₛ[x≔n], rec(n,c₀,cₛ) ≔ r.
+
 
 *** μ-types
 [[todo:Recursive type, box/unbox (2 paras)]]
@@ -882,6 +1188,8 @@ of the original program and is able to reorder them to improve performance. It
 does what the original HotSpot VM would do, optimize JVM bytecode by reordering,
 pre-compiling, or entirely rewriting instructions.
 
+This graph is also extensible cite:duboscq13_graalir
+
 - Canonicization: constant folding, simplification
 - Global value numbering: prevents same code from being executed multiple times
 - Lock coarsening: simplifies ~synchronized~ calls
@@ -901,6 +1209,13 @@ bytecode into the mix.
 
 *** Truffle
 [[todo:Introduce Truffle specifically, polyglot, graph (de)optimization (3 paras + code sample)]]
+
+Tiered compilation: C1, C2, Graal replaces C2
+Multiple uses of Graal - as C2 compiler, as a PE/AoT for SubstrateVM
+
+Instruments, Chrome and other debugging support
+
+Warm-up benchmark: http://macias.info/entry/201912201300_graal_aot.md
 
 [[todo:It really is fast enough - FastR, Python benchmarks (2 paras + graph)]]
 
@@ -1033,6 +1348,8 @@ VirtualFrame by calling ~frame.materialize()~
 - RootNode - can be made into a CallTarget. is at the root of a graph, "starting
   point of a function/program/builtin", "callable AST"
 
+Direct/IndirectCallNode
+
 *** Caching
 [[todo:@Cached()]]
 
@@ -1060,6 +1377,15 @@ Engine, Context, TruffleLanguage, Instrument
 #+end_src
 
 ** Functional Truffle languages
+*** Criteria
+Evaluate languages on:
+- overall project structure and runtime flow
+- global/local names and environment handling
+- calling convention
+- lazy evaluation
+- closure implementation
+- graph manipulation, TruffleBoundaries, specializations
+
 *** Truffled PureScript
 #+COMMENT: https://github.com/slamdata/truffled-purescript/
 
@@ -1086,12 +1412,18 @@ An implementation of a Lisp
 *** FastR
 One of the larger Truffle languages
 
+cite:stadler16_fastr
+
 Replacement for GNU R, which was "made for statistics, not performance"
 
 Faster without Fortran than with (no native FFI boundary, allows Graal to
 optimize through it)
 
 Interop with Python, in particular - scipy + R plots
+
+Node replacement for specializing nodes, or when an assumption gets invalidated
+and the node should be in a different state (AbsentFrameSlot,
+ReplacementDispatchNode, CallSpecialNode, GetMissingValueNode, FunctionLookup.
 
 #+begin_src kotlin
 val ctx = Context.newBuilder("R").allowAllAccess(true).build();
@@ -1194,6 +1526,10 @@ Specific changes:
 ** Parser
 ParsingRequest/InlineParsingRequest
 
+Unfortunately, Truffle requires that there is no access to the interpreter state
+during parsing, which means that we need to perform elaboration inside of a
+~ProgramRootNode~ itself, "during runtime" per se.
+
 [[todo: need to perform elaboration inside a programRootNode (not while parsing)]]
 
 [[todo:stmt;stmt;expr -> return a value]]
@@ -1265,6 +1601,10 @@ exactly (EVAL), or under-applied (creates a PAP, a closure-like value)
 
 [[todo:...depends on what will work]]
 
+** User interface
+REPL needs to be implemented as a ~TruffleInstrument~, it needs to modify and
+otherwise interact with the language context.
+
 ** Polyglot
 [[todo:...depends on whether I'll do polyglot or not]]
 
@@ -1296,11 +1636,22 @@ evaluation phases - translate to Code, run typecheck, run eval vs glued, ???
 [[todo:Show asymptotes - binders, terms, sizes]]
 [[todo:Show the graphs - large values, many iterations (warmup), sharing]]
 ** Possible optimizations
-[[todo:What does Enso do?]]
+[[todo:What does Enso do, optimization phases?]]
 [[todo:What can we do?]]
 
-[[todo:Show before and afters for each optimization]]
+Inlining, let-floating
 
+Avoid thunk chaining: box(box(box(() => x))
+
+"Immutable, except to simplify" + assumptions
+Maximize evaluation sharing - globals, cache, ?
+
+Ruby uses threads, can we?
+
+Think about the fast vs slow path!
+
+[[todo:Show before and afters for each optimization]]
+** Splitting/type specializations/dict passing
 ** Optimizing function dispatch
 [[todo:lambda merging, eta expansion]]
 
@@ -1409,7 +1760,7 @@ can create a so-called flamegraph with the results of the sampling.
 
 #+COMMENT: https://github.com/eregon/FlameGraph/blob/graalvm/stackcollapse-graalvm.rb
 
-* Evaluation (and next work): Is $Montuno_{Truffle}$ fast enough?
+* Evaluation (and next work): Is MontunoTruffle fast enough?
   :PROPERTIES:
   :CUSTOM_ID: evaluation
   :END:

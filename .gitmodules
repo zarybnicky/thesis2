@@ -84,3 +84,27 @@
 [submodule "dep/cadenza"]
 	path = dep/cadenza
 	url = https://github.com/ekmett/cadenza
+[submodule "dep/dynsem"]
+	path = dep/dynsem
+	url = https://github.com/metaborg/dynsem/
+[submodule "dep/GoLang-Compiler"]
+	path = dep/GoLang-Compiler
+	url = https://github.com/PDZaninov/GoLang-Compiler/
+[submodule "dep/enso-benchmarks"]
+	path = dep/enso-benchmarks
+	url = https://github.com/enso-org/benchmarks
+[submodule "dep/Minimal-PiSigma"]
+	path = dep/Minimal-PiSigma
+	url = https://github.com/derrickturk/MinPS
+[submodule "dep/peacod2"]
+	path = dep/peacod2
+	url = https://github.com/sstewartgallus/jsystemf
+[submodule "dep/hs-callbypushvalue"]
+	path = dep/hs-callbypushvalue
+	url = https://github.com/sstewartgallus/hs-callbypushvalue
+[submodule "dep/trufflestg"]
+	path = dep/trufflestg
+	url = https://github.com/acertain/trufflestg/
+[submodule "dep/qir"]
+	path = dep/qir
+	url = https://gitlri.lri.fr/jlopez/qir.git

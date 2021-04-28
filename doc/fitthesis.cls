@@ -58,6 +58,7 @@
 \usepackage{color}
 \usepackage{etoolbox}
 \usepackage{graphicx}
+\usepackage{subcaption}
 \usepackage{pdfpages}
 \usepackage[figure,table,listing]{totalcount}
 %\usepackage[]{opensans}
