@@ -52,7 +52,6 @@
 \usepackage[english,czech]{babel}
 \usepackage{textcomp}
 
-\usepackage{cmap}
 \usepackage{url}
 \usepackage{ragged2e}
 \usepackage{color}
@@ -74,17 +73,28 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{unicode-math}
-\setmainfont[Ligatures=TeX]{texgyrepagella-regular.otf}
+
+\setmainfont{texgyrepagella}[
+  Ligatures=TeX,
+  Extension=.otf,
+  UprightFont=*-regular,
+  BoldFont=*-bold,
+  ItalicFont=*-italic,
+  BoldItalicFont=*-bolditalic,
+]
 \setmonofont{texgyrecursor-regular.otf}
 \setmathfont{texgyrepagella-math.otf}
-\setmathfont{Asana-Math.otf}[range={\setminus} ]
-\setmathfont{XITSMath-Regular.otf}[range={"2A3E}, BoldFont=XITSMath-Bold.otf ]
+\setmathfont{Asana-Math.otf}[range={\setminus}, ]
+\setmathfont{XITSMath-Regular.otf}[range={"2A3E}, BoldFont=XITSMath-Bold.otf, ]
 
 \usepackage{minted}
 \setminted{fontsize=\small}
 \usepackage{tikz}
 \usepackage{tikz-cd}
 \usepackage{bussproofs}
+\usetikzlibrary{arrows.meta,positioning}
+
+\let\emph\textit
 
 % \renewcommand{\rmdefault}{lmr} %zavede Latin Modern Roman jako rm / set Latin Modern Roman as rm
 % \renewcommand{\sfdefault}{qhv} %zavede TeX Gyre Heros jako sf
@@ -972,9 +982,6 @@ Management}{\@fit@EN}%
 \usepackage{blindtext}
 \usepackage[toc,page,header]{appendix}
 \RequirePackage{titletoc}
-\ifczech
-  \usepackage{ae}
-\fi
 
 %--------------------------------------------------------
 % Oprava pro Čechy a Slováky -- vyžaduje aktuální balíčky!
@@ -1038,5 +1045,7 @@ Management}{\@fit@EN}%
 % solves first/last row of the paragraph on the previous/next page
 \clubpenalty=10000
 \widowpenalty=10000
+
+\input{metadata}
 
 \endinput

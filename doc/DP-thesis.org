@@ -12,47 +12,17 @@ org-wc-display
 25.4. 7200w (Σ56p)
 26.4. 7660w (Σ59p)
 27.4. 8800w (Σ64p)
+28.4. 10050w (Σ67p)
+29.4. 11700w (Σ68p)
+30.4. 12500w (Σ74p, 52p content)
 
 minimum: 12,500
 target: 17,500
 maximum: 30,000
-
-- cite:guallart15_overview_types - oveview
-
-- cite:mouton19_urilang - URI language, experience report
-- cite:feichtinger15_clojure - TruffleClojure
-- cite:bove08_atwork - Dependent Types at Work
-- cite:ferreira14_bidi - elaboration, bi-di
-- cite:dunfield19_bidi - full rules, polarized??
-- cite:gross14_coq_experience - Coq experience, a few reasons, comparison
-- cite:grimmer15_polyglot - Polyglot + OSM intro
-- cite:lescanne95_levels - de Bruijn levels-only, substitution algorithm
-- cite:altenkirch16_nbe - NbE for dependent types including sums, renamings!
-- cite:christiansen19_nbe_haskell - Haskell simple NbE
-- cite:eisenberg20_stitch - motivation for indices/levels + motivation for
-  dependent types (an interpreter), exact algorithm description, CSE?
-- cite:wurthinger17_partial_eval - Truffle boundaries
-- cite:wimmer17_deoptimization - deoptimization, on-stack replacement
-- cite:vergu19_scopes - OSM for frames/scopes, eval methodology of Truffle
-  (Krum?), JIT
-- cite:kovacs20_implicit - implicits (example, algo), rules+grammar!!!,
-  metacontext+weakening, issues!!!, telescopes, benchmarks!!!
-- cite:levy99_cbpv - thunk, forcing,
-- cite:abel17_decidability - contexts, normals, whnf, typed reduction rules (no subject reduction)
-- cite:hughes82_supercombinators - CAFs? Lazy evaluation?
-- cite:blaguszewski10_llvm - potential optimizations, LLVM impl, closures
-- cite:reid98_resumable_holes - concurrency & parallelism in GHC evaluation
-- cite:gratzer19_modal_types - Tm, NfTm, NbTm; NfVal, NeVal, Val split, NbE well-written, normals, closures
-- cite:ariola97_cbn - ...call-by-need
-- cite:kamareddine01_de_bruijn - pros&cons of de Bruijn
-- cite:kaposi19_gluing - gluing formalism + algo + definitions
-- cite:zheng17_deoptimization - benchmark modes
-- cite:schilling13_tracing_jit - ??? (related work)
-
 #+END_COMMENT
 * (front matter)                                              :ignoreheading:
 #+LANGUAGE: en
-#+OPTIONS: texht:nil toc:nil author:nil ':t
+#+OPTIONS: texht:nil toc:nil author:nil ':t H:4 num:3
 #+LATEX_CLASS: fitthesis
 #+LATEX_CLASS_OPTIONS: [english,zadani,odsaz]
 #+EXCLUDE_TAGS: noexport
@@ -60,8 +30,7 @@ maximum: 30,000
 # cprint = B&W links, color logo
 #+BIND: org-latex-title-command ""
 #+BIND: org-latex-prefer-user-labels t
-#+BIND: org-latex-default-figure-position "tbh"
-#+LaTeX_HEADER: \input{metadata}
+#+BIND: org-latex-default-figure-position "htb"
 #+BEGIN_EXPORT latex
 \maketitle
 \setlength{\parskip}{0pt}
@@ -73,7 +42,6 @@ maximum: 30,000
 \iftwoside\cleardoublepage\fi
 \setlength{\parskip}{0.5\bigskipamount}
 #+END_EXPORT
-
 * (Recommended thesis structure)                                   :noexport:
 1. "Úvod do knížečky", jedna strana, bez podkapitol
 2. "Co bylo třeba vystudovat?" - "Je tato informace potřebná k pochopení toho, co jsem udělal?"
@@ -101,26 +69,29 @@ maximum: 30,000
 
 *Original goal:*
 - efficient βη-normalization runtime
-- glued, lazy as optimistic improvements
 - Show the asymptotics on Peano, Church numbers
 
 *Side outcome:* compilation of all the relevant concepts.
 
+- Citations: Werthinger et al. [45] have developed [...]
+
 * Introduction
 #+COMMENT: Motivation: why this project? Why should anyone care?
 
-Proof assistants like Coq, Agda or Idris, or other languages with dependent
-types allow programmers to write provably correct-by-construction code in a
-manner similar to a dialog with the compiler cite:norell08_agda_tutorial. They
-also face serious performance issues when applied to problems or systems on a
-large-enough scale cite:gross21_performance. Their performance grows
-exponentially with the number of lines of code in the worst case
-cite:nawaz19_survey_provers, which is a significant barrier to their use. While
-many of the performance issues are fundamentally algorithmic, a better runtime
-system would improve the rest. However, custom runtime systems or more capable
-optimizing compilers are time-consuming to build and maintain. This thesis seeks
-to answer the question of whether just-in-time compilation can help to improve the
-performance of such systems.
+Proof assistants like Coq, F*, Agda or Idris, or other languages with dependent
+types like Cayenne or Epigram, allow programmers to write provably
+correct-by-construction code in a manner similar to a dialog with the compiler
+cite:norell08_agda_tutorial. They also face serious performance issues when
+applied to problems or systems on a large-enough scale
+cite:gross14_coq_experience
+cite:gross21_performance. Their performance grows exponentially with the number
+of lines of code in the worst case cite:nawaz19_survey_provers, which is a
+significant barrier to their use. While many of the performance issues are
+fundamentally algorithmic, a better runtime system would improve the
+rest. However, custom runtime systems or more capable optimizing compilers are
+time-consuming to build and maintain. This thesis seeks to answer the question
+of whether just-in-time compilation can help to improve the performance of such
+systems.
 
 Moving from custom runtime systems to general language platforms like e.g., the
 Java Virtual Machine (JVM) or RPython [[inline:Cite]], has improved the performance
@@ -133,8 +104,9 @@ platforms, improve their performance, and simplify their runtime systems.
 As there are no standard benchmarks for dependently typed languages, we design a
 small, dependently-typed core language to see if using specific just-in-time
 (JIT) compilation techniques produces asymptotic runtime improvements in the
-performance of βη-normalization, which is a large part of the elaboration
-process and is also the part that can most likely benefit from JIT compilation. inline:Nongoals
+performance of β-normalization and βη-conversion checking, which are among the
+main computational tasks in the elaboration process and is also the part that
+can most likely benefit from JIT compilation. inline:Nongoals
 
 #+COMMENT: Existing solutions: be fair in identifying their strengths and weaknesses. Cite important works from the field of your topic. Try to define well what is the state of the art.
 
@@ -158,8 +130,8 @@ do not use the Truffle platform, like Clojure, Scala or Kotlin, as well as
 purely functional languages like Eta or Frege. All of these languages compile
 directly to JVM byte code: we may compare our performance against their
 implementation, but we would not be able to use their optimization
-techniques. As far as I am aware, there are no implementations of the
-dependently-typed lambda calculus that use JIT compilation.
+techniques. To the best of my knowledge, neither meta-tracing nor partial
+evaluation have been applied to the dependently-typed lambda calculus.
 
 The closest project to this one is Cadenza cite:kmett_2019, which served as the
 main inspiration for this thesis. Cadenza is an implementation of the
@@ -168,6 +140,9 @@ and did not show as promising performance compared to other simply-typed lambda
 calculus implementations as its author hoped, this project applies similar ideas
 to the dependently-typed lambda calculus, where the presence of type-level
 computation should lead to larger gains.
+
+- cite:kleeblatt11_strongly_normalizing_stg - STG compiler JITed?
+- cite:schilling13_tracing_jit - trace-based interpreter for GHC, a different approach
 
 #+COMMENT: Our solution: Make a quick outline of your approach, pitch your solution
 
@@ -227,6 +202,28 @@ deduction and the simply-typed λ calculus, as in Figure ref:ch-deduction. Proof
 assistants often have a small core language around which they are build:
 e.g. Coq is build around the Calculus of Inductive Constructions, which is a
 higher-order typed λ calculus.
+
+-- Dependent languages are not only proof checkers but also general programming
+languages (Cayenne, Epigram), and Eisenberg's Stitch cite:eisenberg20_stitch is
+an interesting tutorial of a dependent interpreter of dependent languages
+
+#+label: idris-vect
+#+caption: Vectors with explicit length in the type, source: the Idris base library
+#+begin_src idris
+  data Vect : (len : Nat) -> (elem : Type) -> Type where
+    Nil  : Vect Z elem
+    (::) : (x : elem) -> (xs : Vect len elem) -> Vect (S len) elem
+
+  -- Definitions elided
+
+  head : Vect (S len) elem -> elem
+  index : Fin len -> Vect len elem -> elem
+
+  (++) : (xs : Vect m elem) -> (ys : Vect n elem) -> Vect (m + n) elem
+  proofConcatLength
+    : {m, n : Nat} -> {A : Type} -> (xs : Vect n A) -> (ys : Vect m A)
+      -> length (xs ++ ys) = length xs + length ys
+#+end_src
 
 #+label: ch-logic
 #+CAPTION: Curry-Howard correspondence between mathematical logic and type theory
@@ -294,31 +291,13 @@ Natural deduction & λ→ calculus \\\hline\\[-1em]
 
 Compared to the type systems in languages like Java, systems like this enable
 encoding much more information in the types. We can see the usual example of a
-list with a known length in Figure ref:idris-vect: the type ~Vect~ has two
+list with a known length in Listing ref:idris-vect: the type ~Vect~ has two
 parameters, one is the length of the list as a Peano number, the other is the type of its
 elements. Using this we can define safe indexing operators like ~head~, which
 is only applicable to non-empty lists, or ~index~, where the index must be given as a
 finite number between zero and the length of the list. List concatenation uses
 arithmetic on the type level, and it is possible to explicitly prove that
 concatenation preserves list length.
-
-#+label: idris-vect
-#+caption: Vectors with explicit length in the type, source: the Idris ~base~ library
-#+begin_src idris
-  data Vect : (len : Nat) -> (elem : Type) -> Type where
-    Nil  : Vect Z elem
-    (::) : (x : elem) -> (xs : Vect len elem) -> Vect (S len) elem
-
-  -- Definitions elided
-
-  head : Vect (S len) elem -> elem
-  index : Fin len -> Vect len elem -> elem
-
-  (++) : (xs : Vect m elem) -> (ys : Vect n elem) -> Vect (m + n) elem
-  proofConcatLength
-    : {m, n : Nat} -> {A : Type} -> (xs : Vect n A) -> (ys : Vect m A)
-      -> length (xs ++ ys) = length xs + length ys
-#+end_src
 
 On the other hand, these languages are often restricted in some ways. General
 Turing-complete languages allow non-terminating programs which leads to a
@@ -333,17 +312,23 @@ language, so that we can create an interpreter for is, and write some
 computationally interesting programs in it. To do that, we first need to cover
 the concepts that we will need in later parts of the thesis.
 
-** λ calculus
+The goal of this chapter is to introduce the concepts relevant to the language
+specification, and not to create a complete reference to the large field of type
+theory.
+
+** Languages/Systems
+*** λ-calculus
 We will start from the untyped lambda calculus, as it is the language that all
 following ones will build upon. Introduced in the 1930s by Alonzo Church as a
 model of computation. It is a very simple language that consists of only three
 constructions: abstraction, application, and variables, written as in Figure
-ref:untyped. [[inline:Multiple notations, different uses]]
+ref:untyped.
 
 #+label: untyped
-#+CAPTION: λ-calculus written using two different notations
-#+ATTR_LaTeX: :options [!htpb]
+#+CAPTION: λ-calculus written in Church and de Bruijn notation
+#+ATTR_LaTeX: :options [b]
 #+begin_figure latex
+\captionsetup[subfigure]{aboveskip=-1pt}
 \begin{subfigure}[t]{.5\textwidth}\centering
   \[\begin{array}{ccll}
   e & ::= & v   & \text{variable} \\
@@ -362,41 +347,87 @@ ref:untyped. [[inline:Multiple notations, different uses]]
 \end{subfigure}
 #+end_figure
 
-The λ abstraction $λx.~t$ represents a program that, when applied to the
-expression $x$, returns the term $t$. For example, the expression $(λx.x(x))(t)$
-produces the expression $t(t)$. This step, applying a λ abstraction to an term,
-is called /β reduction/, and it is the basic /rewrite rule/ of λ calculus.
+The λ-abstraction $λx.~t$ represents a program that, when applied to the
+expression $x$, returns the term $t$. For example, the expression $(λx.x x) t$
+produces the expression $t t$. This step, applying a λ-abstraction to an term,
+is called /β-reduction/, and it is the basic /rewrite rule/ of λ-calculus. Another
+way of saying that is that the x is assigned/replaced with the expression T, and
+it is written as the substitution $M[x≔T]$
 
-Another way of saying that is that the x is assigned/replaced with the
-expression T, and it is written as the substitution $M[x≔T]$
+todo:ReductionRules
 
 We however need to ensure that the variables don't overlap. If they do, we need
-to rename them. (Free variables, bound variables) This is called /α conversion/ or
-α renaming. (The expression t[s/x] denotes the result of taking a term t and
-replacing every free occurence of the variable x by the term s.)
+to rename them. (Free variables, bound variables) This is called /α-conversion/ or
+α renaming. (The expression $t[s/x]$ denotes the result of taking a term $t$ and
+replacing every free occurence of the variable $x$ by the term $s$.)
 
-Reduction of a term in the form of $λx.T(x)$ to $T$--that is, a function that receives
-an argument and directly applies $T$ to it--is called /η reduction/.
+Reduction of a term in the form of $λx.T(x)$ to $T$ --that is, a function that receives
+an argument and directly applies $T$ to it--is called /η-reduction/.
+
+There are also other reduction rules: δ-reduction to unfold constants;
+ζ-reduction to unfold local ~let-in~ definitions; μ-, ν-, and ι-reductions to
+unfold inductive definitions; but α-conversion and β-reduction are sufficient to
+fully specify the untyped λ-calculus, as we can see in Figure
+ref:untyped-reduce.
+
+There are also other reductions, though not usually used in simple λ calculus definitions:
+- δ-reduction = unfolding of a constant
+- μ-reduction = ?
+- ζ-reduction = ?
+- ι-reduction = ? (fixpoint unfolding)
+- ν-reduction = ?
+- see this for more: cite:sacerdoti07_reductions
+
+- β-reduction is the introduction rule followed by the elimination rule (computation)
+- η-reduction is the elimination rule followed by the introduction rule (uniqueness)
+- (also η-conversion, uniqueness principle)
+
+#+label: untyped-reduce
+#+CAPTION: λ-calculus reduction rules
+#+begin_figure latex
+\begin{subfigure}[t]{.5\textwidth}\centering
+  \[\AxiomC{}
+  \UnaryInfC{}
+  \DisplayProof\]\caption{Standard (Church) notation}
+\end{subfigure}
+#+end_figure
 
 By repeatedly reducing an expression--applying functions to arguments and α
-renaming variables if necessary, we get a /β normal form/. This normal form is
+renaming variables if necessary, we get a /β-normal form/. This normal form is
 unique (up to α-conversion), according to the Church-Rossier theorem.
 
-We will need to check whether two λ expressions are equal.
+[[todo:Normal forms - nf, hnf, whnf (3 items, describe)]]
 
-While in general, it is impractical to check whether two functions are equal in
-general programming languages (intensional equality) (they may be written in a
-different way but behave the same = extensionally equal), we will need to check whether two λ
-expressions are equivalent.
+\missingfigure{Show off a normal form derivation - which operation is used when}
 
-Structural equality ( = same symbols) is not fitting, so α-equivalence of
-β-normal forms is generally used, meaning that the terms are α-convertible to
-one another (formally represented by variable permutation). We will see a
-simpler way of expressing equivalence in a later chapter.
+More definitions in cite:garcia18_simple_lambda, simply explained
 
-As simple as it seems, we can encode logic, arithmetic, or data structures in
-such a language. In Figure ref:church we can see natural numbers (a), addition
-(b), booleans (c), and lists (d) inline:MissingChurch. Right-associative.
+todo:ExamplesOfReductions
+
+There are /normalization strategies/ that specify the order in which
+sub-expressions are reduced. Common ones are /applicative order/ in which we first
+reduce sub-expressions left-to-right, and then apply functions to them; and
+/normal order/ in which we first apply the leftmost function, and only then reduce
+its arguments. These closely correspond to the call-by-need and call-by-value
+evaluation strategies, and we will need this notion in later chapters when we
+are creating an interpreter.
+
+We will also need to compare two λ-terms to see if they are equal. There are two
+general notions of equality, intensional and extensional. By intensional we mean
+that they are written in the same way, whereas extensional equality means that
+they behave in the same way with regards to an observer. While in general
+programming languages, it is impractical to check whether two functions are
+equal, whether intensionally or extensionally, we will need this later when we
+are talking about type-checking: to compare two types expressed as λ-terms.
+
+The usual notion of equality in λ-calculus is /α-equivalence of β-normal forms/,
+meaning that we first reduce both expressions as much as possible and then
+compare the symbols they are made of, ignoring differences in variable naming;
+this is formally expressed as variable permutation.
+
+As simple as λ-calculus may seem, it is a Turing-complete system, and we can
+encode logic, arithmetic, or data structures in it: some examples include /Church
+encoding/ of booleans, pairs, or natural numbers (Figure ref:church).
 
 #+label: church
 #+CAPTION: Church encoding of various concepts
@@ -436,20 +467,31 @@ such a language. In Figure ref:church we can see natural numbers (a), addition
 \end{subfigure}
 #+end_figure
 
-The ω combinator ($ω = λx.x~x$) produces an infinite term (what?). Applying it
-to itself produces a /divergent/ term whose evaluation cannot terminate as $ω~ω
-⇒_β ω~ω$.
+There are also expressions that do not have a normal form; when reduced, they do
+not get smaller, they /diverge/. The ω combinator \[ω = λx.x~x\] is one such
+example that produces an infinite term. Applying it to itself produces a
+divergent term whose reduction cannot terminate: \[ω~ω ⇒_β ω~ω\].
 
-Also notable is the Y combinator $Y = λf.(λx.f (x x)) (λx.f (x x))$. We can
-directly encode general recursion in λ calculus. Notable because it is
-impossible in λ→ calculus without extensions. $Y~f ⇒ f(Y~f) ⇒ f(f(Y~f)) ⇒ ...$.
+Also notable is the fixed-point function, or the Y combinator.
 
-** λ→ calculus
+\[Y = λf.(λx.f (x x)) (λx.f (x x))\]
+
+This is one possible way of encoding general recursion in λ calculus, as it
+reduces by applying $f$ to itself:
+
+ \[Y~f ⇒ f(Y~f) ⇒ f(f(Y~f)) ⇒ ...\]
+
+This, as we will see in the following chapter, is impossible to encode in the
+typed λ calculus without additional extensions.
+
+*** λ→-calculus
 It is often useful, though, to describe the kinds of objects we work
 with. Already, in the previous examples we could see that reading such code can
 get confusing: a boolean is a function of two parameters, a pair is a function
 of three arguments, but the first one should be a boolean and the other two
 contents of the pair...
+
+- cite:guallart15_overview_types - overview
 
 The simply typed λ calculus, also written λ→ as "→" is the connector used in
 types, introduces the concept of types. We have a set of basic types that are
@@ -458,99 +500,222 @@ have two languages connected by a type judgment, the language of terms, and the
 language of types.
 
 There are two ways of specifying the simply-typed λ calculus: λ→-Church, and
-λ→-Curry. Church-style is also called system of typed terms as we have terms
-that include type information, and we say $λx : A.x : A → A$. Curry-style is
-also called the system of typed assignment as we assign types to untyped
-λ-terms, and we say $λx.x : A → A$ cite:barendregt92_typed.
+λ→-Curry. Church-style is also called system of typed terms, or the explicitly
+typed λ calculus as we have terms that include type information, and we say
+
+\[λx : A.x : A → A,\]
+
+or using parentheses to specify the precedence
+
+\[λ(x : A).x : (A → A).\]
+
+Curry-style is also called the system of typed assignment, or the implicitly
+type λ calculus as we assign types to untyped λ-terms that don't carry type
+information by themselves, and we say $λx.x : A → A$. cite:barendregt92_typed.
 
 There are systems that are not expressible in Curry-style, and vice versa.
-Church-style is be required if type inference is not decidable, such as the
-Calculus of Constructions. Curry-style is interesting for programming, we want
-to omit type information; and we will see how to manipulate programs specified
-in this way in following chapters re:type elaboration.
+Curry-style is interesting for programming, we want to omit type information;
+and we will see how to manipulate programs specified in this way in following
+chapters re:type elaboration. We will use Church-style in this chapter, but our
+language will be Curry-style, so that we incorporate elaboration into the
+interpreter.
 
-We will use Church-style here, but our language will be Curry-style, so that we
-incorporate elaboration into the interpreter.
+- type checking ( = determining whether a program is well-typed)
+- type inference ( = the process of obtaining the type of an expression from its
+  parts or implicits; Hindley-Milner is well-known)
+- elaboration = convert a partially specified expression into a complete,
+  type-correct form (http://leodemoura.github.io/files/elaboration.pdf)
+- cite:ferreira14_bidi - elaboration definition
 
+Before we only needed evaluation rules to fully specify the system, but now we
+will also need typing rules. We will also need to distinguish well-formed terms
+that are syntactically valid from well-typed terms that are well-formed and
+additionally obey typing rules.
+
+- cite:abel17_decidability - contexts, normals, whnf, typed reduction rules (no subject reduction)
+
+/Well-formed/ is not /well-typed/: /pre-syntax/terms/ turned into /syntax/terms/ by
+type-checking.
+
+ Type constructors:
+ - formation, a way to construct new types (if A and B are types, then Bᴬ is a type)
+ - introduction, ways to construct terms of these types (if (x:A)⊢(b:B), then λx.b:Bᴬ)
+ - elimination, ways to use them to construct other terms (if a:A and f:Bᴬ, then f(a):B)
+ - computation, what happens when intro&elim ((λx.b)(a) computes to b[x≔a])
+ - η-conversion, neutrals rules?
+
+ - positive type: defined by introductions: coproduct, empty type
+ - negative type: defined by eliminations: function, product
+
+The complete syntax of the λ→ is in Figure ref:typed. We now also have the
+language of types that includes a set of /base types/ like naturals or booleans,
+and functions between them. There is also the context that associates variables
+to their types, which we will need in typing rules. Reduction operations are the
+same as in the untyped lambda calculus
+
+#+label: typed
 #+CAPTION: Simply-typed λ calculus
 #+ATTR_LaTeX: :options [!htpb]
 #+begin_figure latex
 \[\begin{array}{ccll}
-e & ::= & v     & \text{variable} \\
-  & |   & M~N   & \text{application} \\
-  & |   & λx.~t & \text{abstraction} \\
-  & |   & x:τ   & \text{annotation}
-\end{array}\]
-\[\begin{array}{ccll}
-τ & ::= & β      & \text{base types} \\
-  & |   & τ → τ' & \text{composite type}
+e & & & (terms) \\
+  & ≔ & v     & \text{variable} \\
+  & | & M~N   & \text{application} \\
+  & | & λx.~t & \text{abstraction} \\
+  & | & x:τ   & \text{annotation}
+\\[5pt]
+τ & & & (types) \\
+  & ≔ & β      & \text{base types} \\
+  & | & τ → τ' & \text{composite type} \\[5pt]
+Γ & & & (typing context) \\
+  & ≔ & ∅     & \text{empty context} \\
+  & | & Γ,x:τ & \text{type judgement} \\[5pt]
+v & & & (values) \\
+  & ≔ & λx. t & \text{closure} \\[5pt]
+v_{Nf} & & & (normal forms) \\
+  & ≔ & ??? \\[5pt]
+v_{Ne} & & & (neutral values) \\
+  & ≔ & ???
 \end{array}\]
 #+end_figure
 
-[[todo:What are derivation rules, describe the symbols (1 para)]]
+Strongly normalizing = must terminate. STLC is strongly normalizing, adding
+primitive recursion via an extension does not remove the property
+cite:bove08_atwork, but general recursion as in the Y combinator is not
+possible.
 
-\missingfigure{Write out the simplest derivation rules (5-6 items, half a page)}
+[[todo:Close the above, motivating example what is it good for and what it doesn't
+support? (1 para + 1 figure)]]
 
-[[todo:Mention explicit substitution, that in the above it is just a part of the metatheory (para)]]
+*** λ-cube
+Generalizations of the λ→ calculus can be organized into a cube called the λ
+cube cite:barendregt92_typed (Figure ref:cube). The three dimensions of the cube
+each represent a new type of dependency. In λ→ only terms can depend on terms,
+but there are also three other combinations: types depending on types
+(/higher-order/ in the figure, as it allows higher-order types, also called type
+operators), terms depending on types (/polymorphism/ in the figure), and terms
+depending on types (/dependence/ in the figure).
 
-\missingfigure{Write out explicit substitution example (1 figure)}
+#+label: cube
+#+CAPTION: The Barendregt cube, or λ-cube
+#+begin_figure latex
+\centering
+\begin{tikzpicture}
+\matrix (m) [matrix of math nodes,
+row sep=3em, column sep=3em,
+text height=1.5ex,
+text depth=0.25ex]{
+   & λω             &     & λC             \\
+λ2 &                & λΠ2 &                \\
+   & λ\underline{ω} &     & λΠ\underline{ω}\\
+λ→ &                & λΠ  \\
+};
+\path[-{Latex[length=2.5mm, width=1.5mm]}]
+(m-1-2) edge (m-1-4)
+(m-2-1) edge (m-2-3) edge node[fill=white,pos=0.4]{higher-order} (m-1-2)
+(m-3-2) edge (m-1-2) edge (m-3-4)
+(m-4-1) edge node[fill=white]{polymorphism} (m-2-1)
+(m-4-1) edge (m-3-2)
+(m-4-1) edge node[fill=white]{dependence} (m-4-3)
+(m-3-4) edge (m-1-4)
+(m-2-3) edge (m-1-4)
+(m-4-3) edge (m-3-4) edge (m-2-3);
+\end{tikzpicture}
+#+end_figure
 
-[[todo:Typing rules - same as the above, just describe types (1 short para)]]
+Higher-order type operators simply generalize the concepts of functions to the
+type level, adding λ-abstractions and applications to the language of types.
 
-[[todo:This language is not turing-complete, must terminate]]
+todo:SimpleHigher-orderSyntax
 
-[[todo:Close the above, motivating example what is it good for? (1 para + 1 figure)]]
-** Lambda cube
-Introduce sorts: Sorts: types, kinds. ⋆, □.
+Polymorphism adds polymorphic types to the language of types (\[∀X:k.A(X)\]),
+and type abstractions (Λ-abstractions) and applications to the language of
+terms.
 
-[[todo:Brief lambda cube intro show what's out there (3 para)]]
+todo:SimplePolymorphicSyntax
 
-\missingfigure{Lambda cube}
+Dependence allows the function type to depend on its arguments, adding the
+Π-type (\[Πa:A.B(a)\]).
 
-[[todo:Derivation rules added by the lambda cube + options, 2 columns]]
+todo:SimpleDependentSyntax
 
-[[todo:In the rest of the thesis we will work with λω (1 para)]]
-** Extensions
-Type constructors:
-- formation, a way to construct new types (if A and B are types, then Bᴬ is a type)
-- introduction, ways to construct terms of these types (if (x:A)⊢(b:B), then λx.b:Bᴬ)
-- elimination, ways to use them to construct other terms (if a:A and f:Bᴬ, then f(a):B)
-- computation, what happens when intro&elim ((λx.b)(a) computes to b[x≔a])
-- η-conversion, neutrals rules?
+- λ→ calculus with polymorphism is called the System F.
+- λ→ calculus with dependent types is well-studied as the Logical Framework or LF.
+- The system λω (λ→ with polymorphism and dependence) is the basis of type
+  systems of languages like Haskell or ML.
+- The system that combines all three of these features is the Calculus of
+  Constructions. This system, together with some extensions, is the basis of
+  Agda or Coq.
 
-- positive type: defined by introductions: coproduct, empty type
-- negative type: defined by eliminations: function, product
+To formally describe the cube, we will need to introduce the notion of sorts. In
+brief,
 
-*** Product types
-non-dependent product type
+\[t : T : ⋆ : □,\]
 
-$p : A × B$, $p ≔ (a, b)$
+where \[t\] is a term, \[T\] a type, \[⋆\] is a kind, the sort of types, and
+\[□\] is the sort of kinds, The type of terms is a type, the type of types is a
+kind, the type of kinds is a sort.
 
-projections $π₁ : A × B → A$, $π₁ (a, b) ≔ a$
+todo:KindFormation
 
-η rule: $(π₁~p, π₂~p) ≔ p$
+All of these three dependencies can be described by one introduction rule, where
+\[(s₁, s₂) ∈ R\] are pairs of sorts \[R = {⋆,□}\]:
 
-$curry : A × B → C → A → B → C$, $curry f ≔ λx.λy.f (x, y)$
+#+BEGIN_EXPORT latex
+\AxiomC{$Γ ⊢ A : s₁$}
+\AxiomC{$Γ, A : s₁ ⊢ B : s₂$}
+\BinaryInfC{$Γ ⊢ Π_{x : A}b : s₂$}
+\DisplayProof
+#+END_EXPORT
 
-$uncurry : A → B → C → A × B → C$, $curry f ≔ λx.f (π₁ x) (π₂ y)$
+If we know that $Π_{a:A}B$ where $B$ does not use $a$ can be written as $A → B$,
+then this is equivalent to the function type formation rule.
 
-- formation: A:⋆ and B:⋆ | A×B:⋆
-- construction: a:A and b:B | (a, b):A×B
-- elimination: if p:A×B, then fst(p):A and snd(p):B
-- computation: fst(a, b) is a, snd(a, b) is b
+To think of it differently, these rules form a λ calculus "one order
+higher". where the terms have the sort □ and not ⋆. We can generalize this even
+more, and say that $⋆ ≡ Type₀$ and $□ ≡ Type₁$, and extend this to an infinite
+hierarchy of universes:
+
+\[Type₀ : Type₁ : Type₂ : ...\]
+
+This introduces complications to the type theory. In the simple case of types
+and kinds, we can define separate operators, but in the general case we need to
+define /lifting/ and /lowering/ of terms between universes. In the pedagogic
+implementations of dependently-typed λ calculi from which I took inspiration,
+this was acknowledged and replaced with the rule *$Type:Type$* that flattens this
+hierarchy. This leads to paradoxes similar to the Russel's paradox in set
+theory. However, even if it means that our logic is inconsistent, omitting
+universes simplifies the implementation enough that it is beneficial.
+
+todo:GirardsParadox
+
+In the rest of this thesis, we will use all three generalizations of the
+simply-type λ calculus. We will formally define these constructs, and also
+define several extensions to this system that should be useful in the context of
+just-in-time compilation using Truffle: coproduct types, induction, booleans, and
+natural numbers.
+
+** Types
+- cite:juan20_unif_thesis - well described contexts + language specification -
+  can I take as inspiration?
 
 *** Π-types
 dependent product type, dependent function type
 
-$∀x:A,P(x) ≡ Π_{x:A}B(x)$
+eqref:eq:1
+#+begin_export latex
+\begin{equation}\label{eq:1}
+∀x:A,P(x) ≡ Π_{x:A}B(x)
+\end{equation}
+#+end_export
 
-- $x:A ⊢ B(x):Type$ introduces a universe type, its elements are types
-- can apply Λ-abstraction, $Λx.B(x) : Typeᴬ$
+- \[x:A ⊢ B(x):Type\] introduces a universe type, its elements are types
+- can apply Λ-abstraction, \[Λx.B(x) : Typeᴬ\]
 - Type : Type leads to paradoxes
 
 [[todo:generalization of the function space (2 paras)]]
 
-$Π(n:ℕ). Vec(ℝ, n)$ vs $Π(n:ℕ). ℝ$
+\[Π(n:ℕ). Vec(ℝ, n)\] vs \[Π(n:ℕ). ℝ\]
 
 [[todo:grammar, specific example (2 figures)]]
 
@@ -561,28 +726,34 @@ Allows inductive types, eliminators, Church
 - elimination: if a:A and f:Π_{x:A}B(x), then f(a):B(a)
 - computation: (λx.b)(a) computes to b[x≔a]
 
-*** Coproduct types
-Sum types
+**** Product types
+non-dependent product type
 
-Set magnitude
+\[p : A × B\], \[p ≔ (a, b)\]
 
-- formation: if A and B are types, A+B is a type
-- construction: if a:A, then inl(a):A+B, is b:B, then inr(b):A+B
-- elimination: if p:A+B, and (x:A)⊢(c_A:C) and (y:B)⊢(c_B:C), then case(p,c_A,c_B):C
-- computation: case(inl(a),c_A,c_B) => c_A[x≔a], same for b
+projections \[π₁ : A × B → A\], \[π₁ (a, b) ≔ a\]
 
-- ($case_{A,B,C} : (A → C) → (B → C) → (A + B → C) by$
-- $case f g (inl a) ≔ f a$
-- $case f g (inr b) ≔ g b$ ?)
+η rule: \[(π₁~p, π₂~p) ≔ p\]
+
+\[curry : A × B → C → A → B → C\], \[curry f ≔ λx.λy.f (x, y)\]
+
+\[uncurry : A → B → C → A × B → C\], \[curry f ≔ λx.f (π₁ x) (π₂ y)\]
+
+- formation: A:⋆ and B:⋆ | A×B:⋆
+- construction: a:A and b:B | (a, b):A×B
+- elimination: if p:A×B, then fst(p):A and snd(p):B
+- computation: fst(a, b) is a, snd(a, b) is b
 
 *** Σ-types
 [[todo:Dependent tuple/pair/product/sum (2 para)]]
 
+- cite:abel11_sigma_unif - well-specified terms, sigma, ?
+
 generalization of the coproduct type
 
-$∃x:A,P(x) ≡ Σ_{x:A}B(x)$
+\[∃x:A,P(x) ≡ Σ_{x:A}B(x)\]
 
-$(a, b) : Σ_{x:A}. B(x)$
+\[(a, b) : Σ_{x:A}. B(x)\]
 
 [[todo:grammar, specific example (2 figures)]]
 
@@ -592,49 +763,91 @@ Allows datatypes/records, Cat + Functor?
 #+CAPTION: Dependent sum type
 #+ATTR_LaTeX: :options [!htpb]
 #+begin_figure latex
-\begin{subfigure}[t]{.32\textwidth}\centering\[
-\AxiomC{$Γ ⊢ A : ⋆$}
-\AxiomC{$Γ, x : A ⊢ B : ⋆$}
-\BinaryInfC{$Γ ⊢ Σ_{x : A}B : ⋆$}
-\DisplayProof\]\caption{Type}
+\begin{subfigure}[t]{.32\textwidth}\centering
+\AxiomC{$ ⊢ A : ⋆$}
+\AxiomC{$, x : A ⊢ B : ⋆$}
+\BinaryInfC{$ ⊢ Σ_{x : A}B : ⋆$}
+\DisplayProof\caption{Type}
 \end{subfigure}
-\begin{subfigure}[t]{.68\textwidth}\centering\[
-\AxiomC{$Γ ⊢ a : A$}
-\AxiomC{$Γ, x : A ⊢ B : ⋆$}
-\AxiomC{$Γ ⊢ b : B[x ≔ a]$}
-\TrinaryInfC{$Γ ⊢ (a, b) : Σ_{x : A}B$}
-\DisplayProof\]\caption{Constructor}
+\begin{subfigure}[t]{.68\textwidth}\centering
+\AxiomC{$ ⊢ a : A$}
+\AxiomC{$, x : A ⊢ B : ⋆$}
+\AxiomC{$ ⊢ b : B[x ≔ a]$}
+\TrinaryInfC{$ ⊢ (a, b) : Σ_{x : A}B$}
+\DisplayProof\caption{Constructor}
 \end{subfigure}
-\begin{subfigure}[t]{.32\textwidth}\centering\[
+\begin{subfigure}[t]{.32\textwidth}\centering
 \AxiomC{$Γ ⊢ p : Σ_{x : A}B$}
 \UnaryInfC{$Γ ⊢ fst p : A$}
-\DisplayProof\]\caption{\texttt{fst} Eliminator}
+\DisplayProof\caption{\texttt{fst} Eliminator}
 \end{subfigure}
-\begin{subfigure}[t]{.32\textwidth}\centering\[
+\begin{subfigure}[t]{.32\textwidth}\centering
 \AxiomC{$Γ ⊢ p : Σ_{x : A}B$}
 \UnaryInfC{$Γ ⊢ snd p : B[x ≔ fst p]$}
-\DisplayProof\]\caption{\texttt{snd} Eliminator}
+\DisplayProof\caption{\texttt{snd} Eliminator}
 \end{subfigure}
-\begin{subfigure}[t]{.5\textwidth}\centering\[
+\begin{subfigure}[t]{.5\textwidth}\centering
 \AxiomC{$Γ ⊢ a : A$}
 \AxiomC{$Γ, x : A ⊢ B : ⋆$}
 \AxiomC{$Γ ⊢ b : B[x ≔ a]$}
 \TrinaryInfC{$Γ ⊢ fst(a, b) ≡ a : A$}
-\DisplayProof\]\caption{\texttt{fst} β-reduction}
+\DisplayProof\caption{\texttt{fst} β-reduction}
 \end{subfigure}
-\begin{subfigure}[t]{.5\textwidth}\centering\[
+\begin{subfigure}[t]{.5\textwidth}\centering
 \AxiomC{$Γ ⊢ a : A$}
 \AxiomC{$Γ, x : A ⊢ B : ⋆$}
 \AxiomC{$Γ ⊢ b : B[x ≔ a]$}
 \TrinaryInfC{$Γ ⊢ snd(a, b) ≡ b : B$}
-\DisplayProof\]\caption{\texttt{snd} β-reduction}
+\DisplayProof\caption{\texttt{snd} β-reduction}
 \end{subfigure}
-\begin{subfigure}[t]{.32\textwidth}\centering\[
+\begin{subfigure}[t]{.32\textwidth}\centering
 \AxiomC{$Γ ⊢ p : Σ_{x : A}B$}
 \UnaryInfC{$Γ ⊢ (fst p, snd p) : Σ_{x : A}B$}
-\DisplayProof\]\caption{η-conversion}
+\DisplayProof\caption{η-conversion}
 \end{subfigure}
 #+end_figure
+
+**** Coproduct types
+Sum types
+
+Set magnitude
+
+- formation: if A and B are types, A+B is a type
+- construction: if a:A, then inl(a):A+B, is b:B, then inr(b):A+B
+- elimination: if p:A+B, and (x:A)⊢(c_A:C) and (y:B)⊢(c_B:C), then case(p,c_A,c_B):C
+- computation: case(inl(a),c_A,c_B) => c_A[x≔a], same for b
+
+- (\[case_{A,B,C} : (A → C) → (B → C) → (A + B → C) by\]
+- \[case f g (inl a) ≔ f a\]
+- \[case f g (inr b) ≔ g b\] ?)
+
+*** μ-types
+[[todo:Recursive type, box/unbox (2 paras)]]
+
+Equi-recursive types: generic recursion
+Iso-recursive types: with explicit folding and unfolding
+
+[[todo:Type-level recursion, fixpoint, grammar (2 paras)]]
+
+\missingfigure{Motivating example - from PiSigma?}
+
+*** Function types
+Implicit arguments, same as \[Λx.t(x)\] or \[∀X.t\], we write \[{x: X} -> A(x)\]. Types that depend
+on types, terms that depend on types. With the exception that these really are
+implicit, we will be able to infer these arguments automatically instead of
+manually passing type arguments to all polymorphic functions.
+
+\AxiomC{$t:A→B$}\UnaryInfC{$t→_βλx^A.t x$}\DisplayProof
+
+*Implicit arguments*
+[[todo:In brief - arguments that the compiler will fill in for us, type arguments
+Agda et al. have it. (2 paras)]]
+
+- cite:kovacs20_implicit - implicits (example, algo), rules+grammar!!!,
+  metacontext+weakening, issues!!!, telescopes, benchmarks!!!
+- cite:lescanne95_levels - de Bruijn levels-only, substitution algorithm
+
+[[todo:Figure - implicit/braced arguments of an ~id~]]
 
 *** =-types (?)
 - formation: if A:⋆, a:A, b:A, then (a=b):⋆
@@ -646,67 +859,81 @@ Allows datatypes/records, Cat + Functor?
 - computation: J(d;a,a,refl_a) computes to d(a)
 
 *** Naturals
-- formation: $⊢ ℕ : ⋆$
+System T of Gödel: STLC + naturals + booleans cite:bove08_atwork
+
+is still strongly normalizing - introducing naturals and booleans does not
+prevent termination
+
+- formation: \[⊢ ℕ : ⋆\]
 - construction: 0:ℕ, and (x:ℕ)⊢(s(x):ℕ)
-- elimination: if $c₀:C(0)$ and (x:ℕ),(r:C(x))⊢(cₛ:C(s(x))), then for p:ℕ we have $rec(p,c₀,cₛ):C(p)$
+- elimination: if \[c₀:C(0)\] and (x:ℕ),(r:C(x))⊢(cₛ:C(s(x))), then for p:ℕ we have \[rec(p,c₀,cₛ):C(p)\]
 - computation: rec(0,c₀,cₛ) ≔ c₀, rec(s(n),c₀,cₛ) ≔ cₛ[x≔n], rec(n,c₀,cₛ) ≔ r.
 
+\[elim : ΠA : ℕ → Type.A 0 → (Πn : ℕ.A n → A (suc n)) ! Πn : ℕ.A n
+elim A z s 0 = z
+elim A z s (suc 0) = s n (elim A z s n)
+\]
 
-*** μ-types
-[[todo:Recursive type, box/unbox (2 paras)]]
+\[zeros : Πn : ℕ. Vec ℕ n
+zeros ≔ elim (Vec ℕ) [] (λn, x.0 ::ₙ x)
+\]
 
-[[todo:Type-level recursion, fixpoint, grammar (2 paras)]]
+Other eliminator examples at http://www.cs.nott.ac.uk/~psztxa/ntt/elim.pdf
 
-\missingfigure{Motivating example - from PiSigma?}
+*** Booleans
+** Algorithms
+*** Evaluation
+- cite:eisenberg20_stitch - exact algorithm description
 
-*** Type in Type
-[[todo:Universes, what is the hierarchy used for (2 para)]]
+While reduction strategies mentioned (many pages back) are related to the
+evaluation strategy and rewriting rules specify the behavior of an evaluator
+exactly, "real-world" implementations of the λ-calculus do not use rewriting as
+their primary method of evaluation.
 
-[[todo:Weakening (cite PiSigma) but practical simplification (2 para)]]
+What is commonly done is a translation of terms into another domain, which then
+produces values, which are then compared or unified or whatever. This domain can
+be an interpreter, compiled code, ...
 
-\missingfigure{Counter-example with multiple universes}
+First, however, we need to introduce evaluation models that connect reduction
+strategies to terms used in implementation of programming
+languages.
 
-*** Implicit arguments
-[[todo:In brief - arguments that the compiler will fill in for us, type arguments
-Agda et al. have it. (2 paras)]]
+Call-by-value, otherwise called eager evaluation, corresponds to applicative
+order reduction strategy cite:ariola97_cbn. Specifically, when executing a statement, its
+sub-expressions are evaluated inside-out and immediately reduced to a value.
+This leads to predictable program performance (the program will execute in the
+order that the programmer wrote it, evaluating all expressions in order), but
+this may lead to unnecessary computations performed: given an expression ~const
+5 (ackermann 4 2)~, the value of ~ackermann 4 2~ will be computed but immediately
+discarded, in effect wasting processor time.
 
-[[todo:Figure - implicit/braced arguments of an ~id~]]
+Call-by-need, also lazy evaluation, is the opposite paradigm. An expression will
+be evaluated only when it's result is first accessed, not when it is created or
+defined. Using call-by-need, the previous example will terminate immediately as
+the calculation ~ackermann 4 2~ will be deferred and then discarded. However, it
+also has some drawbacks, as the performance characteristics of programs may be
+less predictable or harder to debug.
 
-** Operations
-*** Reduction
-[[todo:α, β, η, ... (3 items)]]
+Call-by-value is the prevailing paradigm, used in all commonly used languages
+with the exception of Haskell. It is sometimes necessary to defer the evaluation
+of an expression, however, and lazy evaluation is emulated using closures or
+zero-argument functions: e.g., in Kotlin a variable can be initialized using the
+syntax ~val x by lazy { ackermann(4, 2) }~, and it will be initialized only if is
+ever needed.
 
-[[todo:Same for all of the calculi (right?)]]
+There is also an alternative paradigm, called call-by-push-value, which subsumes
+both call-by-need and call-by-value as they can be directly translated to
+CBPV--in the context of λ-calculus specifically. It does this by defining additional
+operators /delay/ and /force/, one to create a /thunk/ that contains a deferred
+computation, one to evaluate the thunk. Also notable is that it distinguishes between values
+and computations: values can be passed around, but computations can only be
+executed, or deferred.
 
-- Equivalences:
-  - α-equivalence = structural, allows α-renaming
-  - β-equivalence = allows β-reduction (function application step) ==
-    α-equivalence of β-normal forms
-  - η-equivalence = allows η-reduction (f ≡ λx. f x)
-
-[[todo:Equality, equivalence, structural, nominal (2 para)]]
-
-*** Normal forms
-[[todo:Normal forms - nf, hnf, whnf (3 items, describe)]]
-
-\missingfigure{Show off a normal form derivation - which operation is used when}
-
-*** Evaluation models
-[[todo:Evaluation models - CBN, CBV, CBPV (3 paras, 1 figure)]]
-
-Call-by-need - a computation happens in the place where a value is used, and not
-created (~const 5 expensiveFunc~ doesn't /force/ the expensive computation)
-
-Call-by-value - a computation happens immediately, whenever a value is created
-(in the previous example both 5 and ~expensiveFunc~ would first be evaluated
-before calling ~const~)
-
-Call-by-push-value - formalism subsuming both (by means of a translation
-strategy), defining a single evaluation order in terms of operations with a
-stack - two additional operators, *distinguishes values and computations*
-(including dependent types, in the original 1999 paper), operator $U$ (delay)
-creating a /thunk/, and operator $F$ (force) that forces the computation of a
-delayed value/thunk.
+Levy's call-by-push-value cite:levy99_cbpv formalism subsumes both (by means of
+a translation strategy): it defines a single evaluation order in terms of
+operations with a stack using two additional operators. It *distinguishes values
+and computations*, operator $U$ (delay) creates a /thunk/, a delayed computation,
+and operator $F$ (force) that forces its evaluation.
 
 #+CAPTION: Call-by-push-value values and computations
 #+begin_figure latex
@@ -716,34 +943,33 @@ B & ::= & F A | Π(i∈I)B_i | A → B
 \end{array}\]
 #+end_figure
 
-- value of type $UB$ is a thunk producing a value of type $B$
+- value of type \[UB\] is a thunk producing a value of type \[B\]
 - Σ is a pair (tag, Value)
 - type A × A' is a value of type (V, V')
 - type 1 is a 0-tuple
-- computation of type $FA$ produces a value of type A
-- computation Π pops a tag $i$ from operand stack, then is a computation of type $B$
+- computation of type \[FA\] produces a value of type A
+- computation Π pops a tag \[i\] from operand stack, then is a computation of type \[B\]
 - computation A → B pops a value of type A, then behaves as type B
 [[todo:https://www.cs.bham.ac.uk/~pbl/papers/tlca99.pdf]]
 
-** Type checking, inference, elaboration
-- type checking ( = determining whether a program is well-typed)
-- type inference ( = the process of obtaining the type of an expression from its
-  parts or implicits; Hindley-Milner is well-known)
-- elaboration = convert a partially specified expression into a complete,
-  type-correct form (http://leodemoura.github.io/files/elaboration.pdf)
+*** Normalization
+*NbE*
 
-[[todo:Describe the nomenclature (3 para)]]
+- well investigated in cite:lindley05_nbe_sml where there is a comprehensive of
+  NbE techniques as applied to ML
+- also in cite:lindley05_nbe_sml there is a treatment of η reduction/expansion - READ
 
-*** Bidirectional typing
-Bidirectional typing (https://www.cl.cam.ac.uk/~nk480/bidir-survey.pdf) = now
-standard approach, combines type-checking and inference, simpler to implement
-even if inference is not required
+- cite:altenkirch16_nbe - NbE for dependent types including sums, renamings!
+- cite:christiansen19_nbe_haskell - Haskell simple NbE
 
-[[todo:Intro, motivation, list alternatives, pros and cons (2 para)]]
+- cite:gratzer19_modal_types - Tm, NfTm, NbTm; NfVal, NeVal, Val split, NbE well-written, normals, closures
 
-[[todo:Sketch the process? Write out lambda + app rules? (half a page)]]
+Normalization-by-evaluation in the style of Abel. Reminiscent of partial
+evaluation for λ calculus as we use "sticky" /neutral values/ instead of values we
+currently do not have. Provably confluent, a viable normalization strategy.
 
-*** Conversion checking
+As we use typed reduction rules, we do not need "subject reduction" algorithms(?)
+
 Conversion checking = type (or expression) equivalence checking, includes
 evaluation (NbE = full comparison of normal forms), checking equivalence "as
 described in the previous section"
@@ -752,9 +978,19 @@ described in the previous section"
 
 \missingfigure{neutral terms}
 
-*** Glued values
+*** Type checking
+*Bidirectional typing*
+- cite:ferreira14_bidi - elaboration, bi-di
+- cite:dunfield19_bidi - full rules, polarized??
 
-[[todo:Performance optimization, unfolding choice]]
+Bidirectional typing (https://www.cl.cam.ac.uk/~nk480/bidir-survey.pdf) = now
+standard approach, combines type-checking and inference, simpler to implement
+even if inference is not required
+
+[[todo:Intro, motivation, list alternatives, pros and cons (2 para)]]
+
+[[todo:Sketch the process? Write out lambda + app rules? (half a page)]]
+
 ** Our syntax
 [[todo:Putting this all together, we get...]]
 
@@ -879,8 +1115,12 @@ component of evaluation is function application, which is what we will focus on
 first.
 
 ** Representing functions
-The main requirement for a λ calculus runtime system is fast function
+The main requirement for a λ-calculus runtime system is fast function
 evaluation, which is where we will start.
+
+Closures as values of the λ-calculus
+
+- cite:gratzer19_modal_types - normal values, closures
 
 [[todo:Three constructs - lam, app, var (1 para)]]
 
@@ -892,10 +1132,11 @@ represented as function in the host language, using the host language's support
 for closing over free variables.
 
 While representing functions using HOAS produces very readable code and in some
-cases e.g. on GHC produces code an order faster than using explicit closures,
-this is not possible in for us, where function calls need to be nodes in the
-program graph and therefore objects, as we will see in Chapter [[ref:truffle]], so
-we will represent closures using explicit closures in the pure interpreter as well.
+cases e.g. on GHC produces code an order of magnitude faster than using explicit
+closures, this is not possible in for us, where function calls need to be nodes
+in the program graph and therefore objects, as we will see in Chapter
+[[ref:truffle]], so we will represent closures using explicit closures in the pure
+interpreter as well.
 
 [[todo:Cite Kovacs benchmarks where HOAS on GHC wins]]
 
@@ -911,11 +1152,17 @@ where we will look for variables.
 
 [[todo:Named versus nameless representation (2 paras, example)]]
 
-As we saw in [[inline:Where's WHNF?]], evaluation in λ-calculus is defined
-in terms of α- and β-reductions. Verifying expression equivalence also uses
-variable renaming. However, traversing the entire expression in the course of
-function application and applying substitution is not efficient and there are
-several alternative ways.
+As we saw in [[inline:Where's WHNF?]], evaluation in λ-calculus is defined in terms
+of α- and β-reductions. Verifying expression equivalence also uses variable
+renaming. However, traversing the entire expression in the course of function
+application and substituting variables is not efficient and there are several
+alternative ways.
+
+In typed λ calculus implementations in "real world" applications, evaluation
+in an abstract machine or into a different semantic domain are used
+instead. Then we have a clear distinction between terms (as the source code) and
+runtime objects (on which we perform reductions). Machines like STG, Zinc, SECD,
+... Normalization-by-evaluation works in this way, we eval/quote, [...]
 
 [[todo:Find de Bruijn motivating example]]
 [[todo:Find side-by-side dB examples]]
@@ -931,7 +1178,20 @@ Given an environment stack, indices count from the start of the stack, levels
 count form the bottom. Two ways of indexing the environment, indices useful for
 a stable context, levels without a stable context.
 
-We use both, indices when quoting evaluated values.
+- cite:kamareddine01_de_bruijn (pros & cons)
+- cite:eisenberg20_stitch - motivation for indices/levels
+
+In values, we have a known context, so it is easier to carry a level counter
+around, and use levels in variables = Val → Term uses levels
+
+In terms, we do not have a known context, so it makes sense to refer to use
+indices. If we used levels, we would have to renumber them anyway, if we
+e.g. performed an unfolding or otherwise used the term in a bigger context. =
+Term → Val uses indices.
+
+It is trivial to convert between them: given a context of size equal to the
+current depth level \[d\], level to index is \[d - lvl - 1\] and index to level is
+\[d - ix - 1\].
 
 [[todo:Environments - arrays, cons lists, stack, mutable/immutable (2 paras)]]
 
@@ -945,6 +1205,22 @@ We use both, indices when quoting evaluated values.
 [[todo:Eval Quote, very briefly (2 paras)]]
 
 [[todo:Extensions (Pi, Sigma, Eta) (2 paras)]]
+
+We do not want to do η-reduction, as it might introduce non-termination or
+undecidability (and in general is not compatible with subtyping
+relations). η-expansion is sound for producing βη-long normal forms.
+
+If we do not have a βη-long normal form and want to unify/compare (λx:A.M) with
+N, you unify/compare \[N X\] and \[M[x≔X]\] for a fresh X. This is sufficient for
+βη-equality (for the easy η-rule for Π/λ).
+
+Normalization-by-evaluation:
+- normalization = bring an expression with unknowns into a canonical form
+- evaluation = compute the value of an expression relative to an environment
+- machine code: normalizer ~ JIT compiler, evaluator ~ stack machine (env = stack)
+- NbE = adapt an interpreter to simplify expressions with unknowns
+
+NbE similar to machine code + equations from http://www.cse.chalmers.se/~abela/talkHabil2013.pdf
 
 ** Parser
 Lexical and syntactic analysis is not the focus of this work, so simply I chose
@@ -966,7 +1242,7 @@ position of the input file corresponds to each subtree, which is later used for
 type error reporting.
 
 #+label: presyntax
-#+caption: The ~Presyntax~ data type
+#+caption: The Presyntax data type
 #+begin_src kotlin
   sealed class TopLevel
   data class RDecl(val n: String, val type: PreTerm) : TopLevel()
@@ -1032,13 +1308,43 @@ we implement a way to convert this pre-syntax into correct-by-construction
 [[todo:Metavariables and holes, sequential processing (1 para)]]
 
 [[todo:How do we do unification (2 paras + 1 figure)]]
+- cite:gundry13_pattern_tutorial - well-specified unification algorithm, pruning
+- cite:abel11_sigma_unif - unifying sigma
 
-[[todo:Glued values - optimistic optimization (3 paras + 1 figure)]]
+** Primitive operations
+A primop needs:
+- a symbol (nullary constructor)
+- a neutral head (when it gets stuck)
+- evaluation rule in eval (as many VLams as necessary to apply it, so that the
+  computation rule can be tested)
 
+Not projections, though:
+- Fst:Term, (~eval env Fst = VLam \$ \v -> vFst v~),
+- projections should go to spines, not heads
+- neutrals should make access to the Ex that blocks computation as easy as possible,
+- see
+  https://github.com/AndrasKovacs/setoidtt/blob/master/proto/Evaluation.hs#L293
+  for an example
 ** User interface
-REPL
+The user interface we will use is a command-line one: a multi-purpose command
+that can start an interactive command-line session, execute a file, or
+pre-compile a source file into a Native Image.
 
-[[todo:This is our UI (plus batch CLI launcher), what does JLine require (2 paras)]]
+From my research, JLine is the library of choice for interactive command-line
+applications in Java, so that is what I used for the REPL (Read-Eval-Print
+Loop). It is a rather easy-to-use library: for the most basic use case, we only
+need to provide a prompt string, and a callback. We can also add
+auto-completion, a parser to process REPL commands, custom keybindings, built-in
+pager or multiplexer, or even a scripting engine using Groovy.
+
+Look at cite:garcia18_simple_lambda for other interaction modes:
+- golden tests (~:verbose~ as a command, e.g.)
+- :verbose = write out after every reduction
+- :ski = express in terms of combinators
+- interpreter + batch processor that reads REPL commands as well
+- Jupyter kernel
+- :types on, switches between untyped and simply-typed
+- @@(expr) = print out as a proof (type derivation) using typing rules
 
 [[todo:State keeping - load, reload + querying the global state (1 para)]]
 
@@ -1046,7 +1352,7 @@ commands:
 - ~:l~ create a NameTable
 - ~:r~ recreate a NameTable
 - ~:t~ inferVar, print unfolded
-- ~:nt~ inferVar, print glued
+- ~:nt~ inferVar, print folded
 - ~:n~ inferVar type, gQuote term, show
 - ~:e~ print elaboration output including all metas
 
@@ -1063,20 +1369,27 @@ Error reporting
   :PROPERTIES:
   :CUSTOM_ID: bench
   :END:
-** Tasks
-equivalent programs for a few dependently-typed languages
+We want to evaluate a few programs of equivalent functionality, as evaluated by
+elaboration, type-checking, and simplification in a number of dependently-typed
+languages.
 
-[[todo: Agda, Idris + cooltt, smalltt, redtt, cubicaltt, ... (2 paras)]]
+We also want to evaluate the performance of general β-normalization which only
+requires a functional language--this is secondary, however.
 
-[[todo:Also mainstream functional languages - Clojure, GHC, ... (1 para)]]
+We're mainly interested in asymptotic behaviors and not on constant
+factors. Just-in-time compiled languages especially suffer from long warm-up
+times, which means that common evaluation of "repeatedly running a command" will
+not perform well.
 
-[[todo:We're interested in asymptotics - effects of JIT, not constant factors (1 para)]]
+** Subjects
+Subjects for elaboration: Agda, Idris, Coq, GHC. Also cooltt, smalltt, redtt, Lean, ?
 
-- evaluation, normal form, simplification
-- elaboration, filling holes
-- Are there known problems/benchmarks?
+Subjects for normalization: as above, but also Cadenza (STLC), Clojure, GHC,
+Scala, OCaml, ML, Eta, Frege, ?
 
-** Specific tasks
+Also subjects: Montuno, MontunoTruffle, and possibly other optimized versions.
+
+** Workload
  - Nats - large type elaboration, call-by-need test
  - Nats - type-level calculation
  - Nats - value-level calculation
@@ -1086,24 +1399,35 @@ equivalent programs for a few dependently-typed languages
  - pairs - large type elaboration, call-by-need test
  - pairs - nested accessors
 
-** Specific languages
- SmallTT, Coq, Agda, GHC - for comparison
+Mention sources (this is from smalltt ^^)
+
+Brief descriptions, what does each one evaluate/stress?
+
+** Methodology
+We need to use in-language support, if available. We want to avoid measuring
+interpreter start-up, program parsing time, and other confounders.
+
+To measure: memory usage (curve), compilation speed (in a type-heavy test),
+evaluation speed (in a compute-heavy test)
+
+hyperfine to benchmark - measures speed (what about ~prof~?)
+memory profile from stderr output
+
+Krun benchmark runner + its warmup_stats functionality for statistical analysis
+of steady states, number of iterations it took to stabilize.
 
 memory profile from GHC's RTS for agda/idris/smalltt (+RTS -p)
 (what about coq? - https://github.com/coq/coq/blob/master/dev/doc/profiling.txt)
 Graal's default memory profiler
 
-hyperfine to benchmark - measures speed
-(what about ~prof~?)
-memory profile from stderr output
-
-  - from SmallTT project, from Idris project
-  - memory usage (curve)
-  - compilation speed (type-heavy test)
-  - evaluation speed (compute-heavy test)
+Mention specific parameters (X iterations, machine specs, ?)
 
 ** Results: a starting point
 [[todo:Results]]
+
+1:1 evaluation/discussion of directly comparable subjects, confidence
+intervals, likely causes of improvements/regressions, iterations to
+steady-state.
 
 * Adding JIT compilation to Montuno: MontunoTruffle
   :PROPERTIES:
@@ -1162,6 +1486,8 @@ gain:
 - the ability to gradually add optimizations like program graph rewriting,
   node specializations, or inline instruction caching
 
+
+
 [[todo:Images from file:///home/inuits/Downloads/graalvm-190721074229.pdf]]
 
 [[todo:images from https://www.slideshare.net/jexp/polyglot-applications-with-graalvm]]
@@ -1208,10 +1534,18 @@ typecasts, ... We can also hand-tune the code, adding our hand-generated
 bytecode into the mix.
 
 *** Truffle
+- trace-based optimization frameworks (RPython) vs partial evaluation frameworks (Truffle)
+- JIT compilation for (suitably instrumented) interpreters
+- Truffle provides a set of class and method annotations which reduce
+  boilerplate and implementation effort. They drive a compile-time code
+  generator
+
 [[todo:Introduce Truffle specifically, polyglot, graph (de)optimization (3 paras + code sample)]]
 
 Tiered compilation: C1, C2, Graal replaces C2
-Multiple uses of Graal - as C2 compiler, as a PE/AoT for SubstrateVM
+
+Multiple uses of Graal - it can function as instead of the C2 (server) compiler
+or as a PE/AoT for SubstrateVM
 
 Instruments, Chrome and other debugging support
 
@@ -1232,6 +1566,19 @@ Another visualization option: Seafoam
 [[todo:Introduce the canonical example - Literal and addition, trivial execute
 fn (1 para, 1 figure)]]
 
+Truffle: framework for implementing high-performance interpreters, in
+  particular for dynamic languages, and AST interpreters. Each node implements
+  the semantics of the operation/language construct. Graph flow - execution
+  flows downwards, results flow upwards.
+
+Graph manipulations:
+- replace() to a more specific variant
+- adopt() a new child node
+- GraalVM aggressively inlines stable method calls into efficient machine code
+
+- cite:wurthinger17_partial_eval - Truffle boundaries
+- cite:wimmer17_deoptimization - deoptimization, on-stack replacement
+
 *** Type specialization
 
 [[todo:Type system]]
@@ -1243,7 +1590,9 @@ de-optimized, and eventually re-compiled again.
 
 Inline caching for e.g. method lookups, virtual method calls are typically only
 ever invoked on a single class, which can be cached, and the dispatch node can
-be specialized, perhaps even inline the operation.
+be specialized, perhaps even inline the
+operation. (uninitialized/monomorphic/polymorphic/megamorphic = working with
+jumptables + guard conditions)
 
 Specializations are general, though, and nodes can go be specialized on
 arbitrary conditions, using custom assumptions and /compilation final/ values. In
@@ -1327,7 +1676,11 @@ Another option: a CountNode (public int counter; execute = counter++). Green ==
 state, grey is floating (not flow dependent), blue lines represent data flow
 (data dependencies), red means control flow (order of operations)
 
-*** Object storage
+*** Object Storage Model
+cite:grimmer15_polyglot - Polyglot + OSM intro
+
+- cite:mouton19_urilang - URI language, object-oriented
+
 - OSM (Object Storage Model) - Frame (~typed HashMap)
 - VirtualFrame - virtual/optimizable stack frame, "a function's/program's scope"
 - MaterializedFrame - VirtualFrame in a specific form, not optimizable, can be
@@ -1342,6 +1695,13 @@ VirtualFrame - can be optimized, reordered
 MaterializedFrame - an explicit Java Object on the heap, created from a
 VirtualFrame by calling ~frame.materialize()~
 
+Object Storage Model is a common way to organize data with layouts - Objects,
+Shapes, Layouts.
+
+TruffleRuby uses it for FFI to access Ruby objects directly as if they were C
+~structs~. DynSem uses these to model frames/scopes instead of Frames, as it is a
+meta-interpreter and uses Truffle Frames for its own data.
+
 *** Dispatch
 [[todo:dispatchNode, frames, argument passing, ExecutableNode, RootNode, CallTarget]]
 
@@ -1350,11 +1710,15 @@ VirtualFrame by calling ~frame.materialize()~
 
 Direct/IndirectCallNode
 
+VirtualFrames can be eliminated altogether, which results in highly efficient code
+
 *** Caching
 [[todo:@Cached()]]
 
 *** Polyglot
 [[todo:ValueTypes, InteropLibrary]]
+
+cite:grimmer15_polyglot - Polyglot + OSM intro
 
 *** Structure
 [[todo:Common components - Launcher, LanguageRegistration, Nodes, Values, REPL (5 items)]]
@@ -1463,6 +1827,12 @@ Truffle (and dependent types in general, if I recall correctly) and used Haskell
 instead. However, the project Luna was renamed to Enso, and rebuilt from scratch
 using Truffle and Scala not long before my thesis deadline.
 
+*** TruffleClojure
+Implemented in a Master's thesis cite:feichtinger15_clojure
+
+*** DynSem
+- cite:vergu19_scopes - OSM for frames/scopes
+
 * Language implementation: MontunoTruffle
   :PROPERTIES:
   :CUSTOM_ID: jit-interpreter
@@ -1500,6 +1870,9 @@ natural fit for Truffle is term evaluation, where a term could be represented as
 a value-level Term, and a CallTarget that produces its value with regard to the
 current environment. We can also embed the bidirectional elaboration algorithm
 itself, as a mixture of infer/check nodes.
+
+In dynamic interpreters that Truffle is aimed at, it is easy to think of the
+interpreter structure as "creating a graph through which values flow".
 
 [[todo:Move this elsewhere ↓]]
 
@@ -1583,6 +1956,8 @@ currying and helpful in our case when we need explicitly manage our stack via
 Frames as opposed to the interpreter where we relied on the host language for
 this functionality]]
 
+known/unknown calls, partially/fully/over-saturated calls
+
 cite:marlow04_fast_curry
 
 push-enter - arguments are pushed onto the stack, the function then takes as
@@ -1594,19 +1969,26 @@ exactly (EVAL), or under-applied (creates a PAP, a closure-like value)
 
 [[todo:exactly describe the rules from eval-apply paper KNOWNCALL, EXACT, CALLK, PAP]]
 
-[[todo:known application ( = known arity), unknown function]]
-
 ** Value types
 [[todo:Data classes with call targets]]
 
 [[todo:...depends on what will work]]
+
+Term and Val are ValueTypes that contain a callTarget - eval/quote(?)
+
+We could use Objects/Shapes/Layouts for dependent sums or non-dependent named
+coproducts.
 
 ** User interface
 REPL needs to be implemented as a ~TruffleInstrument~, it needs to modify and
 otherwise interact with the language context.
 
 ** Polyglot
-[[todo:...depends on whether I'll do polyglot or not]]
+Demonstrate calling Montuno from other languages
+
+Demonstrate Montuno's eval construct
+
+Demonstrate Montuno's FFI construct - requires projections/accessors
 
 ** Implementation
 [[todo:How to connect this together?]]
@@ -1639,6 +2021,9 @@ evaluation phases - translate to Code, run typecheck, run eval vs glued, ???
 [[todo:What does Enso do, optimization phases?]]
 [[todo:What can we do?]]
 
+Hash consing = sharing structurally equal values in the environment. See below from Kmett:
+https://gist.github.com/ekmett/6c64c3815f9949d067d8f9779e2347ef
+
 Inlining, let-floating
 
 Avoid thunk chaining: box(box(box(() => x))
@@ -1646,11 +2031,83 @@ Avoid thunk chaining: box(box(box(() => x))
 "Immutable, except to simplify" + assumptions
 Maximize evaluation sharing - globals, cache, ?
 
-Ruby uses threads, can we?
+- cite:blaguszewski10_llvm - potential optimizations, LLVM impl, closures
+- cite:gross14_coq_experience - Coq experience, a few reasons, comparison
+- cite:gross21_performance - a lot of reasons in Coq
+- cite:eisenberg20_stitch - CSE
+
+Ruby uses threads, can we? Automatic parallelism
+- cite:reid98_resumable_holes - concurrency & parallelism in GHC evaluation
+- cite:hughes82_supercombinators - CAFs? Lazy evaluation?
 
 Think about the fast vs slow path!
 
 [[todo:Show before and afters for each optimization]]
+
+- cite:zheng17_deoptimization - reasons for deoptimization
+
+OSM in DynSem:
+- DynSem also had to consider concept mapping: a program graph starts with
+  generic node operations that immediately specialize to language-specific
+  operations during their first execution
+- HashMaps are efficient, but bring downsides. The Graal compiler cannot see
+  inside the HashMap methods, and so cannot analyze data flow in them and use it
+  to optimize them.
+- DynSem also had to deal with runtime specification of environment manipulation
+  as this is also supplied by the language specification. Also split between
+  local short-lived values inside frames, and long-lived heap variables.
+- Relevant to us is their use of the Object Storage Model, which they use to
+  model variable scoping which is the processed into fixed-shape stack frames
+  (separate from the Truffle Frames, this is a meta-interpreter). OSM's use case
+  is ideal for when all objects of a certain type have a fixed shape. This is
+  ideal for us, as tuples and named records have, by definition, a fixed shape
+  (unlike Ruby etc. we do not support dynamic object reshaping, obviously).
+- They did it separately from the Virtual/MaterializedFrame functionality to
+  avoid the overhead of MaterializedFrames that Graal cannot optimize away.
+- Truffle/Graal discourage the use of custom collections, and instead push
+  developers towards Frames (which support by-name lookups) and Objects (same).
+
+To enhance compilation specialization/inlining:
+- Visualizations of call graphs - whether or not node children are stable calls
+- Most DynSem calls are not stable calls, they are dispatched on runtime based
+  on arguments - something that Graal does not see as stable (CompilationFinal)
+- Two types of rules: mono- and polymorphic. based on whether they are called
+  with different types of values at runtime. Poly- are not inlined
+- DynSem found two types: dynamic dispatch (meta-interpreter depended on runtime
+  info), and structural dispatch (based on the program AST and not on
+  values). This is similar to our EvalNode, QuoteNode and similar, which depend
+  on the type of the value
+- Overloaded rules--rules with the same input shape--are merged into a single
+  FusedRule node and iterated over with @ExplodeLoop.
+- For mono/polymorphic rules, they use an assumption that a rule is monomorphic,
+  specialize the rule, and recompile if it becomes polymorphic.
+- Inlining nodes - polymorphic rules reduced to a set of monomorphic rules - a
+  rule from the registry is cloned in an uninitialized state in a monomorphic
+  call site and "inlined" (in a CompilationFinal field)
+- They use a central registry of CallTargets that contain rules that they can
+  clone and adopt locally if necessary to specialize--we can do the same!
+- Disadvantages: there is more to compile and inline by Graal, instead of a
+  CallTarget, they use a child. Likely to take longer to stabilize, but faster
+  in the end.
+** Glued evaluation
+An optimization technique that attempts to avoid even more computation.
+
+Parallel operation on two types of values, glued and local. Glued are lazily
+evaluated to a fully unfolded form; local are eagerly computed to a head-normal
+form but not fully unfolded, to prevent size explosions. This results in better
+performance in a large class of programs, although it is not an asymptotic
+improvement, as we have a small eagerly evaluated term for quoting, and a large
+lazily evaluated for conversion checking.
+
+This is another case of specialization: we have two operations to perform on the
+same class of values, but each operation has its own requirements; in this case,
+on the size of the terms as in quoting we want a small folded value but require
+the full term for conversion checking.
+
+cite:kaposi19_gluing
+
+https://eutypes.cs.ru.nl/eutypes_pmwiki/uploads/Meetings/Kovacs_slides.pdf
+
 ** Splitting/type specializations/dict passing
 ** Optimizing function dispatch
 [[todo:lambda merging, eta expansion]]
@@ -1770,6 +2227,10 @@ can create a so-called flamegraph with the results of the sampling.
 [[todo:Compare asymptotics now, with Agda, ...]]
 ** Next work
 FFI, tooling
+
+RPython, K Framework - exploration
+
+SPMD on Truffle, Array languages
 
 More type extensions OR totality (as a proof assistent)
 

@@ -1,0 +1,46 @@
+* (front matter)                                              :ignoreheading:
+#+LANGUAGE: en
+#+OPTIONS: texht:nil toc:nil author:nil ':t H:4 num:3
+#+LATEX_CLASS: article
+#+LATEX_CLASS_OPTIONS: [a4paper]
+#+BIND: org-latex-prefer-user-labels t
+#+BIND: org-latex-default-figure-position "htb"
+#+LATEX_HEADER:\usepackage{fontspec}
+#+LATEX_HEADER:\setmainfont{texgyrepagella}[Ligatures=TeX, Extension=.otf, UprightFont=*-regular, BoldFont=*-bold, ItalicFont=*-italic, BoldItalicFont=*-bolditalic,]
+#+LATEX_HEADER:\setmonofont{texgyrecursor-regular.otf}
+#+LATEX_HEADER:\usepackage{unicode-math}
+#+LATEX_HEADER:\setmathfont{texgyrepagella-math.otf}
+#+LATEX_HEADER:\setmathfont{XITSMath-Regular.otf}[range={"2A3E}, BoldFont=XITSMath-Bold.otf, ]
+#+LATEX_HEADER:\usepackage{subcaption}
+#+LATEX_HEADER:\usepackage{bibentry}
+#+LATEX_HEADER:\usepackage{url}
+#+LATEX_HEADER:\usepackage{color}
+#+LATEX_HEADER:\usepackage{microtype}
+#+LATEX_HEADER:\usepackage{amsmath}
+#+LATEX_HEADER:\usepackage{amssymb}
+#+LATEX_HEADER:\usepackage{minted}
+#+LATEX_HEADER:\setminted{fontsize=\small}
+#+LATEX_HEADER:\usepackage{tikz}
+#+LATEX_HEADER:\usepackage{tikz-cd}
+#+LATEX_HEADER:\usepackage{bussproofs}
+#+LATEX_HEADER:\usetikzlibrary{arrows.meta,positioning}
+#+LATEX_HEADER:\usepackage[colorinlistoftodos]{todonotes}
+#+LATEX_HEADER:\let\emph\textit
+#+LATEX:\setlength{\parskip}{0pt}
+* Content
+Final try?
+
+#+label: label
+#+CAPTION: Caption
+#+begin_figure latex
+\captionsetup{aboveskip=-1pt}
+\begin{subfigure}[t]{.5\textwidth}\centering
+\AxiomC{$ ⊢ A : ⋆$}
+\AxiomC{$, x : A ⊢ B : ⋆$}
+\BinaryInfC{$ ⊢ Σ_{x : A}B : ⋆$}
+\DisplayProof\caption{Type}
+\end{subfigure}
+#+end_figure
+
+bibliographystyle:abbrv
+bibliography:bibliography.bib
