@@ -1037,6 +1037,7 @@ Management}{\@fit@EN}%
   \definecolor{anchors}{rgb}{0,0,0}
 \fi
 \usepackage[all]{hypcap}
+\usepackage{bookmark}
 \def\AnchorColor{anchors}
 \def\LinkColor{links}
 \def\pdfBorderAttrs{/Border [0 0 0] }  % bez okrajů kolem odkazů / without margins around links

@@ -108,3 +108,6 @@
 [submodule "dep/qir"]
 	path = dep/qir
 	url = https://gitlri.lri.fr/jlopez/qir.git
+[submodule "dep/shen-truffle"]
+	path = dep/shen-truffle
+	url = https://github.com/ragnard/shen-truffle/

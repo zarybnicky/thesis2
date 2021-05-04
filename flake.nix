@@ -94,7 +94,7 @@
       FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [
         pkgs.lmodern
         pkgs.xits-math
-      ] ++ pkgs.texlive.tex-gyre.pkgs ++ pkgs.texlive.Asana-Math.pkgs; };
+      ] ++ pkgs.texlive.tex-gyre-math.pkgs ++ pkgs.texlive.tex-gyre.pkgs ++ pkgs.texlive.Asana-Math.pkgs; };
       buildInputs = [
         hsPkgs.cabal-install
         hsPkgs.hie-bios
