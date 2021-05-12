@@ -3,7 +3,7 @@
   year={2021},
   date=\today,
   title.cs={Just-in-time překlad závisle typovaného lambda kalkulu},
-  title.en={Just-in-Time Compilation\\of the Dependently-typed Lambda Calculus},
+  title.en={Just-in-Time Compilation\\of the Dependently-Typed Lambda Calculus},
   title.length={15.5cm},
   %sectitle.length={14.5cm}, % nastavení délky bloku s druhým titulkem pro úpravu zalomení řádku (lze definovat zde nebo níže)
   author.name={Jakub},
@@ -19,36 +19,41 @@
   faculty.en={Faculty of Information Technology},
   department.cs={Ústav inteligentních systémů},
   department.en={Department of Intelligent Systems},
-  keywords.cs={klíčová slova v českém jazyce, oddělená čárkami.},
-  keywords.en={klíčová slova v anglickém jazyce, oddělená čárkami.},
+  keywords.cs={Truffle, Virtuální stroj JVM, just-in-time kompilace, tvorba
+  překladačů, závislé typy, lambda kalkul},
+  keywords.en={Truffle, Java Virtual Machine, just-in-time compilation, compiler construction, dependent types, lambda calculus},
   abstract.cs={
-
-    Do tohoto odstavce bude zapsán výtah (abstrakt) práce v českém (slovenském)
-    jazyce.
-
-   (0). O co jde? Jaký obor?
-   1. Jaký se řeší problém? Jaké je téma? Jaký je cíl textu?
-   2. Jak je problém vyřešen? Je cíl naplněn?
-   3. Jaké jsou konkrétní výsledky? Jak dobře je problém vyřešen?
-   4. Čím je to užitečné vědě a čtenáři?
-
+    [...česky]
   },
   abstract.en={
+   A number of programming languages have managed to greatly improve their
+   performance by replacing their custom runtime system with Just-in-time (JIT)
+   optimizing compilers like GraalVM or RPython. This thesis evaluates whether
+   such a transition would also benefit dependently-typed programming languages
+   by implementing a minimal language based on the $\lambda\star\text{-calculus}$ using
+   the Truffle language implementation framework on the GraalVM platform, a
+   partial evaluation-based JIT compiler based on the Java Virtual Machine.
 
-    Do tohoto odstavce bude zapsán výtah (abstrakt) práce v anglickém jazyce.
+   This thesis introduces the type theoretic notion of dependent types,
+   specifies a minimal dependently-typed language, and implements two
+   interpreters for this language: a simple AST-based interpreter, and a
+   Truffle-based interpreter. A number of optimization techniques that use the
+   capabilities of a JIT compiler are then applied to the Truffle-based
+   interpreter. The performance of these interpreters is then evaluated on a
+   number of normalization and elaboration tasks designed to be comparable with
+   other system, and the performance is then compared with a number of
+   state-of-the-art dependent languages and proof assistants.
 
+   [...specific numbers]
   },
   declaration={
-
     I hereby declare that this Master's thesis was created as an original work
     by the author under the supervision of Ing. Ondřej Lengál Ph.D.
 
     I have listed all the literary sources, publications, and other sources
     that were used during the preparation of this thesis.
-
   },
   acknowledgment={
-
     I would like to thank my supervisor Ing. Ondřej Lengál Ph.D. for entertaining a
     second one of my crazy thesis proposals.
 
@@ -57,11 +62,8 @@
 
     I would also like to thank my family and friends who supported me when I needed
     it the most throughout my studies.
-
   },
   extendedabstract={
-
-    Do tohoto odstavce bude zapsán výtah (abstrakt) práce v českém (slovenském) jazyce.
-
+    [...česky]
   }
 }

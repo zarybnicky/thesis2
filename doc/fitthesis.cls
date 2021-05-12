@@ -50,6 +50,8 @@
 % Balicky / Packages
 %-----------------------------------------------------------------------------
 \usepackage[english,czech]{babel}
+\usepackage{xevlna}
+\usepackage[all]{nowidow}
 \usepackage{textcomp}
 
 \usepackage{url}
@@ -87,12 +89,13 @@
 \setmathfont{Asana-Math.otf}[range={\setminus}, ]
 \setmathfont{XITSMath-Regular.otf}[range={"2A3E}, BoldFont=XITSMath-Bold.otf, ]
 
-\usepackage{minted}
+\usepackage[chapter]{minted}
 \setminted{fontsize=\small}
+\RecustomVerbatimEnvironment{Verbatim}{BVerbatim}{}
 \usepackage{tikz}
 \usepackage{tikz-cd}
 \usepackage{bussproofs}
-\usetikzlibrary{arrows.meta,positioning}
+\usetikzlibrary{arrows,arrows.meta,calc,fit,shapes,positioning}
 
 \let\emph\textit
 
@@ -183,7 +186,7 @@
   \setlength\parindent{17\p@}
   \setlength{\parskip}{0pt}
 \fi
-
+\setlength{\abovedisplayskip}{9pt}
 
 %-----------------------------------------------------------------------------
 % Texty / Texts
@@ -586,7 +589,7 @@ Management}{\@fit@EN}%
 \iftoggle{slovak_used}{
   \noindent\MakeUppercase{\@author@s}, \@author@n. \it\@title\rm. Brno, \@year. \@projecttype@SK. \@vut@SK, \@fit@SK. {\@supervisor@SK} {\@supervisor@tp} {\@supervisor@n} {\@supervisor@s}{\ifx\undefined\@supervisor@ta\else,~\@supervisor@ta\fi}
 }{
-  \noindent\MakeUppercase{\@author@s}, \@author@n. \it\@title\rm. Brno, \@year. \ifczech\@projecttype@CS\else\@projecttype@EN\fi. \ifczech\@vut@CS\else\@vut@EN\fi, \ifczech\@fit@CS\else\@fit@EN\fi. {\ifczech\@supervisor@CS\else\@supervisor@EN\fi} {\@supervisor@tp} {\@supervisor@n} {\@supervisor@s}{\ifx\undefined\@supervisor@ta\else,~\@supervisor@ta\fi}
+  \noindent\MakeUppercase{\@author@s}, \@author@n. \begingroup\def\\{ }\it\@title\rm\endgroup. Brno, \@year. \ifczech\@projecttype@CS\else\@projecttype@EN\fi. \ifczech\@vut@CS\else\@vut@EN\fi, \ifczech\@fit@CS\else\@fit@EN\fi. {\ifczech\@supervisor@CS\else\@supervisor@EN\fi} {\@supervisor@tp} {\@supervisor@n} {\@supervisor@s}{\ifx\undefined\@supervisor@ta\else,~\@supervisor@ta\fi}
 }
 %===================================================
 \newpage
@@ -1041,11 +1044,6 @@ Management}{\@fit@EN}%
 \def\AnchorColor{anchors}
 \def\LinkColor{links}
 \def\pdfBorderAttrs{/Border [0 0 0] }  % bez okrajů kolem odkazů / without margins around links
-
-% řeší první/poslední řádek odstavce na předchozí/následující stránce
-% solves first/last row of the paragraph on the previous/next page
-\clubpenalty=10000
-\widowpenalty=10000
 
 \input{metadata}
 

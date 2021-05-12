@@ -1,3 +1,3 @@
 rootProject.name = "thesis"
 include("montuno")
-include("dep/cadenza")
+include("dep:cadenza")
