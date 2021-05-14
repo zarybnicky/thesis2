@@ -19,6 +19,7 @@ org-wc-display
 5.5. 14500w (Σ79p)
 6.5. 15200w (Σ77p)
 10.5. 18800w (Σ81p)
+11.5. 20900w
 
 minimum: 12,500
 target: 17,500
@@ -329,7 +330,7 @@ ref:untyped.
 
 #+label: untyped
 #+CAPTION: λ-calculus written in Church and de Bruijn notation
-#+ATTR_LaTeX: :options [h]
+#+ATTR_LaTeX: :options [htb]
 #+begin_figure latex
 \captionsetup[subfigure]{aboveskip=-1pt}
 \begin{subfigure}[t]{.5\textwidth}\centering
@@ -845,9 +846,7 @@ theory. Proof assistants commonly use such a hierarchy cite:bove08_atwork.
 Going the other way around, simplifying $S$ to $S=\{⋆\}$ and setting
 $A$ to $\{(⋆,⋆)\}$, leads to an inconsistent logic system called λ⋆, also called a
 system with a /Type in Type/ rule. This leads to paradoxes similar to the Russel's
-paradox in set theory.
-
-[[todo:Maybe show Girard's paradox?]]
+paradox in set theory. [[inline:Show Girard's paradox?]]
 
 In many pedagogic implementations of dependently-typed λ-calculi I saw, though,
 this was simply acknowledged: separating universes introduces complexity but the
@@ -1205,9 +1204,7 @@ non-termination, as the recursion involved in their manipulation can be limited
 to primitive recursion as e.g., used in Gödel's System T cite:bove08_atwork.
 The constructions introduced in Figure ref:type-nat are simply the constructors
 $zero$ and $succ$, and the destructor $natElim$ unwraps at most one layer of
-$succ$.
-
-[[todo:Alternatively, a dependent evaluator into Πn:Nat.T(n) although unused, e.g. ncatlab]]
+$succ$. [[inline:Dependent eliminator too? ncatlab]]
 
 #+label: type-nat
 #+CAPTION: \texttt{Nat} semantics
@@ -1315,11 +1312,11 @@ defining constants and variables, and interacting with the compiler.
 The λ-calculus is, to use programming language terminology, a purely functional
 programming language: without specific extensions, any language construct is an
 expression. We will use the syntax of Agda, and keep local variable definition
-as an expression as well, using a $let-in$ construct, with the semantics given in
+as an expression as well, using a ~let-in~ construct, with the semantics given in
 Figure ref:let-in.
 
 #+label: let-in
-#+CAPTION: $let-in$ semantics
+#+CAPTION: \texttt{let-in} semantics
 #+ATTR_LATEX: :options [htb]
 #+begin_figure latex
 \captionsetup{aboveskip=-3pt}
@@ -1659,7 +1656,7 @@ and a few examples of structures that map directly from the syntax to a data
 object.
 
 #+label: dto
-#+caption: Pair and $let-in$ representations
+#+caption: Pair and \texttt{let-in} representations
 #+begin_src kotlin
 sealed class Term
 sealed class Value
@@ -1838,7 +1835,7 @@ on the $const$ function in Figure ref:syntax-comp, and the most important
 differences between them are in Figure ref:syntax-table.
 
 #+label:syntax-comp
-#+caption: Direct comparison of ~PreTerm~, ~Term~, and ~Value~ objects
+#+caption: Direct comparison of \texttt{PreTerm}, \texttt{Term}, and \texttt{Value} objects
 #+attr_latex: :options [htb]
 #+begin_figure latex
 \begin{subfigure}[t]{.25\textwidth}\centering
@@ -1865,7 +1862,7 @@ VLam("x", Expl,
 #+end_figure
 
 #+label:syntax-table
-#+CAPTION: Important distinctions between ~PreTerm~, ~Term~, and ~Value~ objects
+#+CAPTION: Important distinctions between \texttt{PreTerm}, \texttt{Term}, and \texttt{Value} objects
 #+begin_figure latex
 \begin{tabular}{rlll}
  & Variables & Functions & Properties\\\hline
@@ -2134,7 +2131,7 @@ leaves the scope. In Listing ref:conslist, we see two of them: the operator
 looks a value up. Unbinding a value is implicit, because this is an immutable
 linked list: the reference to the list used in the outer scope is not changed by
 any operations in the inner scope. These operations are demonstrated in Listing
-ref:eval, on the ~eval~ operations of a variable and a $let-in$ binding.
+ref:eval, on the ~eval~ operations of a variable and a ~let-in~ binding.
 
 There we also see the basic structure of the evaluation algorithm. Careful
 placement of ~lazy~ has been omitted, as it splits the algorithm into two: parts
@@ -2171,7 +2168,7 @@ handled in a similar way,
 
 **** Quote
 In Listing ref:quote, we see the second part of the algorithm. In the domain of
-values, we do not have plain variable terms, or $let-in$ bindings, but
+values, we do not have plain variable terms, or ~let-in~ bindings, but
 unevaluated functions and "stuck" neutral terms. A λ-abstraction, in order to be
 in normal form, needs to have its body also in normal form, therefore we insert
 a neutral variable into the environment in place of the argument, and eval/quote
@@ -2330,7 +2327,7 @@ Extending this system with other language constructs is not complex: the rules
 used in Montuno for local and global definitions are in Figure ref:defn-bidi.
 
 #+label:defn-bidi
-#+caption:Bidirectional typing rules for $let-in$ and top-level definitions
+#+caption:Bidirectional typing rules for \texttt{let-in} and top-level definitions
 #+attr_latex: :options [htb]
 #+begin_figure latex
 \begin{prooftree}
@@ -2345,7 +2342,6 @@ used in Montuno for local and global definitions are in Figure ref:defn-bidi.
 \AxiomC{$Γ ⊢ a ⇐ t$}
 \RightLabel{\textbf{(Defn)}}
 \BinaryInfC{$Γ⊢x:t=a ⇒ t$}
-\DisplayProof
 \end{prooftree}
 #+end_figure
 
@@ -2469,7 +2465,7 @@ fun LocalContext.check(pre: PreTerm, wanted: Value): Term = when (pre) {
 Figure ref:impl-bidi-let shows the exact correspondence between the rule and its
 implementation, one read left-to-right, the other top-to-bottom. Checking of the
 type and value are straight-forward, translation of $Γ,x:t ⊢ b ⇒ u$ binds a
-local variable in the environment, so that the body of the $let-in$ expression
+local variable in the environment, so that the body of the ~let-in~ expression
 can be inferred, and the result is a term containing the inferred body and type,
 wrapped in a ~TLet~.
 
@@ -2782,7 +2778,8 @@ directly compiled to machine code. Tracing, however, adds some overhead to the
 runtime of the program, so only some paths are traced. While the programmer can
 provide hints to the compiler, meta-tracing may result in unpredictable peak
 performance. This technique has been successfully used in projects like PyPy,
-that is built using the RPython JIT compiler cite:bolz14_meta.
+that is built using the RPython JIT compiler cite:bolz14_meta, or on GHC with
+mixed results cite:schilling13_tracing_jit.
 
 **** Partial evaluation
 The second approach to JIT compilation is called /partial evaluation/, also called
@@ -2918,318 +2915,514 @@ means that a shared suite of tooling could be built on top of it: a profiler
 (IGV), a language server (Graal LSP). We will use some of these tools in further
 sections.
 
-** Truffle capabilities
-This concludes the general introduction of Truffle and GraalVM, now to introduce
-the specifics of Truffle languages. For inspiration, I have looked at a number
-of other functional languages created using Truffle: a number of theses
-(TruffleClojure cite:feichtinger15_clojure, TrufflePascal
-cite:flimmel17_truffle_pascal, Mozart-Oz cite:istasse17_oz_truffle), two Oracle
-projects (FastR cite:stadler16_fastr, TruffleRuby cite:shopify2020), and a few
-other projects that will be mentioned throughout the text.
+** Truffle in detail
+This concludes the general introduction to Truffle and GraalVM. Now we will
+look at the specifics of how a Truffle language differs from the type of
+interpreter we created previously.
 
-When I was finalizing this thesis, the Enso project was publicly released. It is
-a dependently-typed language implementing many of the same principles that I do
-in this thesis. I have attempted to incorporate some of its solutions that were
-better than the solutions that were originally presented here, for the sake of
-comparison. These will be mentioned whenever relevant.
-
-The general structure of a Truffle language is based on a program graph: a
-language implements a number of nodes that share a common super-class, and
-combines it with syntactic analysis that builds a graph that can be executed
-instead of an inert internal representation. The values that flow through this
-graph also need to be specified well, and aggregated into an explicit type
-system of the language.
-
-A large difference compared to an AST interpreter like the one we implemented in
-the previous chapter is the need to explicitly select a way of performing
-function calls and implement it, manipulating stack frames, arguments, and local
-variables. Another difference is the presence of compiler hints that tell the
-compiler which parts of a graph are important for partial evaluation.
-
-Most Truffle features are based on /speculative optimization/: if we run a
-function a few times and see only a certain pattern of arguments and the
-function's behaviors, we /speculate/ that only such pattern of behavior will occur
-in this run of the program, and optimize. When the speculation turns out to be
-wrong, which usually happens many times during the /warm-up/ phase of program
-execution, the optimized part is /deoptimized/ again.
-
-Truffle has many ways of approaching speculative optimization: nodes that select
-the currently most optimal implementation, inline caches that store last-used
-values at arbitrary places, execution profiling that tracks which branch a
-program took when, etc.
-
-Overall, the implementation of a Truffle language can be divided into a few
-parts:
-- language registration (~Language~),
-- running a language (~Launcher~, ~Context~),
-- execution request (~ParseRequest~, ~RootCallTarget~),
-- node execution (~VirtualFrame~, ~execute~, ~call~),
-- function calls (~InvokeNode~, ~DispatchNode~, ~CallNode~),
-- speculative optimization (~Specialize~, ~Profile~, ~Assumption~),
-- compiler directives (~transferToInterpreter~, ~TruffleBoundary~),
-- and others (Object Storage Model, ~TruffleLibrary~, instrumentation, threads)
-
-Figure ref:truffle-arch shows the architecture of a Truffle language. The
-above-mentioned concepts belong mostly to the section "AST interpreter", and
-hints for "Partial Evaluation using Graal".
+The general concept is very similar to the previously created AST interpreter:
+there is again a tree data structure at the core, where each node corresponds to
+one expression that can be evaluated. The main differences are in a number of
+details that were previously implicit, though, like the simple action of
+"calling a function" which in Truffle involves the interplay of, at a minimum,
+five different classes.
 
 #+LABEL: truffle-arch
-#+ATTR_LaTeX: :placement [htb]
+#+ATTR_LaTeX: :placement [htb] :scale .5
 #+CAPTION: Architecture of a Truffle language (source: oracle.com)
 [[./img/truffle-typical.png]]
 
-**** General features
-Common components - Launcher, LanguageRegistration, Nodes, Values, REPL (5 items)
+Figure ref:truffle-arch shows the components involved in the execution of a
+Truffle language. Most of our work will be in the parts labeled "AST", "AST
+interpreter", and "AST rewriting". All of these involve the contents of the
+classes that form the abstract syntax tree, as individual graph nodes contain
+their data, but also their interpretation and rewriting specifics.
 
-Engine, Context, TruffleLanguage, Instrument
+Overall, the implementation of a Truffle language can be divided into a few
+categories. Some of the classes to be sub-classed and methods to be implemented
+are included in parentheses to give a brief idea of the terminology we will use,
+although we will expand on each one momentarily. These blocks are:
 
-#+begin_src text
-  N: unbounded
-  P: N for exclusive, 1 for shared context policy
-  L: number of installed languages
-  I: number of installed instruments
+- language execution (~Launcher~),
+- language registration (~Language~, ~Context~, ~ParsingRequest~),
+- program entry point (~RootNode~, ~CallTarget~),
+- node execution (~VirtualFrame~, ~execute~, ~call~),
+- node specialization (~Specialize~, ~Profile~, ~Assumption~),
+- value types (~TypeSystem~, ~ValueType~),
+- compiler directives (~transferToInterpreter~, ~TruffleBoundary~),
+- function calls (~InvokeNode~, ~DispatchNode~, ~CallNode~),
+- object model (~Layout~, ~Shape~, ~Object~),
+- and others (instrumentation, ~TruffleLibrary~ interfaces, threads).
 
-  - 1 : Host VM Processs
-   - N : Engine
-     - N : Context
-       - L : Language Context
-     - P * L : TruffleLanguage
-     - I : Instrument
-       - 1 : TruffleInstrument
+**** Launcher
+The entry point to a Truffle language is a ~Launcher~ (Listing
+ref:truffle-launcher). This component handles processing command-line arguments,
+and uses them to build a language execution context. A language can be executed
+from Java directly without a ~Launcher~, but it handles all GraalVM-specific
+options and switches, many of which we will use later, and correctly builds a
+the language execution environment, including all debugging and other tools that
+the user may decide to use.
+
+#+label:truffle-launcher
+#+caption:A minimal language \texttt{Launcher}
+#+attr_latex: :position [htb]
+#+begin_src kotlin
+class MontunoLauncher : AbstractLanguageLauncher() {
+    companion object {
+        @JvmStatic fun main(args: Array<String>) = Launcher().launch(args)
+    }
+    override fun getDefaultLanguages(): Array<String> = arrayOf("montuno");
+    override fun launch(contextBuilder: Context.Builder) {
+        contextBuilder.arguments(getLanguageId(), programArgs)
+        Context context = contextBuilder.build()
+        Source src = Source.newBuilder(getLanguageId(), file).build()
+        Value returnVal = context.eval(src)
+        return returnVal.execute().asInt()
+    }
+}
 #+end_src
 
-Introduce the canonical example - Literal and addition, trivial execute fn (1
-para, 1 figure)
+**** Language registration
+A language's primary object is a ~Language~, whose primary purpose is to answer
+\texttt{ParsingRequest}s with the corresponding program graphs, and to manage
+execution \texttt{Context}s that contain global state of a single language
+process. It also specifies general language properties like support for
+multi-threading, or the MIME type and file extension, and decides which
+functions and objects are exposed to other Truffle languages.
 
-Graph manipulations:
-- replace() to a more specific variant
-- adopt() a new child node
-- GraalVM aggressively inlines stable method calls into efficient machine code
+#+label:truffle-reg
+#+caption:A minimal \texttt{Language} registration
+#+attr_latex: :position [htb]
+#+begin_src kotlin
+  @TruffleLanguage.Registration(
+      id = "montuno", defaultMimeType = "application/x-montuno"
+  )
+  class Language : TruffleLanguage<MontunoContext>() {
+      override fun createContext(env: Env) = MontunoContext(this)
+      override fun parse(request: ParsingRequest): CallTarget {
+          CompilerAsserts.neverPartOfCompilation()
+          val parseAST = parse(request.source)
+          val nodes = parseAST.map { toNode(it, this) }.toTypedArray()
+          return Truffle.getRuntime().createCallTarget(ProgramRootNode(nodes))
+      }
+  }
+#+end_src
 
-- cite:wurthinger17_partial_eval - Truffle boundaries
-- cite:wimmer17_deoptimization - deoptimization, on-stack replacement
+**** Program entry point
+Listing ref:truffle-reg demonstrates both a language registration and the
+creation of a ~CallTarget~. A call target represents the general concept of a
+"callable object", be it a function or a program, and a single call to a call
+target corresponds to a single stack ~VirtualFrame~, as we will see later. It
+points to the ~RootNode~ at the entry point of a program graph, as shown in Figure
+ref:truffle-interop.
 
-**** Node optimization
+A ~CallTarget~ is also the basic optimization unit of Truffle: the runtime tracks
+how many times a ~CallTarget~ was entered (called), and triggers optimization
+(partial evaluation) of the program graph as soon as a threshold is reached.
+
+#+LABEL: truffle-interop
+#+ATTR_LaTeX: :position [htb]
+#+CAPTION: Combination of regular and partially-evaluated code (source: oracle.com)
+[[./img/truffle-interop.png]]
+
+**** Node execution
+A ~RootNode~ is a special case of a Truffle ~Node~, the basic building block of the
+program graph. Each node has a single way of obtaining the result of evaluating
+the expression it represents, the ~execute~ method. We may see nodes with multiple
+~execute~ methods later, but they are all ultimately translated by the Truffle DSL
+processor into a single method: Truffle will pick the most appropriate one based
+on the methods' return type, arguments types, or user-provided /guard/
+expressions.
+
+Listing ref:add-lang contains an example of with two nodes. They share a parent
+class, ~LanguageNode~, whose only method is the most general version of ~execute~:
+one that takes a ~VirtualFrame~ and returns anything. An ~IntLiteralNode~ has only
+one way of providing a result, it returns the literal value it
+contains. ~AddNode~, on the other hand, can add either integers or strings, so it
+uses another Truffle DSL option, a ~@Specialization~ annotation, which then
+generates the appropriate logic for choosing between the methods ~addInt~,
+~addString~, and ~typeError~.
+
+#+label: add-lang
+#+caption: Addition with type specialization
+#+attr_latex: :position [htb]
+#+begin_src kotlin
+  abstract class LanguageNode : Node() {
+    abstract fun execute(frame: VirtualFrame): Any
+  }
+  class IntLiteralNode(private val value: Long) : LanguageNode() {
+    override fun execute(frame: VirtualFrame): Any = value
+  }
+  abstract class AddNode(
+    @Child val left: LanguageNode, @Child val right: LanguageNode,
+  ) : LanguageNode() {
+    @Specialization fun addInt(left: Int, right: Int) = left + right
+    @Specialization fun addString(left: String, right: String) = left + right
+    @Fallback fun typeError(left: Any?, right: Any?): Unit
+      = throw TruffleException("type error")
+  }
+#+end_src
+
+**** Specialization
+Node specialization is one of the main optimization capabilities of Truffle. The
+~AddNode~ in Listing ref:add-lang can handle strings and integers both, but if it
+only ever receives integers, it does not need to check whether its arguments are
+strings on the /fast path/ (the currently optimized path). Using node
+specialization, the ~AddNode~ can be in one of four states: uninitialized,
+integers-only, strings-only, and both generic. Whenever it encounters a
+different combination of arguments, a specialization is /activated/. Overall, the
+states of a node form a directed acyclic graph: a node can only ever become more
+general, as the Truffle documentation emphasize.
+
 #+LABEL: truffle-deopt
 #+ATTR_LaTeX: :placement [htb]
 #+CAPTION: Node optimization and deoptimization in Truffle (source: oracle.com)
 [[./img/truffle-deopt.png]]
 
-In Figure ref:truffle-deopt, this process is demonstrated. Based on profiling
-feedback (usually the number of calls of a CallTarget invocations), a node may
-rewrite itself to use the most efficient specialization based on the conditions
-(usually what values it has been invoked with so far). When the node (tree)
-reaches a stable stat, it is compiled to optimized machine code using partial
-evaluation, given the state, and compilation-constant values.
+**** (De)optimization
+Node specialization combined with the optimization of a ~CallTarget~ when called
+enough times are sufficient to demonstrate the process of JIT compilation in
+Truffle. Figure ref:truffle-deopt demonstrates this process on a node type with
+several more state transitions. When a node reaches a stable state where no more
+specializations take place, that part of the program graph may be partially
+evaluated. This produces efficient machine code instead of slow
+interpreter-based code, specialized for the nodes' current state.
 
-This compilation is conditional, and when the assumptions are invalidated, the
-node is deoptimized back into its non-compiled form (called "transfer to
-interpreter"). Nodes will again specialize themselves based on the observed
-conditions, and when the node reaches a stable state again, the node is
-partially evaluated once more.
+However, this compilation is /speculative/, it assumes that nodes will not
+encounter different values, and this is encoded in explicit /assumption/ objects.
+When these assumptions are invalidated, the compiled machine code is discarded,
+and the nodes revert back to their non-optimized form. This process is called
+/deoptimization/ cite:wimmer17_deoptimization, and can be explicitly invoked using
+the Truffle method ~transferToInterpreter~.
 
-#+LABEL: truffle-interop
-#+ATTR_LaTeX: :placement [htb]
-#+CAPTION: Combination of regular and partially-evaluated code (source: oracle.com)
-[[./img/truffle-interop.png]]
+After a deoptimization, the states of nodes should again stabilize, so that they
+may be partially evaluated into efficient machine code once more. Often, this
+(de)optimization process repeats multiple times during the execution of a single
+program: the period from the start of a program until a stable state is called
+the /warm-up/ phase.
 
-**** Type specialization
-Type system
+**** Value types
+Nodes can be specialized based on various criteria, but the above-mentioned
+specialization with regards to the type of arguments requires that these types
+are all declared and aggregated into a ~TypeSystem~ object and annotation. These
+are again processed by Truffle DSL into a class that can check the type of a
+value (~isUnit~, ~asBoolean~), and perform implicit conversion between them
+(~castLong~). Listing ref:truffle-value demonstrates a ~TypeSystem~ with a custom
+type ~Unit~ and the corresponding required ~TypeCheck~, and with an implicit
+type-cast in which an integer is implicitly convertible into a long integer.
 
-Basic case is type specialization - when an addition node only encounters
-integers, there is no need to generate machine code for floats, doubles, or
-operator overloads - only verified by fast checks. When these fail, the node is
-de-optimized, and eventually re-compiled again.
-
-Inline caching for e.g. method lookups, virtual method calls are typically only
-ever invoked on a single class, which can be cached, and the dispatch node can
-be specialized, perhaps even inline the
-operation. (uninitialized/monomorphic/polymorphic/megamorphic = working with
-jumptables + guard conditions)
-
-Specializations are general, though, and nodes can go be specialized on
-arbitrary conditions, using custom assumptions and /compilation final/ values. In
-general, node states form a directed acyclic graph - "a node can ever become more
-general".
-
-Using a graph visualizer, we can look at this process on a simple example
-commonly used to demonstrate this part of the Truffle framework: the ~+~
-operation.
-
-#+label: add-lang
+#+label:truffle-value
+#+caption: A \texttt{TypeSystem} with an implicit cast and a custom type
 #+begin_src kotlin
-  abstract class LangNode : Node() {
-      abstract fun execute(frame: VirtualFrame): Any
+@CompilerDirectives.ValueType
+object Unit
+
+@TypeSystem(Unit::class, Boolean::class, Int::class, Long::class)
+open class Types {
+  companion object {
+    @ImplicitCast
+    fun castLong(value: Int): Long = value.toLong()
+    @TypeCheck(Unit::class)
+    fun isUnit(value: Any): Boolean = value === Unit
   }
-  class IntLiteralNode(private val value: Long) : LangNode() {
-      override fun execute(frame: VirtualFrame): Any = value
-  }
-  abstract class AddNode(
-      @Child val left: LangNode,
-      @Child val right: LangNode,
-  ) : LangNode() {
-      @Specialization
-      fun addInt(left: Int, right: Int): Int = left + right
-      @Specialization
-      fun addString(left: String, right: String): String = left + right
-      @Fallback
-      fun typeError(left: Any?, right: Any?): Unit = throw TruffleException("type error")
-  }
+}
+#+end_src
+#+latex: \vspace*{-.5cm}
+
+**** Function invocation
+An important part of the implementation of any Truffle language consists of
+handling function calls. A common approach in multiple Truffle is as follows:
+Given an expression like ~fibonacci(5)~. This expression is evaluated in multiple
+steps: an ~InvokeNode~ resolves the function that the expression refers to
+(~fibonacci~) into a ~RootNode~ and a ~CallTarget~, and evaluates its arguments (~5~). A
+~DispatchNode~ creates a ~CallNode~ for the specific ~CallTarget~ and stores it in a
+cache, and finally a ~CallNode~ what actually performs the switch from one part of
+the program graph to another, building a stack ~Frame~ with the function's
+arguments, and entering the ~RootNode~.
+
+**** Stack frames
+#+label:truffle-frame
+#+caption: Basic operations with a \texttt{Frame}
+#+attr_latex: :position [!htb]
+#+begin_src kotlin
+class ReadLocalVarNode(val name: String) : Node {
+  fun execute(frame: VirtualFrame): Any {
+    val slot: FrameSlot = frame.getFrameDescriptor().findFrameSlot(name)
+    return frame.getValue(slot ?: throw TruffleException("$name not found"));
+} }
+class WriteLocalVarNode(val name: String, val body: Node) : Node {
+  fun execute(frame: VirtualFrame): Unit {
+    val slot: FrameSlot = frame.getFrameDescriptor().addFrameSlot(name)
+    frame.setObject(slot, body.execute(frame));
+} }
 #+end_src
 
-The Truffle framework is said to be a domain-specific language, which in this
-case means a library, a set of annotations, and a code generator. This code
-generator finds classes that inherit from the ~Node~ class and generates, among
-others, the logic behind switching specializations.
+\texttt{Frame}s were mentioned several times already: they are Truffle's
+abstraction of a stack frame. In general, stack frames contain variables and
+values in the local scope of a function, those that were passed as its arguments
+and those declared in its body. In Truffle, this is encoded as a ~Frame~ object,
+and it is passed as an argument to all ~execute~ functions. Frame layout is set by
+a ~FrameDescriptor~ object, which contains \texttt{FrameSlot}s that refer to parts
+of the frame. Listing ref:truffle-frame demonstrates two nodes that interact
+with a ~Frame~: a reference to a local variable, and a local variable declaration.
 
-The program graph is formed from a tree of Truffle ~Nodes~ from which we derive
-our language-specific base class, ~LangNode~ in this case. We define two classes
-that inherit from this class, one representing integer literals, and one for the ~+~
-operator.
+There are two kinds of a ~Frame~, virtual and materialized frames. A ~VirtualFrame~
+is, as its name suggests, virtual, and the values in it can be freely optimized
+by Truffle, reorganized, or even passed directly in registers without being
+allocated on the heap (using a technique called Partial Escape Analysis). A
+~MaterializedFrame~ is not virtual, it is an object at the runtime of a program,
+and it can be stored in program's values or nodes. A virtual frame is preferable
+in almost all cases, but e.g., implementing closures requires a materialized
+frame, as it needs to be stored in a ~Closure~ object. This is shown in Listing
+ref:truffle-closure, where ~frame.materialize()~ captures a virtual frame and
+stores it in a closure.
 
-The abstract method ~execute~ in ~LangNode~ is the evaluation of this node. It takes
-a ~VirtualFrame~, which represents a stack frame, and its return value is also the
-return value of the node. In addition, methods starting with ~execute~ are special
-in Truffle. Truffle will pick the most appropriate one based on return type
-(with ~Any~ being the most general) and parameters.
-
-In ~IntLiteralNode~ we directly override the method ~execute~, as there is only one
-possible implementation. In ~AddNode~, however, we keep the class abstract and
-do not implement ~execute~, and instead rely on Truffle to generate the appropriate
-specialization logic.
-
-Truffle will decide between the specializations based on parameter types, and on
-user-provided guards (we will see further). Fallback specialization matches in
-cases where no other one does. Names are irrelevant.
-
-(Maybe show generated code?) Active an inactive specializations: can be multiple
-active, execute method is based on state first, and only then on type checks -
-smaller and possibly better optimized result. If no specialization matches, then
-fall through to ~executeAndSpecialize~ which invalidates any currently compiled
-using ~CompilerDirectives.transferToInterpreterAndInvalidate~ and sets state bits
-for newly activated specializations.
-
-(@Specialization(Replaces=[""]))
-
-
-How to run? Need to wrap in a ~RootNode~, which represents executable things like
-methods, functions and programs. Then create a ~CallTarget~ using
-~Truffle.getRuntime().createCallTarget(root)~. Truffle uses CallTargets to record,
-among others, how often a particular graph is called, and when to compile
-it. Also it creates a VirtualFrame for this call target out of the provided
-arguments.
-
-IGV receives JIT compilation output - shows the Graal graphs produced during
-optimization. Compilation is only triggered after a certain threshold of calls,
-so we need to run a call target more than just once.
-
-Graal-graph
-
-Another option: a CountNode (public int counter; execute = counter++). Green ==
-state, grey is floating (not flow dependent), blue lines represent data flow
-(data dependencies), red means control flow (order of operations)
-
-**** Function dispatch
-Separation of concerns in function call:
-- Invoke node evaluates function and its arguments, calls dispatch
-- Dispatch node builds the inline cache
-- Direct/Indirect call node (Truffle) calls the CallTarget which calls the RootNode
-
-- VirtualFrame - virtual/optimizable stack frame, "a function's/program's
-  scope", can be eliminated altogether, which results in highly efficient code
-- MaterializedFrame - VirtualFrame in a specific form, not optimizable, can be
-  stored in a ValueType
-
-FrameDescriptor - shape of a frame
-FrameSlot
-FrameSlotKind
-
-VirtualFrame - can be optimized, reordered
-
-MaterializedFrame - an explicit Java Object on the heap, created from a
-VirtualFrame by calling ~frame.materialize()~
-
-dispatchNode, frames, argument passing, ExecutableNode, RootNode, CallTarget
-
-- RootNode - can be made into a CallTarget. is at the root of a graph, "starting
-  point of a function/program/builtin", "callable AST"
-
-Direct/IndirectCallNode
-
-Frame
-- is an object on the heap, allocated in the function prologue
-- compiler eliminates the allocation
-- FrameDescriptor - layout of the frame
-
-- TCO - maybe describe a trampoline? + a graph
-
-**** Control flow
-Inter-node control flow - use exceptions
+#+label:truffle-closure
+#+caption: A closure value with a \texttt{MaterializedFrame}
+#+attr_latex: :position [htb]
+#+begin_src kotlin
+@CompilerDirectives.ValueType
+data class Closure(
+  val callTarget: RootCallTarget,
+  val frame: MaterializedFrame,
+)
+class ClosureNode(val root: FunctionRootNode) : Node {
+  fun executeClosure(frame: VirtualFrame): Closure = Closure(
+    Truffle.getRuntime().createCallTarget(root),
+    frame.materialize()
+  )
+}
+#+end_src
 
 **** Caching
-@Cached()
+These were the main features required for writing a Truffle language, but there
+are several more tools for their optimization, the first one being /inline
+caching/. This is an old concept that originated in dynamic languages, where it
+is impossible to statically determine the call target in a function invocation,
+so it is looked up at runtime. Most function call sites only use a limited
+number of call targets, so these can be cached. As the cache is a local one,
+placed at the call site itself, it is called an /inline cache/. This concept is
+used for a number of other purposes, e.g., caching the ~FrameSlot~ in an
+assignment operator, or the ~Property~ slot in an object access operation.
 
-**** Profiles, assumptions, specializations
-profiles, assumptions, specializations:
-- similar tools
-- profiles for local, monomorphic properties, does not speculate again
-- assumptions for non-local speculation, can be triggered from outside
-- specializations for local, polymorphic, speculates again
+In the case of function dispatch, a ~DispatchNode~ goes through the stages:
+/uninitialized; /monomorphic/, specialized to a single call target; /polymorphic/,
+stores a number of call targets small enough, that the cost of searching the
+cache is smaller than the cost of function lookup; and /megamorphic/, when the
+number of call targets exceeds the size of the cache, and every function call is
+looked up again. Figure ref:truffle-cache demonstrates this on a DispatchNode,
+adding a polymorphic cache with size 3, and also demonstrates the Truffle DSL
+annotations ~Cached~ and ~guards~. The cache key is the provided ~CallTarget~, based
+on which a ~DirectCallNode~ is created and cached as well. The megamorphic case
+uses an ~IndirectCallNode~: in a ~DirectCallNode~, the call target can be inlined by
+the JIT compiler, whereas in the indirect version it can not.
 
-Assumptions can be used to guard important system-wide conditions, with explicit
-invalidation. Checking is very cheap.
+#+label: truffle-cache
+#+caption: Polymorphic and megamorphic inline cache on a \texttt{DispatchNode}
+#+begin_src kotlin
+abstract class DispatchNode : Node {
+  abstract fun executeDispatch(
+    frame: VirtualFrame, callTarget: CallTarget, args: Array<Any>): Any
 
-Profiles allow for passing additional information to the compiler - condition
-profiles, type profiles.
+  @Specialization(limit = "3", guards = "callTarget == cachedCallTarget")
+  fun doDirect(
+    frame: VirtualFrame, callTarget: CallTarget, args: Array<Any>,
+    @Cached("callTarget") cachedCallTarget: CallTarget,
+    @Cached("create(cachedCallTarget)") callNode: DirectCallNode
+  ) = callNode.call(args)
 
-**** Boundary
-TruffleBoundary - to avoid inlining large methods: println, database access, ...
+  @Specialization(replaces = "doDirect")
+  fun doIndirect(
+    frame: VirtualFrame, callTarget: CallTarget, args: Array<Any>,
+    @Cached("create()") callNode: IndirectCallNode
+  ) = callNode.call(callTarget, args)
+}
+#+end_src
 
-**** Compiler assertions
-Assertions to check the compiler isCompilationConstant, neverPartOfCompilation
+**** Guards
+Figure ref:truffle-cache also demonstrates another optimization feature, a
+generalization of nodes specializing themselves based on types or arguments. A
+~Specialization~ annotation can have arbitrary user-provided /guards/. These are
+often used in tandem with a cache, or with complex type specializations. In
+general, using a ~Specialization~ makes it possible to choose the most optimal
+node implementation based on its situation or configuration.
 
-**** Inlining vs splitting
-Inlining vs splitting
-- inlining replaces a call with a copy of the graph it stands for
-- inlining works on the AST level
-- splitting produces a fresh callTarget, monomorphic code
+**** Profiles
+Another tool for optimization are /profiles/. These are objects that the developer
+can use to track which branch did code execution take: in the implementation of
+an ~if~ statement, or when handling an exception. The compiler will use the
+information collected during optimization, e.g., when the condition in an ~if~
+statement was true every time, and it is tracked in a ~ConditionProfile~, the
+compiler will omit the ~else~ branch during compilation.
 
-**** Tooling integration
-Tools:
-- tag: an annotation for debugging tools, can be custom
-- probe: a program location that emits events
-- event: marks when execution has entered of left a node
-- instrument: receives events
-- WrapperNode: around a node, intercepts events, contains a Node and a ProbeNode
-- cite "We can have it all" van de vanter
+**** Assumptions
+/Assumptions/ are the last tool that a developer can use to provide more
+information to the compiler. Unlike profiles and specializations that are local
+to a node, assumptions are global objects whose value can be changed from any
+part of a program graph. An assumption is /valid/ when created, and it can be
+/invalidated/, which triggers which triggers deoptimization of any code that
+relies on it. A typical use of assumptions is shown in Figure ref:truffle-assume
+cite:shopify2020, in which TruffleRuby relies on the fact that global variables
+are only seldom changed and can be cached. A ~ReadGlobalVarNode~ reads the value
+of the global variable only the first time, and relies on two assumptions
+afterwards. These are invalidated whenever the value of the variable changes,
+and the cached value is discarded.
 
-**** Object Storage Model
-cite:grimmer15_polyglot - Polyglot + OSM intro
+#+label:truffle-assume
+#+caption:Cached reading of a global variable using assumptions \cite{shopify2020}
+#+begin_src kotlin
+@Specialization(assumptions = [
+  "storage.getUnchangedAssumption()",
+  "storage.getValidAssumption()"
+])
+fun readConstant(
+  @Cached("getStorage()") storage: GlobalVariableStorage,
+  @Cached("storage.getValue()") value: Any
+) = value
+#+end_src
 
-- cite:mouton19_urilang - URI language, object-oriented
+**** Inlining
+During optimization, the Graal compiler replaces \texttt{DirectCallNode}s with
+the contents of the call target they refer to, performing function /inlining/
+cite:wurthinger17_partial_eval. Often, this is the optimization with the most
+impact, as replacing a function call with the body of the callee means that many
+other optimizations can be applied. For example, if a ~for~ loop contains only a
+function call and the function is inlined, then the optimizer could further
+analyze the data flow, and potentially either reduce the loop to a constant, or
+to a vector instruction.
 
-- OSM (Object Storage Model) - Frame (~typed HashMap)
+There are potential drawbacks, and Truffle documentation warns developers to
+place ~TruffleBoundary~ annotations on functions that would be expanded to large
+program graphs, like ~printf~, as Graal will not ever inline a function through a
+~TruffleBoundary~.
 
-- Shape = mapping Property ⟶ Location, Shape.newInstance == DynamicObject
+**** Splitting
+Related to inlining, a call target can also be /split/ into a number of
+/monomorphic/ call targets. Previously, we saw an ~AddNode~ that could add either
+integers or strings. If this was a global or built-in function that was called
+from different places with different configurations of arguments, then this node
+could be split into two: one that only handles integers and one for
+strings. Only the monomorphic version would then be inlined at a call site,
+leading to even better possibility of optimizations.
 
-Object Storage Model is a common way to organize data with layouts - Objects,
-Shapes, Layouts.
+Both of these two techniques, inlining and splitting, are guided by Graal
+heuristics, and they are generally one on the last optimization techniques to be
+checked when there are no more gains to be gained from caching or
+specializations.
 
-TruffleRuby uses it for FFI to access Ruby objects directly as if they were C
-~structs~. DynSem uses these to model frames/scopes instead of Frames, as it is a
-meta-interpreter and uses Truffle Frames for its own data.
+**** Object model
+#+label:frames
+#+caption:Accessing an object property using a \texttt{Shape} and a \textt{Property} \cite{vergu19_scopes}
+#+begin_src kotlin
+@Specialization(guards = [
+  "addr.key() == keyCached",
+  "shapeCached.check(addr.frame())"
+], limit = "20")
+fun doSetCached(
+  addr: FrameAddr, value: Any,
+  @Cached("addr.key()") keyCached: Occurrence,
+  @Cached("addr.frame().getShape()") shapeCached: Shape,
+  @Cached("shapeCached.getProperty(keyCached)") slotProperty: Property
+): Unit {
+  slotProperty.set(addr.frame(), value, shapeCached)
+}
+#+end_src
 
-**** Polyglot
-ValueTypes, InteropLibrary
+Truffle has a standard way of structuring data with fixed layout, called the
+Object Storage Model cite:grimmer15_polyglot. It is primarily intended for class
+instances that have a user-defined data layout, but e.g., the meta-interpreter
+project DynSem cite:vergu19_scopes uses it for variable scopes, and TruffleRuby
+uses it to make C \texttt{struct}s accessible from Ruby as if they were
+objects. Similar to \texttt{Frame}s, an empty ~DynamicObject~ is instantiated from
+a ~Shape~ (corresponds to a ~FrameDescriptor~) that contains several instances of a
+~Property~ (corresponds to a ~FrameSlot~). Figure ref:frames shows the main method
+of a node that accesses an object property, also utilizing a polymorphic cache.
 
-- interop: ForeignToLocalTypeNode
+**** Interop
+As previously mentioned, it is possible to evaluate /foreign/ code from other
+languages using functions like /eval/, referred to as /polyglot/. However, Truffle
+also makes it possible to use other languages' /values/: to define a foreign
+function and use it in the original language, to import a library from a
+different language and use it as if it was native. This is referred to as an
+interoperability message protocol or /interop/, for short.
 
-cite:grimmer15_polyglot - Polyglot + OSM intro
+This is made possible by Truffle /libraries/, that play a role similar to
+/interfaces/ in object-oriented languages cite:grimmer15_polyglot, and describe
+capabilities of \texttt{ValueType}s. A library /message/ is an operation that a
+value type can support, and it is implemented as a special node in the program
+graph, as a nested class inside the value type. The \texttt{ValueType}s of a
+foreign language then need to be mapped based on these libraries into a
+language: a value that implements an ~ArrayLibrary~ can be accessed using array
+syntax, see Listing ref:libraries. Libraries are also used for polymorphic
+operations inside a language if there is a large amount of value types, to
+remove duplicate code that would otherwise be spread over multiple
+\texttt{Specialization}s.
 
-**** Threading
-- thread-safety of objects: by default Truffle is not safe, explicit synchronization
+#+label:libraries
+#+caption:Array access using a \texttt{Library}\protect\footnotemark
+#+begin_src kotlin
+class ArrayReadNode : Node {
+  @Specialization(guards = "arrays.isArray(array)", limit = "2")
+  fun doDefault(
+    array: Object, index: Int, @CachedLibrary("array") arrays: ArrayLibrary
+  ): Int = arrays.read(array, index)
+}
+#+end_src
+#+latex: \footnotetext{Source: \url{https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/TruffleLibraries/}}
+
+** Mapping concepts to Truffle
+*** How Truffle can help?
+While the framework is a general language implementation framework, many
+concepts and features are based on speculative optimization, which is best
+applicable in dynamically-typed languages, and first need to be mapped onto the
+features required by our type elaboration and normalization procedures.
+
+Truffle is not primarily aimed at statically-typed languages or functional
+languages. Its most easily accessible benefits lie in speculative optimization
+of dynamically typed code and inline caches, where generic object-oriented code
+can be specialized to a specific value type. Statically-typed languages have a
+lot more information regarding the values that will flow through a function, and
+e.g. GHC has a specific /specialization/ compiler pass.
+
+However, there is a lot of overlap between the static optimizations done by
+e.g. GHC and runtime optimizations done by Graal. An example would be
+unfolding/inlining, where the compiler needs to make a single decision of
+whether to replace a call to a function with its definition -- a decision that
+depends on the size of the definition, whether they are in the same module, and
+other heuristics cite:jones02_inliner. A Truffle interpreter would be able to
+postpone the decision until execution time, when the definition could be inlined
+if the call happened enough times.
+
+Its execution model is a tree of nodes where each node has a single operation
+~execute~ with multiple specializations. The elaboration/evaluation algorithm from
+the previous chapter, however, has several interleaved algorithms (infer, check,
+evaluate, quote) that we first need to graft on to the Truffle execution model.
+
+In dynamic interpreters that Truffle is aimed at, it is easy to think of the
+interpreter structure as "creating a graph through which values flow".
+
+*** 
 
 *** Functional languages on Truffle
+--- one paragraph each, specialties
+
+For inspiration, I have looked at a number of other functional languages created
+using Truffle: a number of theses (TruffleClojure cite:feichtinger15_clojure,
+TrufflePascal cite:flimmel17_truffle_pascal, Mozart-Oz
+cite:istasse17_oz_truffle), two Oracle projects (FastR cite:stadler16_fastr,
+TruffleRuby cite:shopify2020), and a few other projects that will be mentioned
+throughout the text.
+
+- https://github.com/enso-org/enso/
+- https://github.com/cesquivias/mumbler
+- DynSem, cite:vergu19_scopes - OSM for frames/scopes
+
+While I was finalizing this thesis, the Enso project was publicly released. It
+is a dependently-typed language that implements many of the same principles that
+I do in this thesis. I have attempted to incorporate some of its solutions that
+were better than the solutions that were originally presented here, for the sake
+of comparison. These will be mentioned whenever relevant.
+
 Evaluate languages on:
 - overall project structure and runtime flow
 - global/local names and environment handling
@@ -3240,8 +3433,6 @@ Evaluate languages on:
 
 **** Truffled PureScript
 https://github.com/slamdata/truffled-purescript/
-
-Old project, but one of the only purely-functional Truffle languages.
 
 Purescript is a derivative of Haskell, originally aimed at frontend
 development. Specific to Purescript is eager evaluation order, so the Truffle
@@ -3258,20 +3449,12 @@ Simple node system compared to other implementations:
   stores the result, saves them to a module Frame
 - Abstraction == single-argument closure
 
-**** Mumbler
-An implementation of a Lisp
-
-https://github.com/cesquivias/mumbler
-
 **** FastR
-One of the larger Truffle languages
+One of the larger Truffle languages, a replacement for GNU R, which was "made
+for statistics, not performance". Faster without Fortran than with (no native
+FFI boundary, allows Graal to optimize through it)
 
 cite:stadler16_fastr
-
-Replacement for GNU R, which was "made for statistics, not performance"
-
-Faster without Fortran than with (no native FFI boundary, allows Graal to
-optimize through it)
 
 Interop with Python, in particular - scipy + R plots
 
@@ -3312,25 +3495,10 @@ Generating function application looks like:
 - Closure - is a ValueType, contains ClosureRootNode
 - ClosureRootNode - creates a new VirtualFrame with subset of frame.arguments
 
-**** Enso
-https://github.com/enso-org/enso/
-
-A very late addition to this list, this is a project that originally rejected
-Truffle (and dependent types in general, if I recall correctly) and used Haskell
-instead. However, the project Luna was renamed to Enso, and rebuilt from scratch
-using Truffle and Scala not long before my thesis deadline.
-
 **** TruffleClojure
 Implemented in a Master's thesis cite:feichtinger15_clojure
 
-- Truffle+Graal means that languages reuse JVM's features: garbage collection, optimization
-- API based on Node; Frame stores the transient state of function activation:
-  local variables, arguments passed to the function, intermediate results, shape
-  described by FrameDescriptor, data in the backend stored in Object[] or if
-  primitive types only in long[] (and converted)
 - I might want to implement envs as tries? Not arrays nor linked lists? Need to try
-- I must have a program execution flow
-- I also need a "data shape flow" (src, pre, term, val)
 - each method impl is a root node, kept in bundles of callTargets by a ClojureFn
 - closures - by a reference to the outer materializedFrame
 - macros expanded during parse time, arguments not evaluated
@@ -3338,50 +3506,13 @@ Implemented in a Master's thesis cite:feichtinger15_clojure
 - separate section with a heading+listing+description of each special form (do
   we need this?)
 
-**** DynSem
-- cite:vergu19_scopes - OSM for frames/scopes
 
-** Mapping concepts to Truffle
-While the framework is a general language implementation framework, many
-concepts and features are based on speculative optimization, which is best
-applicable in dynamically-typed languages, and first need to be mapped onto the
-features required by our type elaboration and normalization procedures.
-
-
-
-Truffle is not primarily aimed at statically-typed languages or functional
-languages. Its most easily accessible benefits lie in speculative optimization
-of dynamically typed code and inline caches, where generic object-oriented code
-can be specialized to a specific value type. Statically-typed languages have a
-lot more information regarding the values that will flow through a function, and
-e.g. GHC has a specific /specialization/ compiler pass.
-
-However, there is a lot of overlap between the static optimizations done by
-e.g. GHC and runtime optimizations done by Graal. An example would be
-unfolding/inlining, where the compiler needs to make a single decision of
-whether to replace a call to a function with its definition -- a decision that
-depends on the size of the definition, whether they are in the same module, and
-other heuristics cite:jones02_inliner. A Truffle interpreter would be able to
-postpone the decision until execution time, when the definition could be inlined
-if the call happened enough times.
-
-Its execution model is a tree of nodes where each node has a single operation
-~execute~ with multiple specializations. The elaboration/evaluation algorithm from
-the previous chapter, however, has several interleaved algorithms (infer, check,
-evaluate, quote) that we first need to graft on to the Truffle execution model.
-
-There are also several features that we require that are not a natural fit for
-it, but where we can find inspiration in other Truffle languages. In particular,
-lazy evaluation (FastR promises), partial function application (Enso), ???
-
+*** Approach
 We also have several options with regard to the depth of embedding: The most
 natural fit for Truffle is term evaluation, where a term could be represented as
 a value-level Term, and a CallTarget that produces its value with regard to the
 current environment. We can also embed the bidirectional elaboration algorithm
 itself, as a mixture of infer/check nodes.
-
-In dynamic interpreters that Truffle is aimed at, it is easy to think of the
-interpreter structure as "creating a graph through which values flow".
 
 The representation is also quite different from the functional interpreter where
 we have used functions and data classes, as in Truffle, all values and operations
@@ -3418,14 +3549,6 @@ evaluation phases - translate to Code, run typecheck, run eval vs glued, ???
 
 show program graphs: id, const, const id; optimized graphs
 
-- Truffle
-	- De Bruijn in Frames?
-	- Eval/apply nucleus (fun --> PAP/THUNK)
-	- call-by-need, sharing (fastR)
-	- visual VM! (maybe non-EE edition?), Chrome debugger. IGV
-	- TCL
-	- global frame
-	- wired-in primitives
 - Type system - Fun, Pap, Closure?, U
 - Arrays - how much copying?
 
@@ -3519,6 +3642,9 @@ exactly (EVAL), or under-applied (creates a PAP, a closure-like value)
 - push/enter means we need to copy arguments into an array
 
 *** Elaboration
+DerefNode - reads a variable, either blocks or returns an object. A meta-variable is
+replaced with a Term whenever it is evaluated/unblocked
+
 *** Polyglot
 Demonstrate calling Montuno from other languages
 
@@ -3543,49 +3669,25 @@ otherwise interact with the language context.
 
 Language registration in mx/gu
 
+**** Instrumentation
+Truffle is not only aimed at language developers but also at developers of
+language tools. We will specifically need this I would not mention this otherwise, but we will need to
+implement an instrument to add a REPL to the language. These tools are not
+specific to a single language, but most of them work for any language
+cite:seaton14_debugging. The ~Instrument~ API is based on events, an instrument
+declares which nodes it wants to receive events from based on source MIME or on
+tags (an annotation for debugging tools, can be custom), a /probe/ is inserted on
+these places (a program location that emits events) using a /WrapperNode/ that
+replaces a node and contains both this probe and the original, and this probe
+emits /events/ that mark when execution has entered of left a node.
+
 ** Bleh                                                            :noexport:
-Common optimizations performed by the Graal compiler
-include:
-- Canonicization: constant folding, simplification
-- Global value numbering: prevents same code from being executed multiple times
-- Lock coarsening: simplifies ~synchronized~ calls
-- Register allocation: data-flow equals the registers required, optimize
-- Scheduling: instruction-flow implies instruction order
-- Partial Escape Analysis - variable localization, eliminate heap allocation
-  when unnecessary, (Scalar Replacement)
-
-
-Frame slot clearing - simplifies Graal's role, as Graal tracks dataflow, and
-this shortens an object's lifetime
-
-DerefNode - reads a variable, either blocks or returns an object. A Variable is
-replaced with an Object whenever it is evaluated/unblocked
-
-Static optimization  - changing the structure of the interpreter so that it
-would be faster even without JIT
-
-Dynamic optimization - using more Truffle-specific features, so that Graal can
-more efficiently optimize the code: CompilerDirectives, BranchProfiles,
-TruffleBoundaries, inline caches, ControlFlowExceptions
-
-
-- cite:schilling13_tracing_jit - trace-based interpreter for GHC, a different approach
-- cite:abel11_sigma_unif
 - cite:altenkirch08_pisigma, cite:altenkirch10_pisigma - "I had discovered the ΠΣ paper when finishing my thesis: too late, unfortunately"
 - cite:eisenberg20_stitch is an interesting tutorial of a dependent interpreter of dependent languages
 - cite:juan20_unif_thesis - well described contexts + language specification - can I take as inspiration?
 - well investigated in cite:lindley05_nbe_sml where there is a comprehensive of
   NbE techniques as applied to ML
 - also in cite:lindley05_nbe_sml there is a treatment of η reduction/expansion - READ
-
-
-We do not want to do η-reduction, as it might introduce non-termination or
-undecidability (and in general is not compatible with subtyping
-relations). η-expansion is sound for producing βη-long normal forms.
-
-If we do not have a βη-long normal form and want to unify/compare (λx:A.M) with
-N, you unify/compare \[N X\] and \[M[x≔X]\] for a fresh X. This is sufficient
-for βη-equality (for the easy η-rule for Π/λ).
 
 * Evaluation
   :PROPERTIES:
@@ -3599,7 +3701,7 @@ We also want to evaluate the performance of general β-normalization which only 
 We are mainly interested in asymptotic behaviors and not on constant factors. Just-in-time compiled languages especially suffer from long warm-up times, which means that common evaluation of "repeatedly running a command" will not perform well.
 
 ** Subjects
-\blind\blind\blind\blind\blind\blind
+(One page)
 
 Subjects for elaboration: Agda, Idris, Coq, GHC. Also cooltt, smalltt, redtt, Lean, ?
 
@@ -3608,7 +3710,7 @@ Subjects for normalization: as above, but also Cadenza (STLC), Clojure, GHC, Sca
 Also subjects: Montuno, MontunoTruffle, and possibly other optimized versions.
 
 ** Workload
-\blind\blind\blind\blind\blind\blind
+(One page)
 
  - Nats - large type elaboration, call-by-need test
  - Nats - type-level calculation
@@ -3631,7 +3733,7 @@ Mention sources (this is from smalltt ^^)
 Brief descriptions, what does each one evaluate/stress?
 
 ** Methodology
-\blind\blind\blind\blind\blind\blind
+(One page)
 
 We need to use in-language support, if available. We want to avoid measuring interpreter start-up, program parsing time, and other confounders.
 
@@ -3657,48 +3759,16 @@ cite:prokopec19_renaissance
   optimization versions
 - https://github.com/Gwandalff/krun-dsl-benchmarks is an alternative that has
   examples with Truffle, measures only s/op
-** Results
-\blind\blind\blind\blind\blind\blind
-\blind\blind\blind\blind\blind\blind
 
-One-to-one evaluation and discussion of directly comparable subjects, confidence
-intervals, likely causes of improvements/regressions, iterations to
-steady-state.
-
-** Discussion
-Size of codebase
-
-Effort required
-
-Effect produced
-
-Is this road viable?
-
-** Next work
-\blind\blind\blind\blind\blind\blind
-\blind\blind\blind\blind\blind\blind
-
-FFI, tooling
-
-RPython, K Framework - exploration
-
-SPMD on Truffle, Array languages
-
-More type extensions OR totality (as a proof assistent)
-
-Finite types, universes, no type in type, HoTT, CoC
-
-Is this useful at all? What's the benefit for the world? (in evaluation)
-
-next work: LF, techniques, extensions, real language
+** Preliminary results
+(1 page, interp, Truffle, Agda, Idris, Coq)
 
 * Optimizations: Making MontunoTruffle fast
    :PROPERTIES:
    :CUSTOM_ID: optimizations
    :END:
 ** Possible performance problem sources
-\blind\blind\blind\blind\blind\blind
-\blind\blind\blind\blind\blind\blind
+\blind{12}
 
 Reiterate JGross
 
@@ -3721,6 +3791,16 @@ https://gist.github.com/ekmett/6c64c3815f9949d067d8f9779e2347ef
 Inlining, let-floating
 
 Avoid thunk chaining: box(box(box(() => x))
+
+Frame slot clearing - simplifies Graal's role, as Graal tracks dataflow, and
+this shortens an object's lifetime
+
+Static optimization  - changing the structure of the interpreter so that it
+would be faster even without JIT
+
+Dynamic optimization - using more Truffle-specific features, so that Graal can
+more efficiently optimize the code: CompilerDirectives, BranchProfiles,
+TruffleBoundaries, inline caches, ControlFlowExceptions
 
 "Immutable, except to simplify" + assumptions
 Maximize evaluation sharing - globals, cache, ?
@@ -3758,8 +3838,7 @@ To enhance compilation specialization/inlining:
 - Disadvantages: there is more to compile and inline by Graal, instead of a CallTarget, they use a child. Likely to take longer to stabilize, but faster in the end.
 
 ** Glued evaluation
-\blind\blind\blind\blind\blind\blind
-\blind\blind\blind\blind\blind\blind
+\blind{12}
 
 An optimization technique that attempts to avoid even more computation.
 
@@ -3772,33 +3851,31 @@ cite:kaposi19_gluing
 https://eutypes.cs.ru.nl/eutypes_pmwiki/uploads/Meetings/Kovacs_slides.pdf
 
 ** Splitting
-\blind\blind\blind\blind\blind\blind
+\blind{12}
 
 type specializations/dict passing
 
 ** Function dispatch
-\blind\blind\blind\blind\blind\blind
-\blind\blind\blind\blind\blind\blind
+\blind{12}
 
 lambda merging
 
 eta expansion
 
 ** Caching and sharing
-\blind\blind\blind\blind\blind\blind
-\blind\blind\blind\blind\blind\blind
+\blind{12}
 
 Sharing computation and common values
 
 Multiple references to the same object
-
 
 let-floating
 
 inlinable functions
 
 ** Specializations
-\blind\blind\blind\blind\blind\blind
+\blind{6}
+
 **** Truffle recommended optimizations
 The optimization workflow recommended by the Truffle developers is as follows:
 1. Run with a profiler to sample the application and identify responsible compilation units. Use a sampling delay (--cpusampler.Delay=MILLISECONDS) to only profile after warmup. See the Profiling guide.
@@ -3864,13 +3941,46 @@ Using additional options (~--cpusampler --cpusampler.SampleInternal --cpusampler
 
 #+COMMENT: https://github.com/eregon/FlameGraph/blob/graalvm/stackcollapse-graalvm.rb
 
+* Discussion
+** Results
+(A few pages)
+
+One-to-one evaluation and discussion of directly comparable subjects, confidence
+intervals, likely causes of improvements/regressions, iterations to
+steady-state.
+
+** Discussion
+Size of codebase
+
+Effort required
+
+Effect produced
+
+Is this road viable?
+
+** Next work
+(A few pages, subsections/mini-headers)
+
+FFI, tooling
+
+RPython, K Framework - exploration
+
+SPMD on Truffle, Array languages
+
+More type extensions OR totality (as a proof assistent)
+
+Finite types, universes, no type in type, HoTT, CoC
+
+Is this useful at all? What's the benefit for the world? (in evaluation)
+
+next work: LF, techniques, extensions, real language
+
 * Conclusion
 We tried X to do Y. It went well and we fulfilled the assignment.
 
 As a side effect, I produced a reference book for functional/dependent language implementation.
 
 Original goal was X, it grew to encompass Y, Z as well.
-
 * (bibliography, start of appendix)                           :ignoreheading:
 
 #+BEGIN_EXPORT latex
@@ -3929,6 +4039,8 @@ bibliography:bibliography.bib
 ** Pre-terms
 #+include: "../montuno/src/main/montuno/syntax/presyntax.kt" src kotlin -n
 * Footnotes
+
+[fn:14] 
 
 [fn:13] In descriptions of the higher-order abstract syntax, the term /binders/ is
 commonly used instead of function or λ-abstractions, as these constructs /bind/ a

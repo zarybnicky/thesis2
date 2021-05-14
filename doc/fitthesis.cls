@@ -1016,6 +1016,8 @@ Management}{\@fit@EN}%
 
 %\usepackage[colorinlistoftodo, disable]{todonotes}
 \usepackage[colorinlistoftodos]{todonotes}
+\reversemarginpar
+\setlength{\marginparwidth}{2.5cm}
 
 \newcommand{\phony}[1]{\textcolor{gray}{#1}}
 \newcommand{\blind}[1]{\textcolor{gray}{\Blindtext[#1]}}

@@ -27,11 +27,6 @@
 #+LATEX_HEADER:\let\emph\textit
 #+LATEX:\setlength{\parskip}{0pt}
 
-* Easy stuff
-- Mapping concepts structure : interpreter structure overview
-- R
-- 
-
 
 * Bibliography
 bibliographystyle:abbrv
