@@ -16,6 +16,17 @@ auto/
 *.lof
 *.lol
 *.tdo
+*.xdv
 \#*
 doc/DP-thesis.pdf
 doc/DP-thesis.tex
+doc/01-spec.pdf
+doc/01-spec.tex
+doc/02-pure.pdf
+doc/02-pure.tex
+doc/03-truffle.pdf
+doc/03-truffle.tex
+doc/04-evaluation.pdf
+doc/04-evaluation.tex
+doc/05-optimization.pdf
+doc/05-optimization.tex
