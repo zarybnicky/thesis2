@@ -1,0 +1,1257 @@
+* (front matter)                                              :ignoreheading:
+#+LANGUAGE: en
+#+OPTIONS: texht:nil toc:nil author:nil ':t H:4 num:3
+#+LATEX_CLASS: fitthesis
+#+LATEX_CLASS_OPTIONS: [english,zadani,odsaz]
+#+EXCLUDE_TAGS: noexport
+#+BIND: org-latex-title-command ""
+#+BIND: org-latex-prefer-user-labels t
+#+BIND: org-latex-default-figure-position "htb"
+
+#+latex: \setcounter{chapter}{1}
+
+* Language specification: λ⋆-calculus with extensions
+  :PROPERTIES:
+  :CUSTOM_ID: lambda
+  :END:
+** Introduction
+Proof assistants like Agda or Idris are built around a fundamental principle
+called the Curry-Howard correspondence that connects type theory and
+mathematical logic, demonstrated in Figure ref:ch-logic. In simplified terms it
+says that given a language with a self-consistent type system, writing a
+well-typed program is equivalent to proving its correctness
+cite:baez10_rosetta. It is often shown on the correspondence between natural
+deduction and the simply-typed λ-calculus, as in Figure ref:ch-deduction. Proof
+assistants often have a small core language around which they are built:
+e.g. Coq is built around the Calculus of Inductive Constructions, which is a
+higher-order typed λ-calculus.
+
+#+label: ch-logic
+#+CAPTION: Curry-Howard correspondence between mathematical logic and type theory
+#+ATTR_LaTeX: :options [!htb]
+#+begin_figure latex
+\captionsetup{aboveskip=-3pt}
+\begin{center}
+\begin{tabular}{c|c}
+Mathematical logic & Type theory \\\hline\\[-1em]
+\shortstack{$⊤$ \\ true} &
+\shortstack{$()$ \\ unit type} \\
+\shortstack{$⊥$ \\ false} &
+\shortstack{$∅$ \\ empty type} \\[3pt]
+\shortstack{$p ∧ q$ \\ conjunction} &
+\shortstack{$a × b$ \\ sum type} \\[3pt]
+\shortstack{$p ∨ q$ \\ disjunction} &
+\shortstack{$a + b$ \\ product type} \\[3pt]
+\shortstack{$p ⇒ q$ \\ implication} &
+\shortstack{$a → b$ \\ exponential (function) type} \\[5pt]
+\shortstack{$∀x ∈ A, p$ \\ universal quantification} &
+\shortstack{$Π_{x : A}B(x)$ \\ dependent product type} \\[5pt]
+\shortstack{$∃x ∈ A, p$ \\ existential quantification} &
+\shortstack{$Σ_{x : A}B(x)$ \\ dependent sum type} \\[5pt]
+\end{tabular}
+\end{center}
+#+end_figure
+
+#+label: ch-deduction
+#+CAPTION: Curry-Howard correspondence between natural deduction and λ→-calculus
+#+ATTR_LaTeX: :options [!htb]
+#+begin_figure latex
+\begin{center}
+\begin{tabular}{c|c}
+Natural deduction & λ→ calculus \\\hline\\[-1em]
+\shortstack{
+\AxiomC{}
+\UnaryInfC{$Γ₁, α, Γ₂ ⊢ α$}
+\DisplayProof \\ axiom} &
+\shortstack{
+\AxiomC{}
+\UnaryInfC{$Γ₁, x : α, Γ₂ ⊢ x : α$}
+\DisplayProof \\ variable} \\[7pt]
+
+\shortstack{
+\AxiomC{$Γ, α ⊢ β$}
+\UnaryInfC{$Γ ⊢ α → β$}
+\DisplayProof \\ implication introduction} &
+\shortstack{
+\AxiomC{$Γ, x : α ⊢ t : β$}
+\UnaryInfC{$Γ ⊢ λx. t: α → β$}
+\DisplayProof \\ abstraction} \\[7pt]
+
+\shortstack{
+\AxiomC{$Γ ⊢ α → β$}
+\AxiomC{$Γ ⊢ α$}
+\BinaryInfC{$Γ ⊢ β$}
+\DisplayProof \\ modus ponens} &
+\shortstack{
+\AxiomC{$Γ ⊢ t : α → β$}
+\AxiomC{$Γ ⊢ u : α$}
+\BinaryInfC{$Γ ⊢ t u : β$}
+\DisplayProof \\ application} \\[7pt]
+\end{tabular}
+\end{center}
+#+end_figure
+
+Compared to the type systems in languages like Java, dependent type systems can
+encode much more information in types. We can see the usual example of a list
+with a known length in Listing ref:idris-vect: the type ~Vect~ has two parameters,
+one is the length of the list (a Peano number), the other is the type of its
+elements. Using such a type we can define safe indexing operators like ~head~,
+which is only applicable to non-empty lists, or ~index~, where the index must be
+given as a finite number between zero and the length of the list (~Fin len~). List
+concatenation uses arithmetic on the type level, and it is possible to
+explicitly prove that concatenation preserves list length.
+
+#+label: idris-vect
+#+caption: Vectors with explicit length in the type, source: the Idris base library
+#+begin_src idris
+  data Vect : (len : Nat) -> (elem : Type) -> Type where
+    Nil  : Vect Z elem
+    (::) : (x : elem) -> (xs : Vect len elem) -> Vect (S len) elem
+
+  -- Definitions elided
+  head : Vect (S len) elem -> elem
+  index : Fin len -> Vect len elem -> elem
+  (++) : (xs : Vect m elem) -> (ys : Vect n elem) -> Vect (m + n) elem
+
+  proofConcatLength
+    : {m, n : Nat} -> {A : Type} -> (xs : Vect n A) -> (ys : Vect m A)
+      -> length (xs ++ ys) = length xs + length ys
+#+end_src
+
+On the other hand, these languages are often restricted in some ways. General
+Turing-complete languages allow non-terminating programs: non-termination leads
+to a inconsistent type system, so proof assistants use various ways of keeping
+the logic sound and consistent. Idris, for example, requires that functions are
+total and finite. It uses a termination checker, checking that recursive
+functions use only structural or primitive recursion, in order to ensure that
+type-checking stays decidable.
+
+This chapter aims to introduce the concepts required to specify the syntax and
+semantics of a small dependently-typed language and use these to produce such a
+specification, a necessary prerequisite so that we can create interpreters for
+this language in later chapters. This chapter, however, does not attempt to be a
+complete reference in the large field of type theory.
+
+** Languages
+*** λ-calculus
+We will start from the untyped lambda calculus, as it is the language that all
+following ones will build upon. Introduced in the 1930s by Alonzo Church as a
+model of computation, it is a very simple language that consists of only three
+constructions: abstraction, application, and variables, written as in Figure
+ref:untyped.
+
+#+label: untyped
+#+CAPTION: λ-calculus written in Church and de Bruijn notation
+#+ATTR_LaTeX: :options [htb]
+#+begin_figure latex
+\captionsetup[subfigure]{aboveskip=-1pt}
+\begin{subfigure}[t]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  e & ::= & v   & \text{variable} \\
+    & |   & M~N & \text{application} \\
+    & |   & λv.~M & \text{abstraction}
+  \end{array}\]
+  \caption{Standard (Church) notation}
+\end{subfigure}
+\begin{subfigure}[t]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  e & ::= & v     \\
+    & |   & (N)~M \\
+    & |   & [v]~M
+  \end{array}\]
+  \caption{De Bruijn notation}
+\end{subfigure}
+#+end_figure
+
+**** β-reduction
+The λ-abstraction $λx.~t$ represents a program that, when applied to the
+expression $x$, returns the term $t$. For example, the expression $(λx.x x) t$
+produces the expression $t t$. This step, applying a λ-abstraction to a term, is
+called /β-reduction/, and it is the basic /rewrite rule/ of λ-calculus. Another way
+of saying that is that the x is assigned/replaced with the expression T, and it
+is written as the substitution $M[x≔T]$
+
+#+LATEX: \[ (λx. t) u ⟶_β t[x≔u] \]
+
+**** α-conversion
+We however need to ensure that the variables in the substituted terms do not
+overlap and if they do, we need to rename them. This is called /α-conversion/ or α
+renaming. In general, the variables that are not bound in λ-abstractions, /free
+variables./ may need to be replaced before every β-reduction so that they do not
+become /bound/ after substitution.
+
+#+LATEX: \[ (λx. t) ⟶_α (λy. t[x≔y]) \]
+
+**** η-conversion
+Reducing a λ-abstraction that directly applies its argument to a term or
+equivalently, rewriting a term in the form of $λx.f x$ to $f$ is called
+/η-reduction/. The opposite rewrite rule, from $f$ to $λx.f x$ is
+$\bar{η}\text{-expansion}$, and because the rewriting works in both ways, it is
+also called the /η-conversion/.
+
+#+LATEX: \[ λx.f x ⟶_η f\]  \[ f ⟶_{\bar{η}} λx.f x \]
+
+**** δ-reduction
+β-reduction together with α-renaming are sufficient to specify λ-calculus, but
+there are three other rewriting rules that we will need later: /δ-reduction/ is
+the replacement of a constant with its definition.
+
+#+LATEX: \[ id t ⟶_δ (λx.x) t\]
+
+**** ζ-reduction
+For local variables, equivalent process is called the /ζ-reduction/.
+
+#+LATEX: \[ let id = λx.x in id t ⟶_ζ (λx.x) t \]
+
+**** ι-reduction
+We will also use other types of objects than just functions. Applying a function
+that extracts a value from an object is called the /ι-reduction/. In this example,
+the object is a pair of values, and the function $π₁$ is a projection that
+extracts the first value of the pair.
+
+#+LATEX: \[ π₁ (a, b) ⟶_ι a \]
+
+**** Normal form
+By repeatedly βδιζ-reducing an expression--applying functions to their
+arguments, replacing constants and local variables with their definitions,
+evaluating objects, and α-renaming variables if necessary, we get a β-normal
+form, or just /normal form/ for short. This normal form is unique up to
+α-conversion, according to the Church-Rossier theorem.
+
+#+begin_export latex
+\[\begin{array}{rl}
+     & \text{let} pair = λm.(m,m) \text{in} π₁ (pair (id 5)) \\
+⟶_ζ & π₁ ((λm.(m,m)) (id 5)) \\
+⟶_β & π₁ (id 5, id 5) \\
+⟶_ι & id 5 \\
+⟶_δ & (λx.x) 5 \\
+⟶_β & 5 \\
+\end{array}\]
+#+end_export
+
+**** Other normal forms
+There are also other normal forms, they all have something to do with unapplied
+functions. If we have an expression and repeatedly use only the β-reduction, we
+end up with a function, or a variable applied to some free variables. These
+other normal forms specify what happens in such a "stuck" case. In Figure
+ref:normal-forms, $e$ is an arbitrary λ-term and $E$ is a term in the relevant
+normal form cite:sestoft02_reduction. Closely related to the concept of a normal
+form are /normalization strategies/ that specify the order in which
+sub-expressions are reduced.
+
+#+LATEX:{\renewcommand{\arraystretch}{1.3}%
+#+LABEL: normal-forms
+#+CAPTION: Normal forms in λ-calculus
+#+begin_figure latex
+\captionsetup{aboveskip=-1pt}
+\begin{center}
+\begin{tabular}{ccll}
+& & \multicolumn{2}{c}{Reduce under abstraction} \\\cline{3-4}
+& \multicolumn{1}{c|}{} & \textbf{Yes} & \multicolumn{1}{|c|}{\textbf{No}}
+\\\cline{2-4}
+\multicolumn{1}{c|}{\multirow{4}{*}{\rotatebox[origin=c]{90}{Reduce args}}} &
+\multicolumn{1}{c|}{\multirow{2}{*}{\textbf{Yes}}}
+& $E ≔ λx.E | x E₁...Eₙ$ & \multicolumn{1}{|l|}{$E ≔ λx.e | x E₁...Eₙ$}
+\\
+\multicolumn{1}{c|}{} & \multicolumn{1}{c|}{}
+& Normal form  & \multicolumn{1}{|l|}{Weak normal form}
+\\\cline{2-4}
+\multicolumn{1}{c|}{} & \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{No}}}
+& $E ≔ λx.E | x e₁...eₙ$ & \multicolumn{1}{|l|}{$E ≔ λx.e | x e₁...eₙ$}
+\\
+\multicolumn{1}{c|}{} & \multicolumn{1}{c|}{}
+& Head normal form & \multicolumn{1}{|l|}{Weak head normal form}
+\\\cline{2-4}
+\end{tabular}
+\end{center}
+#+end_figure
+#+LATEX: }
+
+**** Strong normalization
+An important property of a model of computation is termination, the question of
+whether there are expressions for which computation does not stop. In the
+context of the λ-calculus it means whether there are terms, where repeatedly
+applying rewriting rules does not produce a unique normal form in a finite
+sequence steps. While for some expressions this may depend on the selected
+rewriting strategy, the general property is as follows: If for all well-formed
+terms $a$ there does not exist any infinite sequence of reductions $a ⟶_{β}
+a' ⟶_{β} a''⟶_{β} ⋯$, then such a system is called /strongly normalizing/.
+
+The untyped λ-calculus is not a strongly normalizing system, though, and there
+are expressions that do not have a normal form. When such expressions are
+reduced, they do not get smaller, but they /diverge/. The ω combinator:
+
+#+LATEX: \[ω = λx.x~x\]
+
+is one such example that produces an infinite term. Applying ω to itself
+produces a divergent term whose reduction cannot terminate:
+
+#+LATEX: \[ω~ω ⟶_δ (λx.x x)ω ⟶_β ω~ω\]
+
+The fixed-point function, the Y combinator, is also notable:
+
+#+LATEX: \[Y = λf.(λx.f(x x)) (λx.f(x x))\]
+
+This is one possible way of encoding general recursion in λ-calculus, as it
+reduces by applying $f$ to itself:
+
+#+LATEX: \[Y f ⟶_{δβ} f(Y f) ⟶_{δβ} f(f(Y f))  ⟶_{δβ} ...\]
+
+This, as we will see in the following chapter, is impossible to encode in the
+typed λ-calculus without additional extensions.
+
+As simple as λ-calculus may seem, it is a Turing-complete system that can encode
+logic, arithmetic, or data structures. Some examples include /Church encoding/ of
+booleans, pairs, or natural numbers (Figure ref:church).
+
+#+LABEL: church
+#+CAPTION: Church encoding of various concepts
+#+ATTR_LaTeX: :options [!htb]
+#+begin_figure latex
+\begin{subfigure}[b]{.5\textwidth}\centering
+  \[\begin{array}{ccl}
+  0 & = & λf.λx.~x \\
+  1 & = & λf.λx.~f~x
+  \end{array}\]
+  \caption{Natural numbers}
+\end{subfigure}
+\begin{subfigure}[b]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  succ & = & λn.λf.λx.f~(n~f~x) \\
+  plus & = & λm.λn.m~succ~n
+  \end{array}\]
+  \caption{Simple arithmetic}
+\end{subfigure}
+\begin{subfigure}[b]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  true & = & λx.λy.x \\
+  false & = & λx.λy.y \\
+  not & = & λp.p~false~true \\
+  and & = & λp.λq.p~q~p \\
+  ifElse & = & λp.λa.λb.p~a~b
+  \end{array}\]
+  \caption{Logic}
+\end{subfigure}
+\begin{subfigure}[b]{.5\textwidth}\centering
+  \[\begin{array}{ccll}
+  cons & = & λf.λx.λy.f~x~y \\
+  fst & = & λp.p~true \\
+  snd & = & λp.p~false \\
+  \end{array}\]
+  \caption{Pairs}
+\end{subfigure}
+#+end_figure
+
+*** λ→-calculus
+It is often useful, though, to describe the kinds of objects we work
+with. Already, in Figure ref:church we could see that reading such expressions
+can get confusing: a boolean is a function of two parameters, whereas a pair is
+a function of three arguments, of which the first one needs to be a boolean and
+the other two contents of the pair.
+
+The untyped λ-calculus defines a general model of computation based on functions
+and function application. Now we will restrict this model using types that
+describe the values that can be computed with.
+
+The simply typed λ-calculus, also written λ→ as "→" is the connector used in
+types, introduces the concept of types. We have a set of basic types that are
+connected into terms using the arrow →, and type annotation or assignment $x :
+A$. We now have two languages: the language of terms, and the language of
+types. These languages are connected by a /type judgment/, or /type assignment/ $x :
+T$ that asserts that the term $x$ has the type $T$
+cite:guallart15_overview_types.
+
+**** Church- and Curry-style
+There are two ways of formalizing the simply-typed λ-calculus: λ→-Church, and
+λ→-Curry. Church-style is also called system of typed terms, or the explicitly
+typed λ-calculus as we have terms that include type information, and we say:
+
+#+LATEX: \[λx : A.x : A → A,\]
+
+or using parentheses to clarify the precedence
+
+#+LATEX: \[λ(x : A).x : (A → A).\]
+
+Curry-style is also called the system of typed assignment, or the implicitly
+type λ-calculus as we assign types to untyped λ-terms that do not carry type
+information by themselves, and we say $λx.x : A → A$. cite:barendregt92_typed.
+
+There are systems that are not expressible in Curry-style, and vice versa.
+Curry-style is interesting for programming, we want to omit type information;
+and we will see how to manipulate programs specified in this way in Chapter
+ref:interpreter. We will use Church-style in this chapter, but our language will
+be Curry-style, so that we incorporate elaboration into the interpreter.
+
+**** Well-typed terms
+Before we only needed evaluation rules to fully specify the system, but
+specifying a system with types also requires typing rules that describe what
+types are allowed. We will also need to distinguish /well-formed terms/ from
+/well-typed terms/: well-formed terms are syntactically valid, whereas well-typed
+terms also obey the typing rules. Terms that are well-formed but not yet known
+to be well typed are called /pre-terms/, or terms of /pre-syntax/.
+
+There are some basis algorithms of type theory, in brief:
+- given a pre-term and a type, /type checking/ verifies if the term can be assigned the type.
+- given just a pre-term and no type, /type inference/ computes the type of an expression
+- and finally /type elaboration/ is the process of converting a partially
+  specified pre-term into a complete, well-typed term cite:ferreira14_bidi.
+
+**** Types and context
+The complete syntax of the λ→-calculus is in Figure ref:simple-syntax.
+Reduction operations are the same as in the untyped lambda calculus, but we will
+need to add the language of types to the previously specified language of
+terms. This language consists of a set of /base types/ which can consist of
+e.g. natural numbers or booleans, and /composite types/, which describe functions
+between them. We also need a way to store the types of terms that are known, a
+typing /context/, which consists of a list of /type judgments/ in the form $x:T$,
+which associate variables to their types.
+
+#+label: simple-syntax
+#+CAPTION: λ→-calculus syntax
+#+ATTR_LaTeX: :options [bht]
+#+begin_figure latex
+\[\begin{array}{ccll}
+e & & & (terms) \\
+  & ≔ & v     & \text{variable} \\
+  & | & M~N   & \text{application} \\
+  & | & λx.~t & \text{abstraction} \\
+  & | & x:τ   & \text{annotation} \\[5pt]
+τ & & & (types) \\
+  & ≔ & β      & \text{base types} \\
+  & | & τ → τ' & \text{composite type} \\[5pt]
+Γ & & & (typing context) \\
+  & ≔ & ∅     & \text{empty context} \\
+  & | & Γ,x:τ & \text{type judgement} \\[5pt]
+v & & & (values) \\
+  & ≔ & λx. t & \text{closure} \\[5pt]
+\end{array}\]
+#+end_figure
+
+**** Typing rules
+The simply-typed λ-calculus can be completely specified by the typing rules in
+Figure ref:simple-types cite:pierce02_types. These rules are read similarly to
+logic proof trees: as an example, the rule *App* can be read as "if we can infer
+$f$ with the type $A→B$ and $a$ with the type $A$ from the context Γ, then we
+can also infer that function application $f a$ has the type $B$". Given these
+rules and the formula
+
+#+LATEX: \[λa:A.λb:B.a : A→B→A\]
+
+we can also produce a derivation tree that looks similar to logic proofs and, as
+mentioned before, its semantics corresponding to the logic formula "if $A$ and $B$,
+then $A$" as per the Curry-Howard equivalence.
+
+#+begin_export latex
+\begin{prooftree}
+\AxiomC{}
+\UnaryInfC{$a:A, b:B ⊢ a:A$}
+\UnaryInfC{$a:A ⊢ λb:B. a : B→A$}
+\UnaryInfC{$⊢ λa:A. λb:B. a : A→B→A$}
+\end{prooftree}
+#+end_export
+
+We briefly mentioned the problem of termination in the previous section; the
+simply-typed λ-calculus is strongly normalizing, meaning that all well-typed
+terms have a unique normal form. In other words, there is no way of writing a
+well-typed divergent term; the Y combinator is impossible to type in λ→ and any
+of the systems in the next chapter cite:bove08_atwork.
+
+#+label: simple-types
+#+CAPTION: λ→-calculus typing rules
+#+ATTR_LaTeX: :options [!htb]
+#+begin_figure latex
+\begin{prooftree}
+\AxiomC{$x : A ∈ Γ$}
+\RightLabel{\textsc{(Var)}}
+\UnaryInfC{$Γ ⊢ x : A$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$Γ ⊢ f:A→B$}
+\AxiomC{$Γ ⊢ a:A$}
+\RightLabel{\textsc{(App)}}
+\BinaryInfC{$Γ ⊢ fa : B$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$Γ,x : A ⊢ b:B$}
+\RightLabel{\textsc{(Abs)}}
+\UnaryInfC{$Γ ⊢ λx : A. b : A→B$}
+\end{prooftree}
+#+end_figure
+
+*** λ-cube
+The λ→-calculus restricts the types of arguments to functions; types are static
+and descriptive. When evaluating a well-typed term, the types can be erased
+altogether without any effect on the computation. In other words, terms can only
+depend on other terms.
+
+Generalizations of the λ→-calculus can be organized into a cube called the
+Barendregt cube, or the λ-cube cite:barendregt92_typed (Figure ref:cube). In λ→
+only terms depend on terms, but there are also three other combinations
+represented by the three dimensions of the cube: types depending on types
+$(□,□)$, or also called type operators; terms depending on types $(□,⋆)$, called
+/polymorphism/; and terms depending on types $(⋆,□)$, representing /dependent
+types/.
+
+#+label: cube
+#+CAPTION: Barendregt cube (also λ-cube)
+#+ATTR_LATEX: :options [!htb]
+#+begin_figure latex
+\centering
+\begin{tikzpicture}
+\matrix (m) [matrix of math nodes,
+row sep=2.5em, column sep=2.5em,
+text height=1.5ex,
+text depth=0.25ex]{
+   & λω             &     & λΠω            \\
+λ2 &                & λΠ2 &                \\
+   & λ\underline{ω} &     & λΠ\underline{ω}\\
+λ→ &                & λΠ  \\
+};
+\path[-{Latex[length=2.5mm, width=1.5mm]}]
+(m-1-2) edge (m-1-4)
+(m-2-1) edge (m-2-3) edge node[fill=white,pos=0.4]{$(□,□)$} (m-1-2)
+(m-3-2) edge (m-1-2) edge (m-3-4)
+(m-4-1) edge node[fill=white]{$(□,⋆)$} (m-2-1)
+(m-4-1) edge (m-3-2)
+(m-4-1) edge node[fill=white]{$(⋆,□)$} (m-4-3)
+(m-3-4) edge (m-1-4)
+(m-2-3) edge (m-1-4)
+(m-4-3) edge (m-3-4) edge (m-2-3);
+\end{tikzpicture}
+#+end_figure
+
+**** Sorts
+To formally describe the cube, we will need to introduce the notion of sorts. In
+brief,
+
+#+LATEX: \[t : T : ⋆ : □.\]
+
+The meaning of the symbol $:$ is same as before, "x has type y". The type of a
+term $t$ is a type $T$, the type of a type $T$ is a kind $*$, and the type of
+kinds is the sort □. The symbols ⋆ and □ are called /sorts/. As with types, sorts
+can be connected using arrows, e.g. $(⋆→⋆)→⋆$. To contrast the syntaxes of the
+following languages, the syntax of λ→ is here:
+
+#+begin_export latex
+\[\begin{array}{ccccccc}
+types & ≔ & T & | & A → B  &   &     \\
+terms & ≔ & v & | & λx:A.t & | & a b \\
+values & ≔ &  &   & λx:A.t &   & \\
+\end{array}\]
+#+end_export
+
+**** λ\underline{ω}-calculus
+Higher-order types or type operators generalizes the concepts of functions to
+the type level, adding λ-abstractions and applications to the language of types.
+
+#+begin_export latex
+\[\begin{array}{ccccccccc}
+types & ≔ & T & | & A → B  & | & A B & | & ΛA.B(a) \\
+terms & ≔ & v & | & λx:A.t & | & a b \\
+values & ≔ &  &   & λx:A.t \\
+\end{array}\]
+#+end_export
+
+**** λ2-calculus
+The dependency of terms on types adds polymorphic types to the language of
+types: $∀X:k.A(X)$, and type abstractions (Λ-abstractions) and applications to
+the language of terms. This system is also called System F, and it is equivalent
+to propositional logic cite:barendregt92_typed.
+
+#+begin_export latex
+\[\begin{array}{ccccccccc}
+types & ≔ & T & | & A → B  & | &     &   & ∀A.B \\
+terms & ≔ & v & | & λx:A.t & | & a b & | & ΛA.t \\
+values & ≔ &  &   & λx:A.t & | &     &   & ΛA.t \\
+\end{array}\]
+#+end_export
+
+**** λΠ-calculus
+Allowing types to depend on terms means that type of a function can depend on
+its term-level arguments, hence dependent types, represented by the type
+$Πa:A.B(a)$. This dependency is the reason for the name of dependently-typed
+languages. This system is well-studied as the Logical Framework (LF)
+cite:barendregt92_typed.
+
+#+begin_export latex
+\[\begin{array}{ccccccccc}
+types & ≔ & T & | & A → B  & | &     &   & Πa:A.B \\
+terms & ≔ & v & | & λx:A.b & | & a b & | & Πa:A.b \\
+values & ≔ &  &   & λx:A.b & | &     &   & Πx:A.b \\
+\end{array}\]
+#+end_export
+
+**** Pure type system
+These systems can all be described by one set of typing rules instantiated with
+a triple $(S, A, R)$. Given the set of sorts $S=\{⋆,□\}$ we can define relations
+$A$ and $R$ where, for example, $A=\{(⋆,□)\}$ is translated to the axiom $⊢⋆:□$
+by the rule *Start*, and $R=\{(⋆,□)\}$[fn:1] means that a kind can depend on a
+type using the rule *Product*.
+
+#+begin_export latex
+\[\begin{array}{ccll}
+S & ≔ & \{⋆,□\} & \text{set of sorts} \\
+A & ⊆ & S×S   & \text{set of axioms} \\
+R & ⊆ & S×S×S & \text{set of rules}
+\end{array}\]
+#+end_export
+
+The typing rules in Figure ref:coc-rules apply to all the above-mentioned
+type systems. The set $R$ exactly corresponds to the dimensions of the λ-cube,
+so instantiating this type system with $R=\{(⋆,⋆)\}$ would produce the
+λ→-calculus, whereas including all the dependencies $R=\{(⋆,⋆), (□,⋆),(⋆,□),
+(□,□)\}$ produces the λΠω-calculus. If we also consider that the function arrow
+$A→B$ is exactly equivalent to the type $Πa:A.B(a)$ if the variable $a$ is not
+used in the expression $B(a)$, the similarity to Figure ref:simple-types should
+be easy to see.
+
+#+label:coc-rules
+#+caption:Typing rules of a pure type system
+#+ATTR_LaTeX: :options [!htb]
+#+begin_figure latex
+\centering
+\begin{tabular}{cl}
+\AxiomC{}
+\RightLabel{$(s₁,s₂)∈A$}
+\UnaryInfC{$⊢ s₁:s₂$}
+\DisplayProof & \textsc{(Start)} \\[7pt]
+\AxiomC{$Γ ⊢ A:s$}
+\RightLabel{$s∈S$}
+\UnaryInfC{$Γ,x:A ⊢ x:A$}
+\DisplayProof & \textsc{(Var)} \\[13pt]
+\AxiomC{$Γ ⊢ x : A$}
+\AxiomC{$Γ ⊢ B : s$}
+\RightLabel{$s∈S$}
+\BinaryInfC{$Γ,y:B ⊢ x:A$}
+\DisplayProof & \textsc{(Weaken)} \\[13pt]
+\AxiomC{$Γ ⊢ f:Π_{x:A}B(x)$}
+\AxiomC{$Γ ⊢ a:A$}
+\BinaryInfC{$Γ ⊢ fa : B[x≔a]$}
+\DisplayProof & \textsc{(App)} \\[13pt]
+\AxiomC{$Γ,x : A ⊢ b:B$}
+\AxiomC{$Γ ⊢ Π_{x:A}B(x) : s$}
+\RightLabel{$s∈S$}
+\BinaryInfC{$Γ ⊢ (λx : A. b) : Π_{x:A}B(x)$}
+\DisplayProof & \textsc{(Abs)} \\[13pt]
+\AxiomC{$Γ ⊢ A:s₁$}
+\AxiomC{$Γ,x:A ⊢ B:s₂$}
+\RightLabel{$(s₁,s₂,s₃)∈R$}
+\BinaryInfC{$Γ ⊢ Π_{x:A}B(x) : s₃$}
+\DisplayProof & \textsc{(Product)} \\[13pt]
+\AxiomC{$Γ ⊢ a:A$}
+\AxiomC{$Γ ⊢ A':s$}
+\AxiomC{$A ⟶_β A'$}
+\RightLabel{$s∈S$}
+\TrinaryInfC{$Γ ⊢ a:A'$}
+\DisplayProof & \textsc{(Conv)} \\[5pt]
+\end{tabular}
+#+end_figure
+
+**** Universes
+This can be generalized even more. Instantiating this system with an infinite
+set of sorts $S=\{Type₀,Type₁,...\}$ instead of the set $\{⋆,□\}$ and setting
+$A$ to $\{(Type₀, Type₁),\linebreak[1] (Type₁,Type₂), ...\}$ leads to an infinite hierarchy of
+/type universes/, and is in fact an interesting topic in the field of type
+theory. Proof assistants commonly use such a hierarchy cite:bove08_atwork.
+
+**** Type in Type
+Going the other way around, simplifying $S$ to $S=\{⋆\}$ and setting
+$A$ to $\{(⋆,⋆)\}$, leads to an inconsistent logic system called λ⋆, also called a
+system with a /Type in Type/ rule. This leads to paradoxes similar to the Russel's
+paradox in set theory. [[inline:Show Girard's paradox?]]
+
+In many pedagogic implementations of dependently-typed λ-calculi I saw, though,
+this was simply acknowledged: separating universes introduces complexity but the
+distinction is not as important for many purposes.
+
+For the goal of this thesis--testing the characteristics of a runtime
+system--the distinction is unimportant. In the rest of the text we will use the
+inconsistent λ⋆-calculus, but with all the constructs mentioned in the preceding
+type systems. We will now formally define these constructs, together with
+several extensions to this system that will be useful in the context of
+just-in-time compilation using Truffle, e.g., (co)product types, booleans, natural
+numbers.
+
+Proof assistants and other dependently-typed programming languages use systems
+based on λΠω-calculus, which is called the Calculus of Constructions. They add
+more extensions: induction and subtyping are common ones. We will discuss only a
+subset of them in the following section, as many of these are irrelevant to the
+goals of this thesis.
+
+** Types
+While it is possible to derive any types using only three constructs: Π-types
+(dependent product), Σ-types (dependent sum), and $W\text{-types}$ (inductive
+types), that we haven't seen so far; we will define specific /"wired-in"/ types
+instead, as they are more straightforward to both use and implement.
+
+We will specify the syntax and semantics of each type at the same time. For
+syntax, we will define the terms and values, for semantics we will use four
+parts: type formation, a way to construct new types; term introduction
+(constructors), ways to construct terms of these types; term elimination
+(destructors), ways to use them to construct other terms; and computation rules
+that describe what happens when an introduced term is eliminated. The algorithms
+to normalize and type-check these terms will be mentioned in the following
+chapter. In this section we will solely focus on the syntax and semantics.
+
+*** Π-types
+As mentioned above, the type $Πa:A.B$, also called the /dependent product type/
+or the /dependent function type/, is a generalization of the function type $A→B$.
+Where the function type simply asserts that its corresponding function will
+receive a value of a certain type as its argument, the Π-type makes the value
+available in the rest of the type. Figure ref:type-pi introduces its semantics;
+they are similar to the typing rules of λ→-calculus function application, except
+for the substitution in the type of $B$ in rule *Elim-Pi*.
+
+#+label: type-pi
+#+CAPTION: Π-type semantics
+#+ATTR_LaTeX: :options [!htb]
+#+begin_figure latex
+\centering
+\begin{tabular}{cc}
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ A:⋆$}
+\AxiomC{$Γ, x:A ⊢ B:⋆$}
+\RightLabel{\textbf{(Type-Pi)}}
+\BinaryInfC{$Γ ⊢ Πx:A.B$}
+\DisplayProof
+} \\[15pt]
+\AxiomC{$Γ,a:A ⊢ b:B$}
+\RightLabel{\textbf{(Intro-Pi)}}
+\UnaryInfC{$Γ ⊢ λx.b : Πx:A.B$}
+\DisplayProof
+&
+\AxiomC{$Γ ⊢ f : Πx:A.B$}
+\AxiomC{$Γ ⊢ a:A$}
+\RightLabel{\textbf{(Elim-Pi)}}
+\BinaryInfC{$Γ ⊢ f a : B[x≔a]$}
+\DisplayProof
+\\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ, a:A ⊢ b:B$}
+\AxiomC{$Γ ⊢ a:A$}
+\RightLabel{\textbf{(Eval-Pi)}}
+\BinaryInfC{$Γ ⊢ (λx:A.b)a ⟶_β b[x≔a]$}
+\DisplayProof
+}
+\end{tabular}
+#+end_figure
+
+While a very common example of a Π-type is the length-indexed vector
+$Π(n:ℕ). Vec(ℝ, n)$, it is also possible to define a function with a /"dynamic"/
+number of arguments like in the following listing. It is a powerful language
+feature also for its programming uses, as it makes it possible to e.g. implement
+a well-typed function ~printf~ that, e.g., produces the function $Nat → Nat →
+String$ when called as ~printf "%d%d"~.
+
+#+begin_export latex
+\[\begin{array}{rcl}
+succOrZero & : & Π(b:Bool). if b then (Nat→Nat) else Nat \\
+succOrZero & = & Π(b:Bool). if b then (λx. x+1) else 0 \\[3pt]
+succOrZero true 0 & ⟶_{βδ} & 1 \\
+succOrZero false & ⟶_{βδ} & 0
+\end{array}\]
+#+end_export
+
+**** Implicit arguments
+The type-checker can infer many type arguments. Agda adds the concept of
+implicit function arguments cite:bove08_atwork to ease the programmer's work and
+mark inferrable type arguments in a function's type signature. Such arguments
+can be specified when calling a function using a special syntax, but they are
+not required cite:kovacs20_implicit. We will do the same, and as such we will
+split the syntax of a Π-type back into three separate constructs, which can be
+seen in Figure ref:syntax-pi.
+
+#+label: syntax-pi
+#+CAPTION: Π-type syntax
+#+ATTR_LaTeX: :options [!htb]
+#+begin_figure latex
+\[\begin{array}{cclcccll}
+term & ≔ & a → b & | & (a:A)→b & | & \{a:A\}→b & \text{(abstraction)} \\
+     & | & f a   & | &         & | & f \{a\}   & \text{(application)} \\
+value & ≔ & Πa:A.b
+\end{array}\]
+#+end_figure
+
+The plain /function type/ $A→B$ is simple to type but does not bind the value
+provided as the argument $A$. The /explicit Π-type/ $(a:A)→B$ binds the value $a$
+and makes it available to use inside $B$, and the /implicit Π-type/ $\{a:A\}→B$
+marks the argument as one that type elaboration should be able to infer from the
+surrounding context. The following is an example of the implicit argument
+syntax, a polymorphic function $id$.
+
+#+begin_export latex
+\[\begin{array}{rclcl}
+id         & : & \{A:⋆\}→A→A   & ≔ &          Π(x:A).x \\
+id \{Nat\} & : & Nat→Nat & ⟶_{βδ} & λ(x:Nat).x \\
+id 1       & : & Nat     & ⟶_{βδ} & 1
+\end{array}\]
+#+end_export
+
+*** Σ-types
+The Σ-type is also called the /dependent pair type/, or alternatively the
+dependent tuple, dependent sum, or even the dependent product type.  Like the
+Π-type was a generalization of the function type, the Σ-type is a generalization
+of a product type, or simply a /pair/. Semantically, the Σ-type is similar to the
+tagged union in C-like languages: the type $Σ(a:A).B(a)$ corresponds to a value
+$(a,b)$, only the type $B(a)$ can depend on the first member of the pair. This
+is illustrated in Figure ref:type-sigma, where the dependency can be seen in
+rule *Intro-Sigma*, in the substitution $B[x≔a]$.
+
+#+label: type-sigma
+#+CAPTION: Σ-type semantics
+#+begin_figure latex
+\centering
+\begin{tabular}{cc}
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ A : ⋆$}
+\AxiomC{$Γ, x : A ⊢ B : ⋆$}
+\RightLabel{\textbf{(Type-Sigma)}}
+\BinaryInfC{$Γ ⊢ Σ_{x : A}B : ⋆$}
+\DisplayProof
+} \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ a : A$}
+\AxiomC{$Γ, x : A ⊢ B : ⋆$}
+\AxiomC{$Γ ⊢ b : B[x ≔ a]$}
+\RightLabel{\textbf{(Intro-Sigma)}}
+\TrinaryInfC{$Γ ⊢ (a, b) : Σ_{x : A}B$}
+\DisplayProof
+} \\[15pt]
+\AxiomC{$Γ ⊢ p : Σ_{x : A}B$}
+\RightLabel{\textbf{(Elim-Sigma1)}}
+\UnaryInfC{$Γ ⊢ π₁ p : A$}
+\DisplayProof &
+\AxiomC{$Γ ⊢ p : Σ_{x : A}B$}
+\RightLabel{\textbf{(Elim-Sigma2)}}
+\UnaryInfC{$Γ ⊢ π₂ p : B[x ≔ fst p]$}
+\DisplayProof \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ a : A$}
+\AxiomC{$Γ, x : A ⊢ B : ⋆$}
+\AxiomC{$Γ ⊢ b : B[x ≔ a]$}
+\RightLabel{\textbf{(Eval-Sigma1)}}
+\TrinaryInfC{$Γ ⊢ π₁ (a, b) ⟶_ι a : A$}
+\DisplayProof
+} \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ a : A$}
+\AxiomC{$Γ, x : A ⊢ B : ⋆$}
+\AxiomC{$Γ ⊢ b : B[x ≔ a]$}
+\RightLabel{\textbf{(Eval-Sigma2)}}
+\TrinaryInfC{$Γ ⊢ π₂ (a, b) ⟶_ι b : B$}
+\DisplayProof
+}
+\end{tabular}
+#+end_figure
+
+Above, we had a function that could accept different arguments based on the
+value of the first argument. Below we have a type that simply uses Σ in place of
+Π in the type: based on the value of the first member, the second member can be
+either a function or a value, and still be a well-typed term.
+
+#+begin_export latex
+\[\begin{array}{rcl}
+FuncOrVal & : & Σ(b:Bool). if b then (Nat→Nat) else Nat \\
+(true, λx. x+1) & : & FuncOrVal \\
+(false, 0) & : & FuncOrVal
+\end{array}\]
+
+#+end_export
+
+**** Pair
+Similar to the function type, given the expression $Σ(a:A).B(a)$, if $a$ does
+not occur in the expression $B(a)$, then it is the non-dependent pair type. The
+pair type is useful to express an isomorphism also used in general programming
+practice: a conversion between a function of two arguments, and a function of
+one argument that returns a function of one argument:
+
+#+begin_export latex
+\[\begin{array}{rclcll}
+          &   & A × B → C   & ⇔ & A → B → C \\
+    curry & ≔ & λ(f:A×B→C). &   & λ(x:A).λ(y:B). & f (x,y) \\
+  uncurry & ≔ & λ(f:A→B→C). &   & λ(x:A×B). & f (π₁ x) (π₂ y)
+\end{array}\]
+#+end_export
+
+**** Tuple
+The n-tuple is a generalization of the pair, a non-dependent set of an arbitrary
+number of values, otherwise expressible as a set of nested pairs: commonly
+written as $(a₁, ..., aₙ)$.
+
+**** Record
+A record type is similar to a tuple, only its members have unique labels. In
+Figure ref:type-record we see the semantics of a general record type, using the
+notation $\{l_i=t_i\} : \{l_i:T_i\}$ and a projection $record.member$.
+
+#+label: type-record
+#+CAPTION: Record semantics
+#+ATTR_LaTeX: :options [!htb]
+#+begin_figure latex
+\centering
+\begin{tabular}{cc}
+\multicolumn{2}{c}{%
+\AxiomC{$∀i∈\{1..n\} Γ ⊢ Tᵢ:⋆$}
+\RightLabel{\textbf{(Type-Rec)}}
+\UnaryInfC{$Γ ⊢ \{lᵢ:Tᵢ^{i∈\{1..n\}}\}:⋆$}
+\DisplayProof } \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$∀i∈\{1..n\} Γ ⊢ tᵢ : Tᵢ$}
+\RightLabel{\textbf{(Intro-Rec)}}
+\UnaryInfC{$Γ ⊢ \{lᵢ=tᵢ^{i∈\{1..n\}}\} : \{lᵢ:Tᵢ^{i∈\{1..n\}}\}$}
+\DisplayProof } \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ t : \{lᵢ:Tᵢ^{i∈\{1..n\}}\}$}
+\RightLabel{\textbf{(Elim-Rec)}}
+\UnaryInfC{$Γ ⊢ t.lᵢ : Tᵢ$}
+\DisplayProof } \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$∀i∈\{1..n\} Γ ⊢ tᵢ : Tᵢ$}
+\AxiomC{$Γ ⊢ t : \{lᵢ:Tᵢ^{i∈\{1..n\}}\}$}
+\RightLabel{\textbf{(Eval-Rec)}}
+\BinaryInfC{$Γ ⊢ \{lᵢ=tᵢ^{i∈\{1..n\}}\}.lᵢ ⟶_ι tᵢ : B$}
+\DisplayProof
+}
+\end{tabular}
+#+end_figure
+
+In Figure ref:syntax-sigma we have a syntax that unifies all of these concepts:
+a Σ-type, a pair, an n-tuple, a named record. A non-dependent n-tuple type is
+written as $A×B×C$ with values $(a,b,c)$. Projections of non-dependent tuples
+use numbers, e.g., $p.1$, $p.2$, ... A dependent sum type is written in the same
+way as a named record: $(a:A)×B$ binds the value $a:A$ in the rest of the type
+$B$, and on the value-level enables the projection $obj.a$.
+
+#+label: syntax-sigma
+#+CAPTION: Σ-type syntax
+#+ATTR_LaTeX: :options [!htb]
+#+begin_figure latex
+\[\begin{array}{cclcll}
+term & ≔ & T₁×⋯×Tₙ     & | & (l₁:T₁)×⋯×(lₙ:Tₙ)×T_{n+1} & \text{(types)} \\
+     & | & t.i         & | & t.lₙ            & \text{(destructors)} \\
+     & | & (t₁, ⋯, tₙ) &   &                 & \text{(constructor)} \\
+value & ≔ & (t₁, ⋯, tₙ)
+\end{array}\]
+#+end_figure
+
+**** Coproduct
+The sum type or the coproduct $A+B$ can have values from both types $A$ and $B$,
+often written as $a:A⊢ inl A:A+B$, where $inl$ means "on the left-hand side of
+the sum $A+B$". This can be generalized to the concept of /variant types/, with an
+arbitrary number of named members; shown below, using Haskell syntax:
+
+#+LATEX: \[data Maybe a = Nothing | Just a\]
+
+For the purposes of our language, a binary sum type is useful, but inductive
+variant types would require more involved constraint checking, so we will ignore
+those, only using simple sum types in the form of $A+B$. This type can be
+derived using a dependent pair where the first member is a boolean.
+
+#+LATEX: \[Char+Int ≃ Σ(x:Bool). if x Char Int\]
+
+*** Value types
+**** Finite sets
+Pure type systems mentioned in the previous chapter often use types like *0*, *1*,
+and *2* with a finite number of inhabitants, where the type *0* (with zero
+inhabitants of the type) is the empty or void type. Type *1* with a single
+inhabitant is the unit type, and the type *2* is the boolean type. Also, the
+infinite set of natural numbers can be defined using induction over *2*.
+For our purposes it is enough to define a fixed number of types, though.
+
+**** Unit
+The unit type *1*, or commonly written as the 0-tuple "$()$", is sometimes used as a
+universal return value. As it has no evaluation rules, though, we can simply add
+a new type $Unit$ and a new value and term $unit$, with the rule $unit : Unit$.
+
+**** Booleans
+The above-mentioned type *2* has two inhabitants and can be semantically mapped to
+the boolean type. In Figure ref:type-bool we introduce the values (constructors)
+$true$ and $false$, and a simple eliminator $if$ that returns one of two values
+based on the truth value of its argument.
+
+#+label: type-bool
+#+CAPTION: \texttt{Bool} semantics
+#+ATTR_LaTeX: :options [htb]
+#+begin_figure latex
+\centering
+\begin{tabular}{cc}
+\multicolumn{2}{c}{%
+\AxiomC{}
+\RightLabel{\textbf{(Type-Nat)}}
+\UnaryInfC{$⊢ Bool : ⋆$}
+\DisplayProof
+} \\[15pt]
+\AxiomC{}
+\RightLabel{\textbf{(Intro-True)}}
+\UnaryInfC{$⊢ true : Bool$}
+\DisplayProof &
+\AxiomC{}
+\RightLabel{\textbf{(Intro-False)}}
+\UnaryInfC{$⊢ false : False$}
+\DisplayProof
+\\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ a₁:A$}
+\AxiomC{$Γ ⊢ a₂:A$}
+\RightLabel{\textbf{(Elim-Bool)}}
+\BinaryInfC{$Γ,x:Bool ⊢ if x a₁ a₂ : A$}
+\DisplayProof
+} \\[15pt]
+\AxiomC{$Γ ⊢ a₁:A$}
+\AxiomC{$Γ ⊢ a₂:A$}
+\RightLabel{\textbf{(Eval-True)}}
+\BinaryInfC{$Γ ⊢ if true a₁ a₂ ⟶_ι a₁ : A$}
+\DisplayProof &
+\AxiomC{$Γ ⊢ a₁:A$}
+\AxiomC{$Γ ⊢ a₂:A$}
+\RightLabel{\textbf{(Eval-False)}}
+\BinaryInfC{$if false a₁ a₂ ⟶_ι a₂ : A$}
+\DisplayProof
+\end{tabular}
+#+end_figure
+
+**** Natural numbers
+The natural numbers form an infinite set, unlike the above value types.  On
+their own, adding natural numbers to a type system does not produce
+non-termination, as the recursion involved in their manipulation can be limited
+to primitive recursion as e.g., used in Gödel's System T cite:bove08_atwork.
+The constructions introduced in Figure ref:type-nat are simply the constructors
+$zero$ and $succ$, and the destructor $natElim$ unwraps at most one layer of
+$succ$. [[inline:Dependent eliminator too? ncatlab]]
+
+#+label: type-nat
+#+CAPTION: \texttt{Nat} semantics
+#+ATTR_LaTeX: :options [htb]
+#+begin_figure latex
+\centering
+\begin{tabular}{cc}
+\multicolumn{2}{c}{%
+\AxiomC{}
+\RightLabel{\textbf{(Type-Nat)}}
+\UnaryInfC{$⊢ Nat : ⋆$}
+\DisplayProof
+} \\[15pt]
+\AxiomC{}
+\RightLabel{\textbf{(Intro-Zero)}}
+\UnaryInfC{$⊢ zero : Nat$}
+\DisplayProof &
+\AxiomC{$Γ ⊢ n : Nat$}
+\RightLabel{\textbf{(Intro-Succ)}}
+\UnaryInfC{$Γ ⊢ succ n : Nat$}
+\DisplayProof
+\\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ a₁:A$}
+\AxiomC{$Γ,n:Nat ⊢ a₂:A$}
+\RightLabel{\textbf{(Elim-Nat)}}
+\BinaryInfC{$Γ,x:Nat ⊢ natElim x a₁ (λx.a₂)$}
+\DisplayProof
+} \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ a₁:A$}
+\AxiomC{$Γ,n:Nat ⊢ a₂:A$}
+\RightLabel{\textbf{(Eval-Zero)}}
+\BinaryInfC{$Γ ⊢ natElim zero a₁ (λx.a₂) ⟶_ι a₁ : A$}
+\DisplayProof
+} \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ a₁:A$}
+\AxiomC{$Γ,n:Nat ⊢ a₂:A$}
+\AxiomC{$Γ ⊢ n:Nat$}
+\RightLabel{\textbf{(Eval-Succ)}}
+\TrinaryInfC{$natElim (succ n) a₁ (λx.a₂) ⟶_ι a₂[x≔n] : A$}
+\DisplayProof
+}
+\end{tabular}
+#+end_figure
+
+*** μ-types
+There are multiple ways of encoding recursion in λ-calculi with types, based on
+whether a recursive expression is delimited using types, or whether it is also
+reflected in the type of a recursive expression. Recursion must be defined
+carefully if the type system needs to be consistent, as non-restricted general
+recursion leads to non-termination and inconsistency. /Iso-recursive types/ use
+explicit folding and unfolding operations, that convert between the recursive
+type $μa.T$ and $T[a≔μa.T]$, whereas in /equi-recursive types/ these operations
+are implicit and inserted by the type-checker.
+
+As both complicate the type-checker, we will use a simpler value-level recursive
+combinator $fix$. While this does compromise the consistency of the type system,
+it is sufficient for the purposes of runtime system characterization.
+
+#+label: type-fix
+#+CAPTION: \texttt{fix} semantics
+#+ATTR_LaTeX: :options [htb]
+#+begin_figure latex
+\centering
+\begin{tabular}{cc}
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ f:A→A$}
+\RightLabel{\textbf{(Type-Fix)}}
+\UnaryInfC{$Γ ⊢ fix f : A$}
+\DisplayProof
+} \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ,x:A ⊢ t:A$}
+\RightLabel{\textbf{(Eval-Fix)}}
+\UnaryInfC{$Γ ⊢ fix (λx.t) ⟶_β t[x≔(λx.t)] : A$}
+\DisplayProof
+}
+\end{tabular}
+#+end_figure
+
+The semantics of the function $fix$ are described in Figure ref:type-fix. This
+definition is sufficient to define e.g., the recursive computation of a
+Fibonacci number or a local recursive binding as below.
+
+#+begin_src text
+fib = fix (λf. λn. if (isLess n 2) n (add (f (n - 1)) (f (n-2))))
+
+evenOdd
+  : (isEven : Nat → Bool) × (isOdd : Nat → Bool) × Top
+  = fix (λf. ( if isZero x then true else f.isOdd (pred x)
+            , if isZero x then false else f.isEven (pred x)
+            , Top
+            ))
+#+end_src
+
+** Remaining constructs
+These constructs together form a complete core language capable of forming and
+evaluating expressions. Already, this would be a usable programming
+language. However, the /surface language/ is still missing: the syntax for
+defining constants and variables, and interacting with the compiler.
+
+**** Local definitions
+The λ-calculus is, to use programming language terminology, a purely functional
+programming language: without specific extensions, any language construct is an
+expression. We will use the syntax of Agda, and keep local variable definition
+as an expression as well, using a ~let-in~ construct, with the semantics given in
+Figure ref:let-in.
+
+#+label: let-in
+#+CAPTION: \texttt{let-in} semantics
+#+ATTR_LATEX: :options [htb]
+#+begin_figure latex
+\captionsetup{aboveskip=-3pt}
+\begin{prooftree}
+\AxiomC{$Γ ⊢ a : A$}
+\AxiomC{$Γ,x:A ⊢ b : B$}
+\RightLabel{\textbf{(Type-Let)}}
+\BinaryInfC{$Γ ⊢ \text{let} x=a \text{in} b:B$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$Γ ⊢ v:A$}
+\AxiomC{$Γ,x:A ⊢ e:B$}
+\RightLabel{\textbf{(Eval-Let)}}
+\BinaryInfC{$\text{let} x=v \text{in} e ⟶_ζ e[x≔v]$}
+\end{prooftree}
+#+end_figure
+
+**** Global definitions
+Global definitions are not strictly necessary, as with local definitions and the
+fixed-point combinator we could emulate them. However, global definitions will
+be useful later in the process of elaborations, when global top-level
+definitions will separate blocks that we can type-check separately. We will add
+three top-level expressions: a declaration that only
+assigns a name to a type, and a definition with and without type. Definitions
+without types will have them inferred.
+
+#+begin_export latex
+\[\begin{array}{ccl}
+top & ≔ & id : term \\
+    & | & id : term = term \\
+    & | & id = term \\
+\end{array}\]
+#+end_export
+
+**** Holes
+A construct that serves solely as information to the compiler and will not be
+used at runtime is a /hole/. It can take the place of a term in an expression and
+marks the missing term as one to be inferred ("filled in") during
+elaboration[fn:2]. In fact, the syntax for a global definition without a type
+will use a hole in place of its type. The semantics of a hole are omitted on
+purpose as they would also require specifying the type inference algorithm.
+
+#+begin_export latex
+\[\begin{array}{ccl}
+term & ≔ & \_
+\end{array}\]
+#+end_export
+
+**** Interpreter directives
+Another type of top-level expressions is a pragma, a direct command to the
+compiler. We will use these when evaluating the time it takes to normalize or
+elaborate an expression, or when enabling or disabling the use of "wired-in"
+types, e.g. to compare the performance impact of using a Church encoding of
+numbers versus a natural type that uses hardware integers. We will once again
+use the syntax of Agda:
+
+#+begin_export latex
+\[\begin{array}{ccl}
+top & ≔ & \{-\# BUILTIN id \#-\} \\
+    & | & \{-\# ELABORATE term \#-\} \\
+    & | & \{-\# NORMALIZE term \#-\} \\
+\end{array}\]
+#+end_export
+
+**** Polyglot
+Lastly, one language feature that will only be described and implemented in
+Chapter ref:jit-interpreter: a /"polyglot"/ construct that offers a way to execute
+code in a different language, which is a feature of the Truffle framework. The
+selected syntax is a three-part expression that contains the name of language to
+be used, the foreign code, and the type of the result of evaluating this foreign
+code:
+
+#+begin_export latex
+\[\begin{array}{ccl}
+term & ≔ & [| id | foreign | term |]
+\end{array}\]
+#+end_export
+
+The syntax and semantics presented here altogether comprise a working
+programming language. A complete listing of the semantics is included in
+Appendix ref:spec. The syntax, written using the notation of the ANTLR parser
+generator is in Listing ref:grammar. The syntax does not mention constants like
+$true$ or $Nat$, as they will be implemented as global definitions bound in the
+initial type-checking context and do not need to be recognized during parsing.
+
+With this, the language specification is complete, and we can move on to the
+next part, implementing a type-checker and an interpreter for this language.
+
+#+label: grammar
+#+caption: The complete grammar, written using simplified ANTLR
+#+begin_src antlr
+  FILE : STMT (STMTEND STMT)* ;
+  STMT : "{-#" PRAGMA "#-}"
+       | ID ":" EXPR
+       | ID (":" EXPR)? "=" EXPR
+       ;
+  EXPR : "let" ID ":" EXPR "=" EXPR "in" EXPR
+       | "λ" LAM_BINDER "." EXPR
+       | PI_BINDER+ "→" EXPR
+       | ATOM ARG*
+       ;
+  LAM_BINDER : ID | "_" | "{" (ID | "_") "}" ;
+  PI_BINDER : ATOM ARG* | "(" ID+ ":" EXPR ")" | "{" ID+ ":" EXPR "}" ;
+  ARG : ATOM | "{" ID ("=" TERM)? "}" ;
+  ATOM : "[" ID "|" FOREIGN "|" TERM "]"
+       | EXPR "×" EXPR
+       | "(" EXPR ("," EXPR)+ ")"
+       | "(" EXPR ")"
+       | ID "." ID
+       | ID
+       | NAT
+       | "*"
+       | "_"
+       ;
+   STMTEND : ("\n" | ";")+ ;
+   ID : [a-zA-Z] [a-zA-Z0-9] ;
+   SKIP : [ \t] | "--" [^\r\n]* | "{-" [^#] .* "-}" ;
+  // pragma discussed in text
+#+end_src
+* Bibliography                                                :ignoreheading:
+bibliographystyle:abbrv
+bibliography:bibliography.bib
+* Footnotes
+[fn:2] Proof assistants also use the concept of a metavariable, often with the syntax $?α$.
+[fn:1] The elements of $R$ are written as $(s₁,s₂)$, which is equivalent to $(s₁,s₂,s₂)$.
+

@@ -94,6 +94,7 @@
 \RecustomVerbatimEnvironment{Verbatim}{BVerbatim}{}
 \usepackage{tikz}
 \usepackage{tikz-cd}
+\usepackage{pgfplots}
 \usepackage{bussproofs}
 \usetikzlibrary{arrows,arrows.meta,calc,fit,shapes,positioning}
 

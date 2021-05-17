@@ -1,0 +1,214 @@
+* (front matter)                                              :ignoreheading:
+#+LANGUAGE: en
+#+OPTIONS: texht:nil toc:nil author:nil ':t H:4 num:3
+#+LATEX_CLASS: fitthesis
+#+LATEX_CLASS_OPTIONS: [english,zadani,odsaz]
+#+EXCLUDE_TAGS: noexport
+#+BIND: org-latex-title-command ""
+#+BIND: org-latex-prefer-user-labels t
+#+BIND: org-latex-default-figure-position "htb"
+
+#+latex: \setcounter{chapter}{4}
+
+* Evaluation: a suite of benchmarks
+  :PROPERTIES:
+  :CUSTOM_ID: evaluation
+  :END:
+We now have two interpreters, one written in pure Kotlin that uses the general
+JIT compilation provided by JVM, the other delegating term evaluation to
+Truffle. It is now time to evaluate their performance on a number of both
+elaboration and evaluation tasks. We will also compare their performance with
+the performance of state-of-the-art proof assistants on the same tasks.
+
+The primary goal is to evaluate the general time and memory characteristics of
+the systems and how they vary with the size of the term and on the number of
+binders (λ- and Π-abstractions). For this purpose, we will construct a set of
+benchmarks involving simple expressions, whose size we can easily vary.
+
+A secondary goal is to investigate the costs associated with a runtime system
+based on the JVM, and how they may be eliminated. We will also prepare a suite
+of benchmarks by translating a number of test cases from common performance test
+suites, and compare this system's performance with other functional languages.
+
+** Subjects
+For the comparison of elaboration and normalization, we will use
+state-of-the-art proof assistants: I have chosen Coq, Agda, Idris, as they use a
+dependent type theory at their core. These will be compared to both Montuno and
+MontunoTruffle on both elaboration and normalization tasks.
+
+**** Coq
+Coq is an interactive theorem prover that has been popularized by the proof of
+the four-color theorem cite:gonthier08_fourcolor. Coq is a tactics-based theorem
+prover, meaning that the programmer will use a meta-language of various decision
+procedures (tactics) instead of writing proofs manually. It uses the Calculus of
+Inductive Constructions at its core that extends the Calculus of Constructions
+(λΠω-calculus) introduced in Chapter ref:lambda. Its performance has been the
+subject of research cite:gross14_coq_experience,gross21_performance, and we will
+use some of the conclusions reached in later, when discussing optimizations in
+Chapter ref:optimizations.
+
+**** Agda
+Agda is a dependently-typed programming language that can also be used as a
+proof assistant. It is uses a Haskell-like syntax, and its workflow is centered
+around meta-variables and their gradual refinement in a dialog with the compiler
+cite:norell08_agda_tutorial.
+
+**** Idris
+Idris is a total, dependently-typed programming language
+cite:brady13_idris. Like Agda, it also uses a Haskell-like syntax and supports
+an interactive workflow. Like Coq, proofs in Idris use a tactics
+meta-language. Recently, a second version of the language was released as a
+self-hosting language Idris 2; we will attempt to use both in our evaluation.
+
+**** Cadenza
+The project to which Montuno is a successor, Cadenza implements a simply-typed
+λ-calculus cite:kmett_2019 using GraalVM and Truffle. It does not use
+elaboration, but we can evaluate its performance on normalization tasks.
+
+** Workload
+The main evaluation workload will be split into two parts: elaboration tasks,
+that test the combined performance of our infer/check bidirectional typing
+algorithm, normalization-by-evaluation, and unification; and normalization
+tasks, that only test the performance of normalization-by-evaluation. These
+benchmark tasks were partially adapted from the work of András Kovács
+cite:kovacs_norm, partially extrapolated from the evaluation part of Jason
+Gross's doctoral thesis cite:gross21_performance.
+
+The third, additional part is a number of computational tasks to evaluate the
+time and memory performance of the Montuno interpreters. The tasks were mostly
+adapted from the ~nofib~ benchmark suite cite:partain93_nofib that is used for
+evaluating the performance of GHC, and from a suite of simple benchmark programs
+cite:kostya comparing performance across 24 languages. The usual language
+benchmarks, e.g. the "Benchmarks Game" were disregarded, as their implementation
+would be too involved.
+
+*** Normalization
+Both normalization and elaboration tasks need to involve terms that can be
+easily made larger or smaller. A typical workload involves Church-encoded terms,
+naturals in particular, as these involve λ-abstraction and application. These
+will be tested in the first set of tasks: evaluation of a large natural number
+to a unit value, and calculating the Ackermann number followed by evaluating it
+to a unit value. These will be first evaluated on Church-encoded naturals, and
+then on the built-in type /Nat/ that is backed by a Java integer.
+
+The second set of tasks is the evaluation of a term to a normal form. Where the
+first two tasks only use the /eval/ part of the NbE algorithm, these also use
+/quote/ to produce a large normal form of a term, and not to evaluate to a single
+value. This is evaluated on a large Church-encoded natural number, on a deep
+Church-encoded binary tree.
+
+\missingfigure{(a) forceNat (b) n2M term}
+
+\missingfigure{(a) ackermann (b) binary tree}
+
+*** Elaboration
+Elaboration will test not only the NbE part of our system, but also type
+inference and checking. We will use not only deeply nested function application
+of Church-encoded terms, but also terms with large types: those that contain
+many or deeply nested function arrows or Π-types. The first task is the
+elaboration of a polymorphic /id/ function repeatedly applied to itself, as this
+produces meta-variables whose solution doubles in size with each application.
+The second task is similar, the elaboration of a large Σ-type encoding a /Nat/
+indexed vector. Lastly, the third task especially tests unification: the
+task is to unify two large Church-encoded natural numbers, to check them for
+equivalence.
+
+\missingfigure{(a) id id id id with and without implicits (b) Sigma vector}
+
+\missingfigure{Eq, refl, n2Mb}
+
+*** Computation
+The last part consists of computational tasks, where we can compare the
+performance of Montuno with other, non-dependent languages. As Montuno does not
+implement complex data structures or memory buffers, we will need to limit the
+types of tasks to primarily computational ones.
+
+I have selected the following: Fibonacci number computation, the previously
+implemented Ackermann function, solving the N Queens problem, matrix
+multiplication, and a Brainfuck interpreter.
+
+\missingfigure{(a) Brainfuck. (b) matrix multiplication in Montuno}
+
+** Methodology
+There are many ways how we can measure each language's performance on these
+tasks. The main concern is that Montuno and MontunoTruffle are JIT-compiled
+languages that need a significant amount of warm-up: the first iterations will take
+significantly longer than the iterations that happen after warm-up, after all
+code is JIT-optimized.
+
+For this reason, we cannot use whole-program measurement using commands like
+~time~, which measures the entire run of a program including any interpreter
+start-up time, parsing, and other tasks unrelated to elaboration or
+normalization. We will need to use in-language support for measuring elaboration
+times in those languages that support it, and in those that do not, we will need
+to postprocess measurements with such confounders.
+
+Aside from measuring the time it takes to normalize or elaborate an expression,
+we will also measure the peak memory usage using the system tool ~time -v~.
+
+\missingfigure{(a),(b),(c),(d) Commands for Coq, Agda, Idris, Montuno}
+
+*** Configuration
+\missingfigure{Table with machine specs}
+
+** Preliminary results
+*** Normalization
+\missingfigure{A single large bar graph, grouped by language, four tasks in a group}
+
+#+comment: https://tex.stackexchange.com/questions/156964/guide-to-draw-charts-basic-pie-bar-from-data
+#+comment: https://github.com/MartinThoma/LaTeX-examples/blob/master/tikz/bar-chart-grouping/bar-chart-grouping.tex
+#+comment: https://latexdraw.com/bar-charts-in-latex-step-by-step-tikz-tutorial/#t-1611605009264
+#+begin_export latex
+\pgfplotstableread[row sep=\\,col sep=&]{
+    interval & carT & carD & carR \\
+    0--2     & 1.2  & 0.1  & 0.2  \\
+    2--5     & 12.8 & 3.8  & 4.9  \\
+    5--10    & 15.5 & 10.4 & 13.4 \\
+    10--20   & 14.0 & 17.3 & 22.2 \\
+    20--50   & 7.9  & 21.1 & 27.0 \\
+    50+      & 3.0  & 22.3 & 28.6 \\
+    }\norm
+#+end_export
+
+#+label:norm-results
+#+caption: Preliminary results of normalization tasks
+#+begin_figure latex
+\begin{tikzpicture}
+    \begin{axis}[
+            ybar,
+            bar width=.5cm,
+            width=\textwidth,
+            height=.5\textwidth,
+            legend style={at={(0.5,1)},
+                anchor=north,legend columns=-1},
+            symbolic x coords={0--2,2--5,5--10,10--20,20--50,50+},
+            xtick=data,
+            nodes near coords,
+            nodes near coords align={vertical},
+            ymin=0,ymax=35,
+            ylabel={\%},
+        ]
+        \addplot table[x=interval,y=carT]{\norm};
+        \addplot table[x=interval,y=carD]{\norm};
+        \addplot table[x=interval,y=carR]{\norm};
+        \legend{Trips, Distance, Energy}
+    \end{axis}
+\end{tikzpicture}
+#+end_figure
+
+[...]
+
+*** Elaboration
+\missingfigure{A single large bar graph, grouped by language, three tasks in a group}
+
+[...]
+
+*** Computation
+\missingfigure{A single large bar graph, grouped by language, four tasks in a group}
+
+[...]
+
+* Bibliography                                                :ignoreheading:
+bibliographystyle:abbrv
+bibliography:bibliography.bib
+* Footnotes
