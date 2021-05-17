@@ -1,5 +1,6 @@
-package montuno.interpreter.meta
+package montuno.interpreter
 
+import montuno.interpreter.LocalContext
 import montuno.interpreter.Rigidity
 import montuno.syntax.Loc
 

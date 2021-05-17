@@ -7,7 +7,8 @@ file : END* decls+=top? (END+ decls+=top)* END* EOF ;
 top
     : id=IDENT ':' type=term                   #Decl
     | id=binder (':' type=term)? '=' defn=term #Defn
-    | cmd=COMMAND? term                        #Expr
+    | '{-#' cmd=IDENT target=term? '#-}'       #Pragma
+    | term                                     #Expr
     ;
 term
     : 'let' id=binder ':' type=term '=' defn=term 'in' body=term #Let
@@ -44,7 +45,7 @@ binder
 
 IDENT : [a-zA-Z] [a-zA-Z0-9']*;
 NAT : [0-9]+;
-COMMAND : '%elaborate' | '%normalize' | '%parse';
+COMMAND : [A-Z]+;
 
 END : (SEMICOLON | NEWLINE) NEWLINE*;
 fragment SEMICOLON : ';';

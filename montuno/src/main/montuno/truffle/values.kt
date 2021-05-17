@@ -15,9 +15,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop
 import kotlin.jvm.Throws
 
 @TypeSystem(
-    Val::class,
-    Glued::class,
-    GluedVal::class,
     Term::class,
     VClosure::class,
     VU::class,
@@ -30,14 +27,10 @@ open class Types {
     companion object {
         @ImplicitCast
         @CompilerDirectives.TruffleBoundary
-        fun castLong(value: Int): Long {
-            return value.toLong()
-        }
+        fun castLong(value: Int): Long = value.toLong()
 
         @TypeCheck(VU::class)
-        fun isU(value: Any): Boolean {
-            return value === VU
-        }
+        fun isU(value: Any): Boolean = value === VU
     }
 }
 

@@ -1,0 +1,4 @@
+Vec : * → Nat → * = λ a n. (V : Nat → *) → V 0 → ((n : Nat) → a → V n → V (n + 1)) → V n.
+vnil : (a : *) → Vec a 0 = λ V n c. n.
+vcons : (a n : *) → a → Vec a n → Vec a (n + 1) = λ a as V n c. c a (as V n c).
+%nf vcons true (vcons false (vcons true vnil)).

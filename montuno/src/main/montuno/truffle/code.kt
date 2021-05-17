@@ -7,9 +7,7 @@ import com.oracle.truffle.api.instrumentation.*
 import com.oracle.truffle.api.nodes.*
 import com.oracle.truffle.api.profiles.BranchProfile
 import com.oracle.truffle.api.source.SourceSection
-import montuno.interpreter.Lvl
-import montuno.interpreter.NameTable
-import montuno.interpreter.meta.*
+import montuno.interpreter.*
 import montuno.syntax.*
 
 //@TypeSystemReference(Types::class)
@@ -101,20 +99,24 @@ abstract class TVar(private val slot: FrameSlot, loc: Loc? = null) : Term(loc) {
     override fun isAdoptable() = false
 }
 
-fun toExecutableNode(p: TopLevel, l: Language): Term = when (p) {
+fun toExecutableNode(p: TopLevel, l: MontunoTruffle): Term = when (p) {
     is RDecl -> TODO("RDecl")
     is RDefn -> TODO("RDefn")
     is RTerm -> when (p.cmd) {
-        Command.Elaborate -> TODO("Elaborate")
-        Command.Normalize -> TODO("Normalize")
-        Command.ParseOnly -> TString(p.tm.toString())
-        Command.Nothing -> LocalContext(l).toExecutableNode(p.tm)
+        Pragma.Type -> TODO()
+        Pragma.NormalType -> TODO()
+        Pragma.Reset -> TODO()
+        Pragma.Elaborated -> TODO()
+        Pragma.Elaborate -> TODO("Elaborate")
+        Pragma.Normalize -> TODO("Normalize")
+        Pragma.ParseOnly -> TString(p.tm.toString())
+        Pragma.Nothing -> LocalContext(l).toExecutableNode(p.tm!!)
     }
 }
 
 // LocalContext = language, nameTable, frameDescriptor
 data class LocalContext(
-    val l: Language,
+    val l: MontunoTruffle,
     val ntbl: NameTable = NameTable(),
     val fd: FrameDescriptor = FrameDescriptor(),
     val fdLvl: Lvl = Lvl(0)
@@ -170,7 +172,6 @@ class ProgramRootNode(
     @field:Children val nodes: Array<Term>,
     private val executionFrame: MaterializedFrame
 ) : RootNode(l, fd) {
-    val target = Truffle.getRuntime().createCallTarget(this)
     override fun isCloningAllowed() = true
     @ExplodeLoop
     override fun execute(frame: VirtualFrame): Any {

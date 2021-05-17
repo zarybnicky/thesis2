@@ -1,18 +1,7 @@
-package montuno.interpreter.meta
+package montuno.interpreter
 
-import montuno.interpreter.*
 import montuno.syntax.*
 import kotlin.Throws
-import kotlin.math.max
-
-fun Term.isUnfoldable(): Boolean = when (this) {
-    is TLocal -> true
-    is TMeta -> true
-    is TTop -> true
-    is TU -> true
-    is TLam -> tm.isUnfoldable()
-    else -> false
-}
 
 fun contract(lvlRen: Pair<Lvl, Renaming>, v: Val): Pair<Pair<Lvl, Renaming>, Val> {
     val (lvl, ren) = lvlRen
@@ -38,19 +27,20 @@ fun Term.lams(lvl: Lvl, names: Array<String>, ren: Renaming): Term {
 }
 
 data class ErrRef(var err: FlexRigidError? = null)
-data class ScopeCheckState(val top: TopContext, val occurs: Meta, val errRef: ErrRef?, val shift: Int)
+data class ScopeCheckState(val occurs: Meta, val errRef: ErrRef?, val shift: Int)
 @Throws(FlexRigidError::class)
-fun Val.quoteSolution(top: TopContext, topLvl: Lvl, names: Array<String>, occurs: Meta, renL: Pair<Lvl, Renaming>, errRef: ErrRef?): Term {
+fun Val.quoteSolution(topLvl: Lvl, names: Array<String>, occurs: Meta, renL: Pair<Lvl, Renaming>, errRef: ErrRef?): Term {
     val (renl, ren) = renL
-    return scopeCheck(ScopeCheckState(top, occurs, errRef, topLvl.it - renl.it), topLvl, ren).lams(topLvl, names, ren)
+    return scopeCheck(ScopeCheckState(occurs, errRef, topLvl.it - renl.it), topLvl, ren).lams(topLvl, names, ren)
 }
-fun Val.scopeCheck(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when (val v = force(state.top)) {
+fun Val.scopeCheck(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when (val v = force()) {
     VU -> TU
     VIrrelevant -> TIrrelevant
+    is VNat -> TNat(v.n)
     is VFun -> TFun(v.a.value.scopeCheck(state, lvl, ren), v.b.value.scopeCheck(state, lvl, ren))
-    is VLam -> TLam(v.n, v.icit, v.cl.inst(state.top, lazyOf(vLocal(Ix(lvl.it)))).scopeCheck(state,lvl + 1, ren + (lvl to lvl - state.shift)))
+    is VLam -> TLam(v.n, v.icit, v.cl.inst(lazyOf(vLocal(Ix(lvl.it)))).scopeCheck(state,lvl + 1, ren + (lvl to lvl - state.shift)))
     is VPi -> TPi(v.n, v.icit, v.ty.value.scopeCheck(state, lvl, ren),
-        v.cl.inst(state.top, lazyOf(vLocal(Ix(lvl.it)))).scopeCheck(state, lvl + 1, ren + (lvl to lvl - state.shift)))
+        v.cl.inst(lazyOf(vLocal(Ix(lvl.it)))).scopeCheck(state, lvl + 1, ren + (lvl to lvl - state.shift)))
     is VNe -> {
         var root = when (v.head) {
             is HTop -> TTop(v.head.lvl)
@@ -69,7 +59,7 @@ fun Val.scopeCheck(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when
                     if (state.errRef == null) throw err else state.errRef.err = err
                     TIrrelevant
                 }
-                state.top[v.head.meta] is MetaSolved ->
+                MontunoPure.top[v.head.meta] is MetaSolved ->
                     if (state.occurs.i == v.head.meta.i) throw FlexRigidError(Rigidity.Flex)
                     else TMeta(v.head.meta)
                 else -> TMeta(v.head.meta)
@@ -99,8 +89,8 @@ fun LocalContext.unify(a: Val, b: Val) {
 
 @Throws(FlexRigidError::class)
 fun LocalContext.unify(lvl: Lvl, unfold: Int, names: Array<String>, r: Rigidity, a: Val, b: Val) {
-    val v = a.force(top)
-    val w = b.force(top)
+    val v = a.force()
+    val w = b.force()
     val local = lazyOf(vLocal(Ix(lvl.it)))
     when {
         v is VIrrelevant || w is VIrrelevant -> {}
@@ -110,93 +100,93 @@ fun LocalContext.unify(lvl: Lvl, unfold: Int, names: Array<String>, r: Rigidity,
             unify(lvl, unfold, names, r, v.b.value, w.b.value)
         }
 
-        v is VLam && w is VLam -> unify(lvl + 1, unfold, names + v.n, r, v.cl.inst(top, local), w.cl.inst(top, local))
-        v is VLam -> unify(lvl + 1, unfold, names + v.n, r, v.cl.inst(top, local), w.app(top, v.icit, local))
-        w is VLam -> unify(lvl + 1, unfold, names + w.n, r, w.cl.inst(top, local), v.app(top, w.icit, local))
+        v is VLam && w is VLam -> unify(lvl + 1, unfold, names + v.n, r, v.cl.inst(local), w.cl.inst(local))
+        v is VLam -> unify(lvl + 1, unfold, names + v.n, r, v.cl.inst(local), w.app(v.icit, local))
+        w is VLam -> unify(lvl + 1, unfold, names + w.n, r, w.cl.inst(local), v.app(w.icit, local))
 
         v is VPi && w is VPi && v.icit == w.icit -> {
             unify(lvl, unfold, names, r, v.ty.value, w.ty.value)
-            unify(lvl + 1, unfold, names, r, v.cl.inst(top, local), w.cl.inst(top, local))
+            unify(lvl + 1, unfold, names, r, v.cl.inst(local), w.cl.inst(local))
         }
         v is VPi && w is VFun -> {
             unify(lvl, unfold, names, r, v.ty.value, w.a.value)
-            unify(lvl + 1, unfold, names + v.n, r, v.cl.inst(top, local), w.b.value)
+            unify(lvl + 1, unfold, names + v.n, r, v.cl.inst(local), w.b.value)
         }
         w is VPi && v is VFun -> {
             unify(lvl, unfold, names, r, w.ty.value, v.a.value)
-            unify(lvl + 1, unfold, names + w.n, r, w.cl.inst(top, local), v.b.value)
+            unify(lvl + 1, unfold, names + w.n, r, w.cl.inst(local), v.b.value)
         }
 
         v is VNe && w is VNe && v.head is HTop && w.head is HTop && v.head.lvl == w.head.lvl -> {
-            val rSp = r.meld(top.rigidity(v.head.lvl)).meld(top.rigidity(w.head.lvl))
+            val rSp = r.meld(MontunoPure.top.rigidity(v.head.lvl)).meld(MontunoPure.top.rigidity(w.head.lvl))
             unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
         }
         v is VNe && w is VNe && v.head is HMeta && w.head is HMeta && v.head.meta == w.head.meta -> {
-            val rSp = r.meld(top.rigidity(v.head.meta)).meld(top.rigidity(w.head.meta))
+            val rSp = r.meld(MontunoPure.top.rigidity(v.head.meta)).meld(MontunoPure.top.rigidity(w.head.meta))
             unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
         }
         v is VNe && w is VNe && v.head is HLocal && w.head is HLocal && v.head.ix == w.head.ix ->
             unifySp(lvl, unfold, names, r, v.spine, w.spine)
 
-        v is VNe && v.head is HMeta && top[v.head.meta] is MetaUnsolved && r == Rigidity.Rigid ->
+        v is VNe && v.head is HMeta && MontunoPure.top[v.head.meta] is MetaUnsolved && r == Rigidity.Rigid ->
             solve(lvl, names, v.head.meta, v.spine, w)
-        v is VNe && v.head is HMeta && top[v.head.meta] is MetaSolved ->
-            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(top, v.spine), w)
+        v is VNe && v.head is HMeta && MontunoPure.top[v.head.meta] is MetaSolved ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(v.spine), w)
             else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
 
-        w is VNe && w.head is HMeta && top[w.head.meta] is MetaUnsolved && r == Rigidity.Rigid ->
+        w is VNe && w.head is HMeta && MontunoPure.top[w.head.meta] is MetaUnsolved && r == Rigidity.Rigid ->
             solve(lvl, names, w.head.meta, w.spine, v)
-        w is VNe && w.head is HMeta && top[w.head.meta] is MetaSolved ->
-            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(top, w.spine), v)
+        w is VNe && w.head is HMeta && MontunoPure.top[w.head.meta] is MetaSolved ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(w.spine), v)
             else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
 
-        v is VNe && v.head is HTop && top[v.head.lvl].defn != null ->
-            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(top, v.spine), w)
+        v is VNe && v.head is HTop && MontunoPure.top[v.head.lvl].defn != null ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(v.spine), w)
             else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
-        w is VNe && w.head is HTop && top[w.head.lvl].defn != null ->
-            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(top, w.spine), v)
+        w is VNe && w.head is HTop && MontunoPure.top[w.head.lvl].defn != null ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(w.spine), v)
             else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
 
         else -> throw FlexRigidError(r, "failed to unify:\n$v\n$w")
     }
 }
 
-fun VSpine.check(top: TopContext): Pair<Lvl, Renaming> {
+fun VSpine.check(): Pair<Lvl, Renaming> {
     val s = it.size
     val x = mutableListOf<Pair<Lvl, Lvl>>()
     for ((i, v) in it.reversed().withIndex()) {
-        val vsp = v.second.value.force(top)
+        val vsp = v.second.value.force()
         if (vsp !is VNe || vsp.head !is HLocal) throw FlexRigidError(Rigidity.Flex,"not local")
         x.add(Lvl(vsp.head.ix.it) to Lvl(s - i - 1))
     }
     return Lvl(it.size) to Renaming(x.toTypedArray())
 }
-fun GSpine.check(top: TopContext): Pair<Lvl, Renaming> {
+fun GSpine.check(): Pair<Lvl, Renaming> {
     val s = it.size
     val x = mutableListOf<Pair<Lvl, Lvl>>()
     for ((i, v) in it.reversed().withIndex()) {
-        val vsp = v.second.force(top)
+        val vsp = v.second.force()
         if (vsp !is GNe || vsp.head !is HLocal) throw UnifyError("glued spine")
         x.add(Lvl(vsp.head.ix.it) to Lvl(s - i - 1))
     }
     return Lvl(it.size) to Renaming(x.toTypedArray())
 }
 
-fun LocalContext.solve(lvl: Lvl, names: Array<String>, occurs: Meta, vsp: VSpine, v: Val) {
-    val (lvlRen, vNew) = contract(vsp.check(top), v)
-    top[occurs] = vNew.quoteSolution(top, lvl, names, occurs, lvlRen, null)
+fun solve(lvl: Lvl, names: Array<String>, occurs: Meta, vsp: VSpine, v: Val) {
+    val (lvlRen, vNew) = contract(vsp.check(), v)
+    MontunoPure.top[occurs] = vNew.quoteSolution(lvl, names, occurs, lvlRen, null)
 }
 
-data class GluedSolutionState(val top: TopContext, val occurs: Meta, val shift: Int, val topLvl: Lvl)
-fun Glued.checkSolution(top: TopContext, occurs: Meta, topLvl: Lvl, renLvl: Pair<Lvl, Renaming>): Boolean {
+data class GluedSolutionState(val occurs: Meta, val shift: Int, val topLvl: Lvl)
+fun Glued.checkSolution(occurs: Meta, topLvl: Lvl, renLvl: Pair<Lvl, Renaming>): Boolean {
     val (renl, ren) = renLvl
-    return checkSolution(GluedSolutionState(top, occurs, topLvl.it - renl.it, topLvl), topLvl, ren)
+    return checkSolution(GluedSolutionState(occurs, topLvl.it - renl.it, topLvl), topLvl, ren)
 }
 
 fun Glued.checkSolution(state: GluedSolutionState, lvl: Lvl, ren: Renaming): Boolean {
-    val g = force(state.top)
+    val g = force()
     return when {
-        g is GLam -> g.cl.inst(state.top, gvLocal(Ix(lvl.it))).checkSolution(state, lvl + 1, ren + (lvl to lvl - state.shift))
+        g is GLam -> g.cl.inst(gvLocal(Ix(lvl.it))).checkSolution(state, lvl + 1, ren + (lvl to lvl - state.shift))
         g is GNe && g.head is HMeta && g.head.meta == state.occurs && g.gspine.strip(state.topLvl, lvl) -> true
         else -> {
             g.scopeCheck(state, lvl, ren)
@@ -215,12 +205,12 @@ fun GSpine.strip(topLvl: Lvl, lvl: Lvl): Boolean {
 }
 fun Glued.scopeCheck(state: GluedSolutionState, lvl: Lvl, ren: Renaming) {
     val local = gvLocal(Ix(lvl.it))
-    when (val g = force(state.top)) {
+    when (val g = force()) {
         is GU -> {}
         is GIrrelevant -> {}
         is GFun -> { g.a.g.scopeCheck(state, lvl, ren); g.b.g.scopeCheck(state, lvl, ren) }
-        is GPi -> { g.ty.g.scopeCheck(state, lvl, ren); g.cl.inst(state.top, local).scopeCheck(state, lvl + 1, ren + (lvl to lvl - state.shift)) }
-        is GLam -> g.cl.inst(state.top, local).scopeCheck(state, lvl + 1, ren + (lvl to lvl - state.shift))
+        is GPi -> { g.ty.g.scopeCheck(state, lvl, ren); g.cl.inst(local).scopeCheck(state, lvl + 1, ren + (lvl to lvl - state.shift)) }
+        is GLam -> g.cl.inst(local).scopeCheck(state, lvl + 1, ren + (lvl to lvl - state.shift))
         is GNe -> {
             when (g.head) {
                 is HTop -> {}
@@ -247,8 +237,8 @@ fun LocalContext.gvUnify(a: GluedVal, b: GluedVal) {
 }
 
 fun LocalContext.gvUnify(lvl: Lvl, names: Array<String>, a: GluedVal, b: GluedVal) {
-    val v = a.g.force(top)
-    val w = b.g.force(top)
+    val v = a.g.force()
+    val w = b.g.force()
     val local = gvLocal(Ix(lvl.it))
     when {
         v is GU && w is GU -> {}
@@ -262,21 +252,21 @@ fun LocalContext.gvUnify(lvl: Lvl, names: Array<String>, a: GluedVal, b: GluedVa
         v is GNe && v.head is HMeta -> solve(lvl, names, v.head.meta, v.gspine, GluedVal(b.v, w))
         w is GNe && w.head is HMeta -> solve(lvl, names, w.head.meta, w.gspine, GluedVal(a.v, v))
 
-        v is GLam && w is GLam -> gvUnify(lvl + 1, names + v.n, v.cl.gvInst(top, local), w.cl.gvInst(top, local))
-        v is GLam -> gvUnify(lvl + 1, names + v.n, v.cl.gvInst(top, local), w.gvApp(top, v.icit, local))
-        w is GLam -> gvUnify(lvl + 1, names + w.n, w.cl.gvInst(top, local), v.gvApp(top, w.icit, local))
+        v is GLam && w is GLam -> gvUnify(lvl + 1, names + v.n, v.cl.gvInst(local), w.cl.gvInst(local))
+        v is GLam -> gvUnify(lvl + 1, names + v.n, v.cl.gvInst(local), w.gvApp(v.icit, local))
+        w is GLam -> gvUnify(lvl + 1, names + w.n, w.cl.gvInst(local), v.gvApp(w.icit, local))
 
         v is GPi && w is GPi && v.n == w.n -> {
             gvUnify(lvl, names, v.ty, w.ty)
-            gvUnify(lvl + 1, names + v.n, v.cl.gvInst(top, local), w.cl.gvInst(top, local))
+            gvUnify(lvl + 1, names + v.n, v.cl.gvInst(local), w.cl.gvInst(local))
         }
         v is GPi && w is GFun -> {
             gvUnify(lvl, names, v.ty, w.a)
-            gvUnify(lvl + 1, names + v.n, v.cl.gvInst(top, local), w.b)
+            gvUnify(lvl + 1, names + v.n, v.cl.gvInst(local), w.b)
         }
         w is GPi && v is GFun -> {
             gvUnify(lvl, names, w.ty, v.a)
-            gvUnify(lvl + 1, names + w.n, w.cl.gvInst(top, local), v.b)
+            gvUnify(lvl + 1, names + w.n, w.cl.gvInst(local), v.b)
         }
 
         v is GFun && w is GFun -> {
@@ -302,28 +292,29 @@ fun LocalContext.gvUnifySp(lvl: Lvl, names: Array<String>, ga: GSpine, gb: GSpin
 }
 
 fun LocalContext.solve(lvl: Lvl, names: Array<String>, occurs: Meta, gsp: GSpine, v: GluedVal) {
-    val (renC, vC) = contract(gsp.check(top), v.v.value)
+    val (renC, vC) = contract(gsp.check(), v.v.value)
     val errRef = ErrRef()
-    val rhs = vC.quoteSolution(top, lvl, names, occurs, renC, errRef)
+    val rhs = vC.quoteSolution(lvl, names, occurs, renC, errRef)
     val err = errRef.err
     when {
-        err == null -> top[occurs] = rhs
+        err == null -> MontunoPure.top[occurs] = rhs
         err.rigidity == Rigidity.Rigid -> throw err
-        else -> if (!v.g.checkSolution(top, occurs, this.lvl, renC)) top[occurs] = rhs
+        else -> if (!v.g.checkSolution(occurs, this.lvl, renC)) MontunoPure.top[occurs] = rhs
     }
 }
 
-sealed class MetaInsertion
-data class MIUntilName(val n: String) : MetaInsertion()
-object MIYes : MetaInsertion()
-object MINo : MetaInsertion()
+sealed class MetaInsertion {
+    data class UntilName(val n: String) : MetaInsertion()
+    object Yes : MetaInsertion()
+    object No : MetaInsertion()
+}
 
-fun LocalContext.gvEval(t: Term): GluedVal = t.gvEval(top, vVals, gVals)
+fun LocalContext.gvEval(t: Term): GluedVal = t.gvEval(vVals, gVals)
 
 fun LocalContext.newMeta(): Term {
-    val i = top.metas.size - 1
-    val meta = Meta(i, top.metas[i].size)
-    top[meta] = MetaUnsolved(top.currentPos)
+    val i = MontunoPure.top.metas.size - 1
+    val meta = Meta(i, MontunoPure.top.metas[i].size)
+    MontunoPure.top[meta] = MetaUnsolved(MontunoPure.top.loc)
     var tm: Term = TMeta(meta)
     for (x in boundIndices) {
         tm = TApp(Icit.Expl, tm, TLocal(Ix(lvl.it - x - 1)))
@@ -332,8 +323,8 @@ fun LocalContext.newMeta(): Term {
 }
 
 fun LocalContext.check(t: PreTerm, want: GluedVal): Term {
-    top(t.loc)
-    val g = want.g.force(top)
+    MontunoPure.top.loc = t.loc
+    val g = want.g.force()
     val local = gvLocal(Ix(lvl.it))
     return when {
         t is RLet -> {
@@ -344,16 +335,16 @@ fun LocalContext.check(t: PreTerm, want: GluedVal): Term {
             val u = localDefine(t.loc, t.n, gva, gvt).check(t.body, want)
             TLet(t.n, a, tm, u)
         }
-        t is RLam && g is GPi && t.ni.match(g) -> TLam(t.n, g.icit, localBindSrc(t.loc, t.n, g.ty).check(t.body, g.cl.gvInst(top, local)))
+        t is RLam && g is GPi && t.ni.match(g) -> TLam(t.n, g.icit, localBindSrc(t.loc, t.n, g.ty).check(t.body, g.cl.gvInst(local)))
         t is RLam && g is GFun && t.ni is NIExpl -> TLam(t.n, Icit.Expl, localBindSrc(t.loc, t.n, g.a).check(t.body, g.b))
-        g is GPi && g.icit == Icit.Impl -> TLam(g.n, Icit.Impl, localBindIns(t.loc, g.n, g.ty).check(t, g.cl.gvInst(top, local)))
+        g is GPi && g.icit == Icit.Impl -> TLam(g.n, Icit.Impl, localBindIns(t.loc, g.n, g.ty).check(t, g.cl.gvInst(local)))
         t is RHole -> newMeta()
         else -> {
-            val (tt, gvHas) = infer(MIYes, t)
+            val (tt, gvHas) = infer(MetaInsertion.Yes, t)
             try {
                 gvUnify(gvHas, GluedVal(want.v, want.g))
             } catch (e: ElabError) {
-                throw ElabError(top.currentPos, this, "Failed to unify ${gvHas.g} and ${want.g}")
+                throw ElabError(MontunoPure.top.loc, this, "Failed to unify ${gvHas.g} and ${want.g}")
             }
             tt
         }
@@ -368,28 +359,28 @@ fun NameOrIcit.match(g: GPi): Boolean = when (this) {
 fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, GluedVal>): Pair<Term, GluedVal> {
     var (t, gva) = c
     when (mi) {
-        MINo -> {}
-        MIYes -> {
-            var g = gva.g.force(top)
+        MetaInsertion.No -> {}
+        MetaInsertion.Yes -> {
+            var g = gva.g.force()
             while (g is GPi && g.icit == Icit.Impl) {
                 val m = newMeta()
                 t = TApp(Icit.Impl, t, m)
-                gva = g.cl.gvInst(top, gvEval(m))
-                g = gva.g.force(top)
+                gva = g.cl.gvInst(gvEval(m))
+                g = gva.g.force()
             }
         }
-        is MIUntilName -> {
-            var g = gva.g.force(top)
+        is MetaInsertion.UntilName -> {
+            var g = gva.g.force()
             while (g is GPi && g.icit == Icit.Impl) {
                 if (g.n == mi.n) {
                     return t to gva
                 }
                 val m = newMeta()
                 t = TApp(Icit.Impl, t, m)
-                gva = g.cl.gvInst(top, gvEval(m))
-                g = gva.g.force(top)
+                gva = g.cl.gvInst(gvEval(m))
+                g = gva.g.force()
             }
-            throw ElabError(top.currentPos, this, "No named arg ${mi.n}")
+            throw ElabError(MontunoPure.top.loc, this, "No named arg ${mi.n}")
         }
     }
     return t to gva
@@ -398,7 +389,7 @@ fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, GluedVal>): Pair<T
 fun LocalContext.inferVar(n: String): Pair<Term, GluedVal> {
     for (ni in nameTable[n].asReversed()) {
         when {
-            ni is NITop -> return TTop(ni.lvl) to top.topEntries[ni.lvl.it].type.gv
+            ni is NITop -> return TTop(ni.lvl) to MontunoPure.top.topEntries[ni.lvl.it].type.gv
             ni is NILocal && !ni.inserted -> {
                 val ix = lvl.it - ni.lvl.it - 1
                 println("${types.size}/${lvl.it} - ${ni.lvl.it} - 1 = $ix from ${types.joinToString(", ")}")
@@ -410,15 +401,15 @@ fun LocalContext.inferVar(n: String): Pair<Term, GluedVal> {
 }
 
 fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, GluedVal> {
-    top(r.loc)
+    MontunoPure.top.loc = r.loc
     return when (r) {
         is RU -> TU to GVU
-        is RNat -> inferVar("Nat")
+        is RNat -> TNat(r.n) to inferVar("Nat").first.gvEval(emptyVEnv, emptyGEnv)
         is RVar -> insertMetas(mi, inferVar(r.n))
-        is RStopMeta -> infer(MINo, r.body)
+        is RStopMeta -> infer(MetaInsertion.No, r.body)
         is RForeign -> {
             val a = check(r.type, GVU)
-            TForeign(r.lang, r.eval) to gvEval(a)
+            TForeign(r.lang, r.eval, a) to gvEval(a)
         }
         is RHole -> {
             val m1 = newMeta()
@@ -442,19 +433,19 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, GluedVal> {
 //  -- TODO: do the case where a meta is inferred for "t"
         is RApp -> {
             val ins = when (r.ni) {
-                is NIName -> MIUntilName(r.ni.n)
-                NIImpl -> MINo
-                NIExpl -> MIYes
+                is NIName -> MetaInsertion.UntilName(r.ni.n)
+                NIImpl -> MetaInsertion.No
+                NIExpl -> MetaInsertion.Yes
             }
             val (t, gva) = infer(ins, r.rator)
-            insertMetas(mi, when (val g = gva.g.force(top)) {
+            insertMetas(mi, when (val g = gva.g.force()) {
                 is GPi -> {
                     when {
-                        r.ni is NIExpl && g.icit != Icit.Expl -> { top(r.loc); throw ElabError(r.loc, this, "AppIcit") }
-                        r.ni is NIImpl && g.icit != Icit.Impl -> { top(r.loc); throw ElabError(r.loc, this, "AppIcit") }
+                        r.ni is NIExpl && g.icit != Icit.Expl -> { MontunoPure.top.loc = r.loc; throw ElabError(r.loc, this, "AppIcit") }
+                        r.ni is NIImpl && g.icit != Icit.Impl -> { MontunoPure.top.loc = r.loc; throw ElabError(r.loc, this, "AppIcit") }
                     }
                     val u = check(r.rand, g.ty)
-                    TApp(g.icit, t, u) to g.cl.gvInst(top, gvEval(u))
+                    TApp(g.icit, t, u) to g.cl.gvInst(gvEval(u))
                 }
                 is GFun -> {
                     if (r.ni !is NIExpl) throw ElabError(r.loc, this, "Icit mismatch")
@@ -471,8 +462,8 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, GluedVal> {
                 is NIName -> throw ElabError(r.loc, this, "named lambda")
             }
             val gva = gvEval(newMeta())
-            val (t, gvb) = localBindSrc(r.loc, r.n, gva).infer(MIYes, r.body)
-            val b = gvb.v.value.quote(top, lvl + 1)
+            val (t, gvb) = localBindSrc(r.loc, r.n, gva).infer(MetaInsertion.Yes, r.body)
+            val b = gvb.v.value.quote(lvl + 1)
             insertMetas(mi, TLam(r.n, icit, t) to GluedVal(
                 lazyOf(VPi(r.n, icit, gva.v, VCl(vVals, b))),
                 GPi(r.n, icit, gva, GCl(gVals, vVals, b))
@@ -481,70 +472,54 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, GluedVal> {
     }
 }
 
-fun checkProgram(top: TopContext, p: List<TopLevel>): NameTable {
-    val ntbl = NameTable()
-    for (e in p) {
-        top.metas.add(mutableListOf())
-        val ctx = LocalContext(top, ntbl)
-        when (e) {
-            is RTerm -> TODO("elab, norm, return")
-            is RDecl -> {
-                top(e.loc)
-                var a = ctx.check(e.ty, GVU)
-                ctx.simplifyMetaBlock(top)
-                a = a.inline(top, Lvl(0), emptyVEnv)
-                ntbl.addName(e.n, NITop(e.loc, Lvl(top.topEntries.size)))
-                top.topEntries.add(TopEntry(e.loc, e.n, null, GluedTerm(a, ctx.gvEval(a))))
+fun checkTopLevel(e: TopLevel): String? {
+    MontunoPure.top.metas.add(mutableListOf())
+    val ctx = LocalContext(MontunoPure.top.ntbl)
+    MontunoPure.top.loc = e.loc
+    return when (e) {
+        is RTerm -> when (e.cmd) {
+            Pragma.ParseOnly -> e.tm.toString()
+            Pragma.Reset -> { MontunoPure.top.reset(); null }
+            Pragma.Elaborated -> { MontunoPure.top.printElaborated(); null }
+            Pragma.Nothing -> ctx.infer(MetaInsertion.No, e.tm!!).first.pretty().toString()
+            Pragma.Type -> {
+                val (tm, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
+                ty.g.quote(Lvl(0)).pretty().toString()
             }
-            is RDefn -> {
-                top(e.loc)
-                var a: Term = if (e.ty != null) {
-                    ctx.check(e.ty, GVU)
-                } else try {
-                    ctx.inferVar(e.n).second.g.quote(top, Lvl(0))
-                } catch (e: ElabError) {
-                    TU
-                }
-                var gva = ctx.gvEval(a)
-                var t = ctx.check(e.tm, gva)
-                ctx.simplifyMetaBlock(top)
-                a = a.inline(top, Lvl(0), emptyVEnv)
-//                for ((ix, x) in top.metas.withIndex()) {
-//                    println("Block $ix")
-//                    for (meta in x) println(x)
-//                }
-//                println(t)
-                t = t.inline(top, Lvl(0), emptyVEnv)
-                gva = ctx.gvEval(a)
-                val gvt = ctx.gvEval(t)
-                ntbl.addName(e.n, NITop(e.loc, Lvl(top.topEntries.size)))
-                top.topEntries.add(TopEntry(e.loc, e.n, GluedTerm(t, gvt), GluedTerm(a, gva)))
+            Pragma.NormalType -> {
+                val (tm, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
+                ty.v.value.quote(Lvl(0), true).pretty().toString()
+            }
+            Pragma.Elaborate -> {
+                val (tm, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
+                ctx.gvEval(tm).g.quote((Lvl(0))).pretty().toString()
+            }
+            Pragma.Normalize -> {
+                val (tm, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
+                ctx.gvEval(tm).v.value.quote(Lvl(0), true).pretty().toString()
             }
         }
-    }
-    return ntbl
-}
-
-fun TopContext.show(ntbl: NameTable, tm: Term): String {
-    TODO("show0")
-}
-
-fun nfMain(s: String) {
-    val top = TopContext()
-    val ntbl = checkProgram(top, parsePreSyntax(s))
-    for ((i, topMeta) in top.metas.zip(top.topEntries).withIndex()) {
-        val (metaBlock, topEntry) = topMeta
-        for ((j, meta) in metaBlock.withIndex()) {
-            if (meta !is MetaSolved) throw UnifyError("Unsolved metablock")
-            if (meta.unfoldable) continue
-            println("  $i.$j = ${top.show(ntbl, meta.tm)}")
+        is RDecl -> {
+            var a = ctx.check(e.ty, GVU)
+            ctx.simplifyMetaBlock()
+            a = a.inline(Lvl(0), emptyVEnv)
+            MontunoPure.top.addTopLevel(e.n, e.loc, null, a)
+            return null
         }
-        when (topEntry.defn) {
-            null -> println("${topEntry.name} : ${top.show(ntbl, topEntry.type.tm)}")
-            else -> {
-                println("${topEntry.name} : ${top.show(ntbl, topEntry.type.tm)}")
-                println("${topEntry.name} = ${top.show(ntbl, topEntry.defn.tm)}")
+        is RDefn -> {
+            var a: Term = if (e.ty != null) {
+                ctx.check(e.ty, GVU)
+            } else try {
+                ctx.inferVar(e.n).second.g.quote(Lvl(0))
+            } catch (e: ElabError) {
+                TU
             }
+            var t = ctx.check(e.tm, ctx.gvEval(a))
+            ctx.simplifyMetaBlock()
+            a = a.inline(Lvl(0), emptyVEnv)
+            t = t.inline(Lvl(0), emptyVEnv)
+            MontunoPure.top.addTopLevel(e.n, e.loc, t, a)
+            return null
         }
     }
 }

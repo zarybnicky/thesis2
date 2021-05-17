@@ -1,0 +1,3 @@
+id : {A} -> A -> A = \x. x
+const : {A B} -> A -> B -> A = \x _. x
+const' : {A B} (C : *) -> (B -> A) -> A -> (A -> C) -> A = \_ _ a _. a

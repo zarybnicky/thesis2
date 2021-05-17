@@ -1,16 +1,40 @@
-package montuno.interpreter.meta
-
-import montuno.interpreter.Icit
-import montuno.interpreter.Ix
-import montuno.interpreter.Lvl
-import montuno.interpreter.Meta
+package montuno.interpreter
 
 inline class GSpine(val it: Array<Pair<Icit, Glued>>) // lazy ref to Glued
 inline class VSpine(val it: Array<Pair<Icit, Lazy<Val>>>) // lazy ref to Val
+fun GSpine.with(x: Pair<Icit, Glued>) = GSpine(it.plus(x))
+fun VSpine.with(x: Pair<Icit, Lazy<Val>>) = VSpine(it.plus(x))
+
 inline class VEnv(val it: Array<Lazy<Val>?>)
+fun VEnv.local(ix: Ix): Lazy<Val> = it[ix.it] ?: lazyOf(vLocal(ix))
+fun VEnv.skip() = VEnv(it.plus(null))
+fun VEnv.def(x: Lazy<Val>) = VEnv(it.plus(x))
 inline class GEnv(val it: Array<Glued?>) // LAZY
+fun GEnv.local(ix: Ix): Glued = it[ix.it] ?: gLocal(ix)
+fun GEnv.skip() = GEnv(it.plus(null))
+fun GEnv.def(x: Glued) = GEnv(it.plus(x))
+
+inline class NameEnv(val it: List<String> = listOf()) {
+    operator fun get(ix: Ix): String = it.getOrNull(ix.it) ?: throw TypeCastException("Names[$ix] out of bounds")
+    operator fun plus(x: String) = NameEnv(listOf(x) + it)
+    fun fresh(x: String): String {
+        if (x == "_") return "_"
+        val ntbl = MontunoPure.top.ntbl
+        var i = 0
+        var res = x
+        while (true) {
+            if (x !in it && x !in ntbl.it) {
+                return res
+            }
+            res = x + i
+            i++
+        }
+    }
+}
+
 data class VCl(val env: VEnv, val tm: Term)
 data class GCl(val genv: GEnv, val env: VEnv, val tm: Term)
+
 data class GluedTerm(val tm: Term, val gv: GluedVal)
 data class GluedVal(val v: Lazy<Val>, val g: Glued) {
     override fun toString(): String = "$g" //TODO: ???
@@ -21,27 +45,26 @@ val emptyVEnv = VEnv(arrayOf())
 val emptyGSpine = GSpine(arrayOf())
 val emptyVSpine = VSpine(arrayOf())
 
-fun GSpine.with(x: Pair<Icit, Glued>) = GSpine(it.plus(x))
-fun VSpine.with(x: Pair<Icit, Lazy<Val>>) = VSpine(it.plus(x))
-fun GEnv.skip() = GEnv(it.plus(null))
-fun GEnv.def(x: Glued) = GEnv(it.plus(x))
-fun VEnv.skip() = VEnv(it.plus(null))
-fun VEnv.def(x: Lazy<Val>) = VEnv(it.plus(x))
-
 sealed class Head
 data class HMeta(val meta: Meta) : Head() { override fun toString(): String = "HMeta(${meta.i}, ${meta.j})" }
 data class HLocal(val ix: Ix) : Head() { override fun toString(): String = "HLocal(ix=${ix.it})" }
 data class HTop(val lvl: Lvl) : Head() { override fun toString(): String = "HTop(lvl=${lvl.it})" }
 
 sealed class Val
-data class VNe(val head: Head, val spine: VSpine) : Val()
+object VU : Val() { override fun toString() = "VU" }
+object VIrrelevant : Val() { override fun toString() = "VIrrelevant" }
 data class VLam(val n: String, val icit: Icit, val cl: VCl) : Val()
 data class VPi(val n: String, val icit: Icit, val ty: Lazy<Val>, val cl: VCl) : Val()
 data class VFun(val a: Lazy<Val>, val b: Lazy<Val>) : Val()
-object VU : Val() { override fun toString() = "VU" }
-object VIrrelevant : Val() { override fun toString() = "VIrrelevant" }
+data class VNe(val head: Head, val spine: VSpine) : Val()
+data class VNat(val n: Int) : Val()
 
 sealed class Glued
+object GU : Glued() { override fun toString() = "GU" }
+object GIrrelevant : Glued() { override fun toString() = "GIrrelevant" }
+data class GLam(val n: String, val icit: Icit, val cl: GCl) : Glued()
+data class GPi(val n: String, val icit: Icit, val ty: GluedVal, val cl: GCl) : Glued()
+data class GFun(val a: GluedVal, val b: GluedVal) : Glued()
 data class GNe(val head: Head, val gspine: GSpine, val spine: VSpine) : Glued() {
     override fun toString(): String = when (head) {
         is HLocal -> "GNeLocal(ix=${head.ix.it}, gspine=[${gspine.it.joinToString(", ")}])"
@@ -49,11 +72,7 @@ data class GNe(val head: Head, val gspine: GSpine, val spine: VSpine) : Glued() 
         is HTop -> "GNeTop(lvl=${head.lvl.it}, gspine=[${gspine.it.joinToString(", ")}])"
     }
 }
-data class GLam(val n: String, val icit: Icit, val cl: GCl) : Glued()
-data class GPi(val n: String, val icit: Icit, val ty: GluedVal, val cl: GCl) : Glued()
-data class GFun(val a: GluedVal, val b: GluedVal) : Glued()
-object GU : Glued() { override fun toString() = "GU" }
-object GIrrelevant : Glued() { override fun toString() = "GIrrelevant" }
+data class GNat(val n: Int) : Glued()
 
 val GVU = GluedVal(lazyOf(VU), GU)
 fun gLocal(ix: Ix) = GNe(HLocal(ix), emptyGSpine, emptyVSpine)
@@ -65,14 +84,24 @@ fun gMeta(meta: Meta) = GNe(HMeta(meta), emptyGSpine, emptyVSpine)
 fun vMeta(meta: Meta) = VNe(HMeta(meta), emptyVSpine)
 
 sealed class Term
-data class TLocal(val ix: Ix) : Term() { override fun toString() = "TLocal(ix=${ix.it})" }
-data class TTop(val lvl: Lvl) : Term() { override fun toString() = "TTop(lvl=${lvl.it})" }
-data class TMeta(val meta: Meta) : Term() { override fun toString() = "TMeta(${meta.i}, ${meta.j})" }
+object TU : Term()
+object TIrrelevant : Term()
+data class TNat(val n: Int) : Term()
 data class TLet(val n: String, val ty: Term, val v: Term, val tm: Term) : Term()
 data class TApp(val icit: Icit, val l: Term, val r: Term) : Term()
 data class TLam(val n: String, val icit: Icit, val tm: Term) : Term()
 data class TPi(val n: String, val icit: Icit, val arg: Term, val tm: Term) : Term()
 data class TFun(val l: Term, val r: Term) : Term()
-object TIrrelevant : Term()
-object TU : Term()
-data class TForeign(val lang: String, val eval: String) : Term()
+data class TForeign(val lang: String, val eval: String, val ty: Term) : Term()
+data class TLocal(val ix: Ix) : Term() { override fun toString() = "TLocal(ix=${ix.it})" }
+data class TTop(val lvl: Lvl) : Term() { override fun toString() = "TTop(lvl=${lvl.it})" }
+data class TMeta(val meta: Meta) : Term() { override fun toString() = "TMeta(${meta.i}, ${meta.j})" }
+
+fun Term.isUnfoldable(): Boolean = when (this) {
+    is TLocal -> true
+    is TMeta -> true
+    is TTop -> true
+    is TU -> true
+    is TLam -> tm.isUnfoldable()
+    else -> false
+}

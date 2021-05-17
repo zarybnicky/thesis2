@@ -3,43 +3,43 @@ package montuno.truffle
 import com.oracle.truffle.api.*
 import com.oracle.truffle.api.frame.FrameDescriptor
 import com.oracle.truffle.api.frame.MaterializedFrame
-import com.oracle.truffle.api.frame.VirtualFrame
-import com.oracle.truffle.api.nodes.*
 import montuno.syntax.parsePreSyntax
 import java.io.IOException
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
-
 @TruffleLanguage.Registration(
-        id = Language.LANGUAGE_ID,
-        name = "Montuno",
-        version = "0.1",
-        interactive = true,
-        internal = false,
-        defaultMimeType = Language.MIME_TYPE,
-        characterMimeTypes = [Language.MIME_TYPE],
-        contextPolicy = TruffleLanguage.ContextPolicy.SHARED,
-        fileTypeDetectors = [MontunoDetector::class]
+    id = MontunoTruffle.LANGUAGE_ID,
+    name = "Montuno",
+    version = "0.1",
+    interactive = true,
+    internal = false,
+    defaultMimeType = MontunoTruffle.MIME_TYPE,
+    characterMimeTypes = [MontunoTruffle.MIME_TYPE],
+    contextPolicy = TruffleLanguage.ContextPolicy.SHARED,
+    fileTypeDetectors = [MontunoDetector::class]
 )
-class Language : TruffleLanguage<MontunoContext>() {
-    override fun createContext(env: Env): MontunoContext = MontunoContext(this)
+class MontunoTruffle : TruffleLanguage<MontunoTruffleContext>() {
+    override fun createContext(env: Env): MontunoTruffleContext = MontunoTruffleContext()
+    override fun initializeContext(context: MontunoTruffleContext) {}
+    override fun isThreadAccessAllowed(thread: Thread, singleThreaded: Boolean) = true
     override fun isObjectOfLanguage(obj: Any): Boolean = false
     override fun parse(request: ParsingRequest): CallTarget {
         CompilerAsserts.neverPartOfCompilation()
         val pre = parsePreSyntax(request.source)
         val nodes = pre.map { toExecutableNode(it, this) }.toTypedArray()
-        return ProgramRootNode(this, FrameDescriptor(), nodes, currentContext.globalFrame).target
+        val root = ProgramRootNode(this, FrameDescriptor(), nodes, top.globalFrame)
+        return Truffle.getRuntime().createCallTarget(root)
     }
 
     companion object {
-        val currentContext: MontunoContext get() = getCurrentContext(Language::class.java)
+        val top: MontunoTruffleContext get() = getCurrentContext(MontunoTruffle::class.java)
         const val LANGUAGE_ID = "montuno"
         const val MIME_TYPE = "application/x-montuno"
     }
 }
 
-class MontunoContext(val language: Language) {
+class MontunoTruffleContext {
     var globalFrame: MaterializedFrame
     init {
         val frameDescriptor = FrameDescriptor()
@@ -54,71 +54,15 @@ class MontunoDetector : TruffleFile.FileTypeDetector {
     override fun findEncoding(@Suppress("UNUSED_PARAMETER") file: TruffleFile): Charset = StandardCharsets.UTF_8
     override fun findMimeType(file: TruffleFile): String? {
         val name = file.name ?: return null
-        if (name.endsWith(".mn")) return Language.MIME_TYPE
+        if (name.endsWith(".mn")) return MontunoTruffle.MIME_TYPE
         try {
             file.newBufferedReader(StandardCharsets.UTF_8).use { fileContent ->
                 if ((fileContent.readLine() ?: "").matches("^#!/usr/bin/env montuno".toRegex()))
-                    return Language.MIME_TYPE
+                    return MontunoTruffle.MIME_TYPE
             }
         } catch (e: IOException) { // ok
         } catch (e: SecurityException) { // ok
         }
         return null
-    }
-}
-
-abstract class Exp<T> {
-    abstract fun apply(frame: VirtualFrame): T
-}
-
-object FortyTwo : Exp<Int>() {
-    override fun apply(frame: VirtualFrame): Int = 42
-}
-
-data class Add(var lhs: Exp<Int>, var rhs: Exp<Int>) : Exp<Int>() {
-    override fun apply(frame: VirtualFrame): Int = lhs.apply(frame) + rhs.apply(frame)
-}
-
-class TestRootNode(language: Language) : RootNode(language) {
-    private var fn = SomeFun(language)
-    private var ct: DirectCallNode? = null
-    override fun execute(frame: VirtualFrame): Int {
-        if (ct == null) {
-            val rt = Truffle.getRuntime()
-            CompilerDirectives.transferToInterpreterAndInvalidate()
-            ct = rt.createDirectCallNode(rt.createCallTarget(fn))
-            adoptChildren()
-        }
-        var i = 100000
-        var res = 0
-        while (i > 0) {
-            res += ct?.call() as Int
-            i -= 1
-        }
-        return res
-    }
-}
-
-class SomeFun(language: Language) : RootNode(language) {
-    private var repeating = DummyLoop()
-    private var loop: LoopNode = Truffle.getRuntime().createLoopNode(repeating)
-    override fun execute(frame: VirtualFrame): Int {
-        loop.execute(frame)
-        return repeating.result
-    }
-}
-
-class DummyLoop : Node(), RepeatingNode {
-    val child = Add(
-        Add(Add(FortyTwo, FortyTwo), Add(FortyTwo, FortyTwo)),
-        Add(Add(FortyTwo, FortyTwo), Add(FortyTwo, FortyTwo))
-    )
-    private var count = 10000
-    var result = 0
-    override fun executeRepeating(frame: VirtualFrame): Boolean = if (count <= 0) false else {
-        val res = this.child.apply(frame)
-        result += res
-        count -= 1
-        true
     }
 }

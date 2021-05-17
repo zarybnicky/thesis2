@@ -5,7 +5,7 @@ import montuno.interpreter.Icit
 sealed class TopLevel : WithPos
 data class RDecl(override val loc: Loc, val n: String, val ty: PreTerm) : TopLevel()
 data class RDefn(override val loc: Loc, val n: String, val ty: PreTerm?, val tm: PreTerm) : TopLevel()
-data class RTerm(override val loc: Loc, val cmd: Command, val tm: PreTerm) : TopLevel()
+data class RTerm(override val loc: Loc, val cmd: Pragma, val tm: PreTerm?) : TopLevel()
 
 sealed class PreTerm : WithPos
 

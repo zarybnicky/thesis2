@@ -3,7 +3,6 @@ package montuno.syntax
 import com.oracle.truffle.api.source.Source
 import com.oracle.truffle.api.source.SourceSection
 import montuno.*
-import montuno.interpreter.Either
 import montuno.interpreter.Icit
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -35,7 +34,7 @@ object NIImpl : NameOrIcit() { override fun toString(): String = "NIImpl" }
 object NIExpl : NameOrIcit() { override fun toString(): String = "NIExpl" }
 data class NIName(val n: String) : NameOrIcit()
 
-enum class Command { Elaborate, Normalize, ParseOnly, Nothing }
+enum class Pragma { Elaborate, Normalize, Type, NormalType, ParseOnly, Nothing, Reset, Elaborated }
 
 fun ParserRuleContext.range() = Loc.Range(this.start.startIndex, this.stop.stopIndex - this.start.startIndex + 1)
 
@@ -48,7 +47,7 @@ fun parsePreSyntaxExpr(input: String): PreTerm {
     val src = parsePreSyntax(input)
     val last = src.last()
     if (last !is RTerm) throw RuntimeException("expression must be last")
-    var root = last.tm
+    var root: PreTerm = last.tm!!
     for (l in src.reversed()) {
         root = when (l) {
             is RDefn -> RLet(l.loc, l.n, l.ty ?: RHole(Loc.Unavailable), l.tm, root)
@@ -63,15 +62,20 @@ fun MontunoParser.FileContext.toAst(): List<TopLevel> = decls.map { it.toAst() }
 fun MontunoParser.TopContext.toAst(): TopLevel = when (this) {
     is MontunoParser.DeclContext -> RDecl(range(), id.text, type.toAst())
     is MontunoParser.DefnContext -> RDefn(range(), id.text, type?.toAst(), defn.toAst())
-    is MontunoParser.ExprContext -> RTerm(range(), toCommand(COMMAND()), term().toAst())
+    is MontunoParser.PragmaContext -> RTerm(range(), toPragma(cmd.text), target?.toAst())
+    is MontunoParser.ExprContext -> RTerm(range(), Pragma.Nothing, term().toAst())
     else -> throw UnsupportedOperationException(javaClass.canonicalName)
 }
 
-fun toCommand(s: TerminalNode?) = when (s?.text) {
-    "%elaborate" -> Command.Elaborate
-    "%normalize" -> Command.Normalize
-    "%parse" -> Command.ParseOnly
-    else -> Command.Nothing
+fun toPragma(s: String) = when (s) {
+    "TYPE" -> Pragma.Type
+    "NORMAL-TYPE" -> Pragma.NormalType
+    "ELABORATE" -> Pragma.Elaborate
+    "NORMALIZE" -> Pragma.Normalize
+    "PARSE" -> Pragma.ParseOnly
+    "ELABORATED" -> Pragma.Elaborated
+    "RESET" -> Pragma.Reset
+    else -> throw UnsupportedOperationException("Unrecognized command $s")
 }
 
 fun MontunoParser.TermContext.toAst(): PreTerm = when (this) {

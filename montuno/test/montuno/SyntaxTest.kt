@@ -27,7 +27,7 @@ class SyntaxTest {
             parsePreSyntax("%elaborate 5"),
             listOf(RTerm(
                 Loc.Range(0, 13),
-                Command.Elaborate,
+                Pragma.Elaborate,
                 RNat(Loc.Range(11, 1), 5)
             )),
         )

@@ -1,6 +1,5 @@
 package montuno.interpreter
 
-import montuno.interpreter.meta.NameInfo
 import java.util.*
 
 sealed class Either<out L, out R> {
