@@ -117,29 +117,28 @@ fun LocalContext.unify(lvl: Lvl, unfold: Int, names: Array<String>, r: Rigidity,
             unify(lvl + 1, unfold, names + w.n, r, w.cl.inst(local), v.b.value)
         }
 
-        v is VNe && w is VNe && v.head is HTop && w.head is HTop && v.head.lvl == w.head.lvl -> {
-            val rSp = r.meld(MontunoPure.top.rigidity(v.head.lvl)).meld(MontunoPure.top.rigidity(w.head.lvl))
-            unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
-        }
+        v is VNe && w is VNe && v.head is HLocal && w.head is HLocal && v.head.lvl == w.head.lvl ->
+            unifySp(lvl, unfold, names, r, v.spine, w.spine)
+
         v is VNe && w is VNe && v.head is HMeta && w.head is HMeta && v.head.meta == w.head.meta -> {
             val rSp = r.meld(MontunoPure.top.rigidity(v.head.meta)).meld(MontunoPure.top.rigidity(w.head.meta))
             unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
         }
-        v is VNe && w is VNe && v.head is HLocal && w.head is HLocal && v.head.lvl == w.head.lvl ->
-            unifySp(lvl, unfold, names, r, v.spine, w.spine)
-
         v is VNe && v.head is HMeta && MontunoPure.top[v.head.meta] is MetaUnsolved && r == Rigidity.Rigid ->
             solve(lvl, names, v.head.meta, v.spine, w)
         v is VNe && v.head is HMeta && MontunoPure.top[v.head.meta] is MetaSolved ->
             if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(v.spine), w)
             else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
-
         w is VNe && w.head is HMeta && MontunoPure.top[w.head.meta] is MetaUnsolved && r == Rigidity.Rigid ->
             solve(lvl, names, w.head.meta, w.spine, v)
         w is VNe && w.head is HMeta && MontunoPure.top[w.head.meta] is MetaSolved ->
             if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(w.spine), v)
             else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
 
+        v is VNe && w is VNe && v.head is HTop && w.head is HTop && v.head.lvl == w.head.lvl -> {
+            val rSp = r.meld(MontunoPure.top.rigidity(v.head.lvl)).meld(MontunoPure.top.rigidity(w.head.lvl))
+            unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
+        }
         v is VNe && v.head is HTop && MontunoPure.top[v.head.lvl].defn != null ->
             if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(v.spine), w)
             else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
@@ -481,7 +480,7 @@ fun checkTopLevel(e: TopLevel): Any? {
             Pragma.Nothing -> ctx.infer(MetaInsertion.No, e.tm!!).first.pretty().toString()
             Pragma.Type -> {
                 val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
-                ty.g.quote(Lvl(0)).pretty().toString()
+                ty.g.force().quote(Lvl(0)).pretty().toString()
             }
             Pragma.NormalType -> {
                 val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
@@ -489,7 +488,7 @@ fun checkTopLevel(e: TopLevel): Any? {
             }
             Pragma.Elaborate -> {
                 val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)
-                ctx.gvEval(tm).g.quote((Lvl(0))).pretty().toString()
+                ctx.gvEval(tm).g.force().quote((Lvl(0))).pretty().toString()
             }
             Pragma.Normalize -> {
                 val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)

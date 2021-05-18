@@ -5,16 +5,15 @@ inline class VSpine(val it: Array<Pair<Icit, Lazy<Val>>>) // lazy ref to Val
 fun GSpine.with(x: Pair<Icit, Glued>) = GSpine(it.plus(x))
 fun VSpine.with(x: Pair<Icit, Lazy<Val>>) = VSpine(it.plus(x))
 
-inline class VEnv(val it: List<Lazy<Val>?>)
-fun VEnv.local(ix: Lvl): Lazy<Val> = it[ix.it] ?: lazyOf(vLocal(ix))
-fun VEnv.skip() = VEnv(listOf(null) + it)
-fun VEnv.def(x: Lazy<Val>) = VEnv(listOf(x) + it)
+inline class VEnv(val it: Array<Lazy<Val>?>)
+fun VEnv.local(lvl: Lvl): Lazy<Val> = it[lvl.it] ?: lazyOf(vLocal(lvl))
+fun VEnv.skip() = VEnv(it + null)
+fun VEnv.def(x: Lazy<Val>) = VEnv(it + x)
 val VEnv.lvl: Lvl get() = Lvl(it.size)
-inline class GEnv(val it: List<Glued?>) // LAZY
+inline class GEnv(val it: Array<Glued?>) // LAZY
 fun GEnv.local(ix: Lvl): Glued = it[ix.it] ?: gLocal(ix)
-fun GEnv.skip() = GEnv(listOf(null) + it)
-fun GEnv.def(x: Glued) = GEnv(listOf(x) + it)
-val GEnv.lvl: Lvl get() = Lvl(it.size)
+fun GEnv.skip() = GEnv(it + null)
+fun GEnv.def(x: Glued) = GEnv(it + x)
 
 inline class NameEnv(val it: List<String> = listOf()) {
     operator fun get(ix: Ix): String = it.getOrNull(ix.it) ?: throw TypeCastException("Names[$ix] out of bounds")
@@ -22,15 +21,13 @@ inline class NameEnv(val it: List<String> = listOf()) {
     fun fresh(x: String): String {
         if (x == "_") return "_"
         val ntbl = MontunoPure.top.ntbl
-        var i = 0
         var res = x
-        while (true) {
-            if (x !in it && x !in ntbl.it) {
-                return res
-            }
+        var i = 0
+        while (res in it || res in ntbl.it) {
             res = x + i
             i++
         }
+        return res
     }
 }
 
@@ -42,8 +39,8 @@ data class GluedVal(val v: Lazy<Val>, val g: Glued) {
     override fun toString(): String = "$g" //TODO: ???
 }
 
-val emptyGEnv = GEnv(listOf())
-val emptyVEnv = VEnv(listOf())
+val emptyGEnv = GEnv(arrayOf())
+val emptyVEnv = VEnv(arrayOf())
 val emptyGSpine = GSpine(arrayOf())
 val emptyVSpine = VSpine(arrayOf())
 

@@ -49,7 +49,7 @@ Chapter ref:optimizations.
 
 **** Agda
 Agda is a dependently-typed programming language that can also be used as a
-proof assistant. It is uses a Haskell-like syntax, and its workflow is centered
+proof assistant. It uses a Haskell-like syntax, and its workflow is centered
 around meta-variables and their gradual refinement in a dialog with the compiler
 cite:norell08_agda_tutorial.
 
@@ -85,17 +85,17 @@ would be too involved.
 *** Normalization
 Both normalization and elaboration tasks need to involve terms that can be
 easily made larger or smaller. A typical workload involves Church-encoded terms,
-naturals in particular, as these involve λ-abstraction and application. These
+naturals in particular, as these involve λ-abstraction and application. They
 will be tested in the first set of tasks: evaluation of a large natural number
 to a unit value, and calculating the Ackermann number followed by evaluating it
 to a unit value. These will be first evaluated on Church-encoded naturals, and
 then on the built-in type /Nat/ that is backed by a Java integer.
 
 The second set of tasks is the evaluation of a term to a normal form. Where the
-first two tasks only use the /eval/ part of the NbE algorithm, these also use
-/quote/ to produce a large normal form of a term, and not to evaluate to a single
-value. This is evaluated on a large Church-encoded natural number, on a deep
-Church-encoded binary tree.
+first two tasks only use the /eval/ part of the NbE algorithm, this next set also
+uses /quote/ to produce a large normal form of a term, and not to evaluate to a
+single value. This is evaluated on a large Church-encoded natural number, on a
+deep Church-encoded binary tree.
 
 \missingfigure{(a) forceNat (b) n2M term}
 

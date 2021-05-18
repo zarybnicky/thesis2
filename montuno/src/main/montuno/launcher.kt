@@ -26,6 +26,7 @@ class Launcher : AbstractLanguageLauncher() {
     private var versionAction: VersionAction = VersionAction.None
     private var currentLang: String = languageId
     private var currentFile: String? = null
+    private var initialCommand: String? = null
 
     override fun getDefaultLanguages(): Array<String> = arrayOf("montuno", "montuno-pure") // "js","r","ruby"};
     override fun getLanguageId() = "montuno-pure"
@@ -36,7 +37,7 @@ class Launcher : AbstractLanguageLauncher() {
         contextBuilder.build().use { ctx ->
             runVersionAction(versionAction, ctx.engine)
             try {
-                if (currentFile != null || stdin) evalNonInteractive(ctx)
+                if (currentFile != null || stdin || initialCommand != null) evalNonInteractive(ctx)
                 else readEvalPrint(ctx)
                 exitProcess(0)
             } catch (e: PolyglotException) {
@@ -47,6 +48,7 @@ class Launcher : AbstractLanguageLauncher() {
     }
 
     private fun evalNonInteractive(ctx: Context) {
+        println("$currentFile $currentLang $initialCommand")
         val source: Source? = try {
             when {
                 currentFile != null -> Source.newBuilder(currentLang, Paths.get(currentFile!!).toFile()).build()
@@ -57,9 +59,13 @@ class Launcher : AbstractLanguageLauncher() {
             println("Error loading file '$currentFile' (${e.message})")
             exitProcess(-1)
         }
-        var v = ctx.eval(source)
-        if (v.canExecute()) v = v.execute()
-        if (!v.isBoolean) println(v)
+        var v = ctx.eval(source).let { if (it.canExecute()) it.execute() else it }
+        println(v)
+        v = when (val x = initialCommand) {
+            null -> v
+            else -> ctx.eval(processCommand(ctx, x)).let { if (it.canExecute()) it.execute() else it }
+        }
+        println(v)
     }
 
     private fun readEvalPrint(ctx: Context) {
@@ -162,6 +168,8 @@ class Launcher : AbstractLanguageLauncher() {
                 "--version" -> versionAction = VersionAction.PrintAndExit
                 "--pure" -> currentLang = "montuno-pure"
                 "--truffle" -> currentLang = "montuno"
+                "--elaborate" -> initialCommand = ":elaborate ${iterator.next()}"
+                "--normalize" -> initialCommand = ":normalize ${iterator.next()}"
                 else -> {
                     val equalsIndex = option.indexOf('=')
                     val argument = when {
@@ -181,6 +189,10 @@ class Launcher : AbstractLanguageLauncher() {
         return unrecognizedOptions
     }
 
+    override fun collectArguments(args: MutableSet<String>) {
+        args.addAll(listOf("--show-version", "--version", "--pure", "--truffle"))
+    }
+
     override fun printHelp(_maxCategory: OptionCategory) {
         println("Usage: montuno [OPTION]... [FILE]|- [PROGRAM ARGS]")
         println()
@@ -189,10 +201,6 @@ class Launcher : AbstractLanguageLauncher() {
         println("\t--version\tprint the version and exit")
         println("\t--pure\tselect the non-Truffle interpreter")
         println("\t--truffle\tselect the Truffle interpreter")
-    }
-
-    override fun collectArguments(args: MutableSet<String>) {
-        args.addAll(listOf("--show-version", "--version", "--pure", "--truffle"))
     }
 }
 

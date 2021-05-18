@@ -65,7 +65,7 @@ fun Glued.gvApp(icit: Icit, r: GluedVal): GluedVal = when (this) {
 fun Glued.app(icit: Icit, r: GluedVal): Glued = when (this) {
     is GLam -> cl.inst(r)
     is GNe -> GNe(head, gspine.with(icit to r.g), spine.with(icit to r.v))
-    else -> TODO("impossible")
+    else -> TODO("impossible $this")
 }
 
 fun Val.quote(lvl: Lvl, metaless: Boolean = false): Term = when (val v = this.force()) {
