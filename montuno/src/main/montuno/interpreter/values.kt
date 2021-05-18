@@ -15,7 +15,10 @@ fun GEnv.skip() = GEnv(it.plus(null))
 fun GEnv.def(x: Glued) = GEnv(it.plus(x))
 
 inline class NameEnv(val it: List<String> = listOf()) {
-    operator fun get(ix: Ix): String = it.getOrNull(ix.it) ?: throw TypeCastException("Names[$ix] out of bounds")
+    operator fun get(ix: Ix): String {
+        println(it)
+        return it.getOrNull(ix.it) ?: throw TypeCastException("Names[$ix] out of bounds")
+    }
     operator fun plus(x: String) = NameEnv(listOf(x) + it)
     fun fresh(x: String): String {
         if (x == "_") return "_"

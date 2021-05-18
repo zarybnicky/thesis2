@@ -48,7 +48,7 @@ inline class NameTable(val it: HashMap<String, MutableList<NameInfo>> = hashMapO
     }
     fun withName(n: String, ni: NameInfo): NameTable {
         val y = HashMap(it)
-        val l = it.getOrPut(n, { mutableListOf() })
+        val l = y.getOrPut(n, { mutableListOf() })
         l.add(ni)
         return NameTable(y)
     }

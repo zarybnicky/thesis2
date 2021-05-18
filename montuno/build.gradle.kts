@@ -30,7 +30,7 @@ plugins {
 }
 
 val compiler: Configuration by configurations.creating
-val graalVersion = "20.2.0"
+val graalVersion = "21.1.0"
 
 dependencies {
     implementation(kotlin("stdlib"))
@@ -44,7 +44,8 @@ dependencies {
     implementation("org.jline:jline-console:3.19.0")
     implementation("org.jline:jline-reader:3.19.0")
     implementation("org.jline:jline-terminal:3.19.0")
-    implementation("org.jline:jline-terminal-jansi:3.19.0")
+    implementation("org.jline:jline-terminal-jna:3.19.0")
+    implementation("net.java.dev.jna:jna:5.5.0")
 
     testImplementation(platform("org.junit:junit-bom:5.7.0"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
@@ -122,28 +123,27 @@ application {
 var rootBuildDir = project.buildDir
 
 val graalArgs = listOf(
+    "-Xss32m",
     "-XX:+UnlockExperimentalVMOptions",
     "-XX:+EnableJVMCI",
     "--module-path=${compiler.asPath}",
     "--upgrade-module-path=${compiler.asPath}",
 //  "-XX:-UseJVMCIClassLoader",
-    "-Dgraalvm.locatorDisabled=true",
-    "-Dtruffle.class.path.append=build/libs/montuno-${project.version}.jar",
+    "-Dtruffle.class.path.append=build/libs/montuno.jar",
     "--add-opens=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.runtime=ALL-UNNAMED",
     "--add-opens=org.graalvm.truffle/com.oracle.truffle.api.source=ALL-UNNAMED",
 
     "-Dgraal.Dump=Truffle",
     "-Dgraal.PrintGraph=Network",
     "-Dgraal.CompilationFailureAction=ExitVM",
-    "-Dgraal.TraceTruffleCompilation=true",
-//  "-Dgraal.TraceTruffleSplitting=true",
-//  "-Dgraal.TruffleTraceSplittingSummary=true",
-    "-Dgraal.TraceTruffleAssumptions=true",
-    "-Dgraal.TraceTruffleTransferToInterpreter=true",
+    "-Dpolyglot.engine.TraceCompilation=true",
+    "-Dpolyglot.engine.TraceSplitting=true",
+    //"-Dpolyglot.engine.TraceSplittingSummary=true",
+    "-Dpolyglot.engine.TraceAssumptions=true"
+    //"-Dpolyglot.engine.TraceTransferToInterpreter=true"
     // limit size of graphs for easier visualization
-    "-Dgraal.TruffleMaximumRecursiveInlining=0",
-//  "-Dgraal.LoopPeeling=false",
-    "-Xss32m"
+    //"-Dpolyglot.engine.InliningRecursionDepth=0",
+    //"-Dgraal.LoopPeeling=false",
 )
 
 tasks.test {
@@ -162,6 +162,16 @@ tasks.register("bench", JavaExec::class) {
     classpath = sourceSets["bench"].runtimeClasspath + sourceSets["bench"].compileClasspath
     main = "org.openjdk.jmh.Main"
     jvmArgs = graalArgs
+}
+
+tasks.replace("run", JavaExec::class.java).run {
+//  enableAssertions = true
+    dependsOn("jar")
+    standardInput = System.`in`
+    standardOutput = System.out
+    classpath = sourceSets["main"].runtimeClasspath
+    jvmArgs = graalArgs
+    main = "montuno.Launcher"
 }
 
 tasks.getByName<Jar>("jar") {

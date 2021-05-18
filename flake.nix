@@ -17,10 +17,10 @@
     };
     compiler = "ghc884";
     hsPkgs = pkgs.haskell.packages.${compiler};
-    graal = pkgs.graalvm11-ee;
+    graal = pkgs.graalvm11-ce;
   in {
     overlay = final: prev: {
-      inherit (prev.callPackage ./dep/graalvm-ee.nix {}) graalvm11-ee;
+      inherit (prev.callPackage ./dep/graalvm-ee.nix {}) graalvm11-ce;
       haskell = prev.haskell // {
         packageOverrides = prev.lib.composeExtensions (prev.haskell.packageOverrides or (_: _: {})) (hself: hsuper: {
           lph = hself.callCabal2nix "lph" lambdapi {};

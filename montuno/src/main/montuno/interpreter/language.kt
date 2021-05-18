@@ -1,9 +1,6 @@
 package montuno.interpreter
 
-import com.oracle.truffle.api.CallTarget
-import com.oracle.truffle.api.CompilerAsserts
-import com.oracle.truffle.api.Truffle
-import com.oracle.truffle.api.TruffleLanguage
+import com.oracle.truffle.api.*
 import com.oracle.truffle.api.frame.VirtualFrame
 import com.oracle.truffle.api.nodes.RootNode
 import montuno.syntax.TopLevel
@@ -21,9 +18,9 @@ import montuno.syntax.parsePreSyntax
 )
 class MontunoPure : TruffleLanguage<MontunoPureContext>() {
     override fun createContext(env: Env): MontunoPureContext = MontunoPureContext(env)
-    override fun initializeContext(context: MontunoPureContext) {}
     override fun isThreadAccessAllowed(thread: Thread, singleThreaded: Boolean) = true
     override fun isObjectOfLanguage(obj: Any): Boolean = false
+    override fun getScope(ctx: MontunoPureContext) = ctx.topScope
     override fun parse(request: ParsingRequest): CallTarget {
         CompilerAsserts.neverPartOfCompilation()
         val root = ProgramRootNode(this, parsePreSyntax(request.source))
@@ -39,10 +36,10 @@ class MontunoPure : TruffleLanguage<MontunoPureContext>() {
 
 class ProgramRootNode(lang: MontunoPure, private val pre: List<TopLevel>) : RootNode(lang) {
     override fun execute(frame: VirtualFrame?): Any {
+        var ret: Any = true
         for (e in pre) {
-            val ret = checkTopLevel(e)
-            if (ret != null) print(ret)
+            checkTopLevel(e).let { if (it != null) ret = it }
         }
-        return true
+        return ret
     }
 }

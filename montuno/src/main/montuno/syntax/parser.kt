@@ -34,7 +34,7 @@ object NIImpl : NameOrIcit() { override fun toString(): String = "NIImpl" }
 object NIExpl : NameOrIcit() { override fun toString(): String = "NIExpl" }
 data class NIName(val n: String) : NameOrIcit()
 
-enum class Pragma { Elaborate, Normalize, Type, NormalType, ParseOnly, Nothing, Reset, Elaborated }
+enum class Pragma { Elaborate, Normalize, Type, NormalType, ParseOnly, Nothing, Reset, WholeProgram, Symbols }
 
 fun ParserRuleContext.range() = Loc.Range(this.start.startIndex, this.stop.stopIndex - this.start.startIndex + 1)
 
@@ -73,7 +73,8 @@ fun toPragma(s: String) = when (s) {
     "ELABORATE" -> Pragma.Elaborate
     "NORMALIZE" -> Pragma.Normalize
     "PARSE" -> Pragma.ParseOnly
-    "ELABORATED" -> Pragma.Elaborated
+    "WHOLE-PROGRAM" -> Pragma.WholeProgram
+    "SYMBOLS" -> Pragma.Symbols
     "RESET" -> Pragma.Reset
     else -> throw UnsupportedOperationException("Unrecognized command $s")
 }

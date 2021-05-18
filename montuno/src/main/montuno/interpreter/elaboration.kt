@@ -388,13 +388,10 @@ fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, GluedVal>): Pair<T
 
 fun LocalContext.inferVar(n: String): Pair<Term, GluedVal> {
     for (ni in nameTable[n].asReversed()) {
-        when {
-            ni is NITop -> return TTop(ni.lvl) to MontunoPure.top.topEntries[ni.lvl.it].type.gv
-            ni is NILocal && !ni.inserted -> {
-                val ix = lvl.it - ni.lvl.it - 1
-                println("${types.size}/${lvl.it} - ${ni.lvl.it} - 1 = $ix from ${types.joinToString(", ")}")
-                return TLocal(Ix(ix)) to types[ni.lvl.it]
-            }
+        return when {
+            ni is NITop -> TTop(ni.lvl) to MontunoPure.top.topScope.entries[ni.lvl.it].type.gv
+            ni is NILocal && !ni.inserted -> TLocal(Ix(lvl.it - ni.lvl.it - 1)) to types[ni.lvl.it]
+            else -> continue
         }
     }
     throw ElabError(null, this, "Variable $n out of scope")
@@ -472,7 +469,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, GluedVal> {
     }
 }
 
-fun checkTopLevel(e: TopLevel): String? {
+fun checkTopLevel(e: TopLevel): Any? {
     MontunoPure.top.metas.add(mutableListOf())
     val ctx = LocalContext(MontunoPure.top.ntbl)
     MontunoPure.top.loc = e.loc
@@ -480,7 +477,7 @@ fun checkTopLevel(e: TopLevel): String? {
         is RTerm -> when (e.cmd) {
             Pragma.ParseOnly -> e.tm.toString()
             Pragma.Reset -> { MontunoPure.top.reset(); null }
-            Pragma.Elaborated -> { MontunoPure.top.printElaborated(); null }
+            Pragma.WholeProgram -> { MontunoPure.top.printElaborated(); null }
             Pragma.Nothing -> ctx.infer(MetaInsertion.No, e.tm!!).first.pretty().toString()
             Pragma.Type -> {
                 val (tm, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
@@ -498,6 +495,7 @@ fun checkTopLevel(e: TopLevel): String? {
                 val (tm, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
                 ctx.gvEval(tm).v.value.quote(Lvl(0), true).pretty().toString()
             }
+            Pragma.Symbols -> MontunoPure.top.topScope.entries.map { it.name }.toTypedArray()
         }
         is RDecl -> {
             var a = ctx.check(e.ty, GVU)

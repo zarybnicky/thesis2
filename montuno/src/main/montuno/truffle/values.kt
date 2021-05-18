@@ -38,6 +38,9 @@ open class Types {
 @ExportLibrary(InteropLibrary::class)
 object VU : TruffleObject {
     override fun toString() = "VU"
+
+    @ExportMessage
+    fun isNull() = true
 }
 
 @CompilerDirectives.ValueType

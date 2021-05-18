@@ -2,14 +2,12 @@ package montuno
 
 import org.graalvm.launcher.AbstractLanguageLauncher
 import org.graalvm.options.OptionCategory
-import org.graalvm.polyglot.Context
-import org.graalvm.polyglot.PolyglotAccess
-import org.graalvm.polyglot.PolyglotException
-import org.graalvm.polyglot.Source
+import org.graalvm.polyglot.*
 import org.jline.reader.Candidate
 import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.UserInterruptException
+import org.jline.reader.impl.DefaultParser
 import org.jline.terminal.TerminalBuilder
 import java.io.IOException
 import java.nio.file.Paths
@@ -59,17 +57,19 @@ class Launcher : AbstractLanguageLauncher() {
             println("Error loading file '$currentFile' (${e.message})")
             exitProcess(-1)
         }
-        val v = ctx.eval(source)
-        println(if (v.canExecute()) v.execute() else v) //TODO: as Int?
+        var v = ctx.eval(source)
+        if (v.canExecute()) v = v.execute()
+        if (!v.isBoolean) println(v)
     }
 
     private fun readEvalPrint(ctx: Context) {
-        Logger.getLogger("org.jline").level = Level.SEVERE
-        // https://github.com/ValV/testline/blob/master/src/main/kotlin/testline/Example.kt
+        Logger.getLogger("org.jline").level = Level.FINEST
+
         val reader = LineReaderBuilder.builder()
-            .terminal(TerminalBuilder.builder().jansi(true).build())
+            .terminal(TerminalBuilder.builder().jna(true).build())
+            .parser(DefaultParser().escapeChars(null).regexVariable(null).regexCommand(null))
             .completer { _, _, candidates ->
-                for (x in ctx.polyglotBindings.getMember(currentLang).memberKeys) candidates.add(Candidate(x))
+                ctx.getBindings(currentLang).memberKeys.forEach { candidates.add(Candidate(it)) }
             }
             .build()
         while (true) {
@@ -82,8 +82,9 @@ class Launcher : AbstractLanguageLauncher() {
                     }
                 }
                 if (source != null) {
-                    val v = ctx.eval(source)
-                    println(if (v.canExecute()) v.execute() else v)
+                    var v = ctx.eval(source)
+                    if (v.canExecute()) v = v.execute()
+                    if (!v.isBoolean) println(v)
                 }
             } catch (e: UserInterruptException) {
             } catch (e: EndOfFileException) {
@@ -106,20 +107,17 @@ class Launcher : AbstractLanguageLauncher() {
             ":type" -> wrapCmd("TYPE")
             ":normalType" -> wrapCmd("NORMAL-TYPE")
             ":parse" -> wrapCmd("PARSE")
-            ":print" -> wrapCmd("ELABORATED")
-            ":list" -> {
-                ctx.polyglotBindings.getMember(currentLang).memberKeys.forEach { println(it) }
-                null
-            }
+            ":print" -> Source.create(currentLang, "{-# WHOLE-FILE #-}")
+            ":list" -> { ctx.getBindings(currentLang).memberKeys.forEach { println(it) }; null }
             ":reload" -> {
-                ctx.eval(currentLang, "{-# RESET #-}").executeVoid()
+                ctx.eval(currentLang, "{-# RESET #-}")
                 Source.newBuilder(currentLang, Paths.get(currentFile!!).toFile()).build()
             }
             ":load" -> {
-                ctx.eval(currentLang, "{-# RESET #-}").executeVoid()
+                ctx.eval(currentLang, "{-# RESET #-}")
                 if (res.size < 2) null
                 else try {
-                    ctx.eval(currentLang, "{-# RESET #-}").executeVoid()
+                    ctx.eval(currentLang, "{-# RESET #-}")
                     currentFile = res[1]
                     Source.newBuilder(currentLang, Paths.get(currentFile!!).toFile()).build()
                 } catch (e: IOException) {

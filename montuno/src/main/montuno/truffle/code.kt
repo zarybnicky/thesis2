@@ -106,11 +106,12 @@ fun toExecutableNode(p: TopLevel, l: MontunoTruffle): Term = when (p) {
         Pragma.Type -> TODO()
         Pragma.NormalType -> TODO()
         Pragma.Reset -> TODO()
-        Pragma.Elaborated -> TODO()
         Pragma.Elaborate -> TODO("Elaborate")
         Pragma.Normalize -> TODO("Normalize")
         Pragma.ParseOnly -> TString(p.tm.toString())
         Pragma.Nothing -> LocalContext(l).toExecutableNode(p.tm!!)
+        Pragma.WholeProgram -> TODO()
+        Pragma.Symbols -> TODO()
     }
 }
 

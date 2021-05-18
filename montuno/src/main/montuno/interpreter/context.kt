@@ -1,30 +1,32 @@
 package montuno.interpreter
 
+
+import com.oracle.truffle.api.CompilerDirectives
 import com.oracle.truffle.api.TruffleLanguage
+import com.oracle.truffle.api.interop.InteropLibrary
+import com.oracle.truffle.api.interop.InvalidArrayIndexException
+import com.oracle.truffle.api.interop.TruffleObject
+import com.oracle.truffle.api.interop.UnsupportedMessageException
+import com.oracle.truffle.api.library.ExportLibrary
+import com.oracle.truffle.api.library.ExportMessage
 import montuno.syntax.Loc
 import montuno.syntax.WithPos
 
 class MontunoPureContext(@Suppress("unused") val env: TruffleLanguage.Env) {
-    var topEntries: MutableList<TopEntry> = mutableListOf()
+    val topScope = TopLevelScope()
     var metas: MutableList<MutableList<MetaEntry>> = mutableListOf()
     var loc: Loc = Loc.Unavailable
     var ntbl = NameTable()
 
     fun reset() {
-        topEntries = mutableListOf()
+        topScope.entries.removeAll { true }
         metas = mutableListOf()
         loc = Loc.Unavailable
         ntbl = NameTable()
     }
 
-    fun printBindings() {
-        for (topEntry in topEntries) {
-            println("${topEntry.name} : ${topEntry.type.tm.pretty()}")
-        }
-    }
-
     fun printElaborated() {
-        for ((i, topMeta) in metas.zip(topEntries).withIndex()) {
+        for ((i, topMeta) in metas.zip(topScope.entries).withIndex()) {
             val (metaBlock, topEntry) = topMeta
             for ((j, meta) in metaBlock.withIndex()) {
                 if (meta !is MetaSolved) throw UnifyError("Unsolved metablock")
@@ -41,10 +43,10 @@ class MontunoPureContext(@Suppress("unused") val env: TruffleLanguage.Env) {
         }
     }
 
-    fun rigidity(lvl: Lvl) = if (topEntries[lvl.it].defn == null) Rigidity.Rigid else Rigidity.Flex
+    fun rigidity(lvl: Lvl) = if (topScope.entries[lvl.it].defn == null) Rigidity.Rigid else Rigidity.Flex
     fun rigidity(meta: Meta) = if (metas[meta.i][meta.j] is MetaUnsolved) Rigidity.Rigid else Rigidity.Flex
 
-    operator fun get(lvl: Lvl) = topEntries[lvl.it]
+    operator fun get(lvl: Lvl) = topScope.entries[lvl.it]
     operator fun get(meta: Meta) = metas[meta.i][meta.j]
 
     fun getMetaGlued(meta: Meta): Glued = when (val m = metas[meta.i][meta.j]) {
@@ -55,7 +57,7 @@ class MontunoPureContext(@Suppress("unused") val env: TruffleLanguage.Env) {
         is MetaSolved -> m.gv.v.value
         else -> vMeta(meta)
     }
-    fun getTopGlued(lvl: Lvl): Glued = when (val top = topEntries[lvl.it].defn) {
+    fun getTopGlued(lvl: Lvl): Glued = when (val top = topScope.entries[lvl.it].defn) {
         null -> gTop(lvl)
         else -> top.gv.g
     }
@@ -70,9 +72,62 @@ class MontunoPureContext(@Suppress("unused") val env: TruffleLanguage.Env) {
         val ctx = LocalContext(MontunoPure.top.ntbl)
         val gva = GluedTerm(a, ctx.gvEval(a))
         val gvt = if (t != null) GluedTerm(t, ctx.gvEval(t)) else null
-        MontunoPure.top.ntbl.addName(n, NITop(l, Lvl(MontunoPure.top.topEntries.size)))
-        MontunoPure.top.topEntries.add(TopEntry(l, n, gvt, gva))
+        MontunoPure.top.ntbl.addName(n, NITop(l, Lvl(MontunoPure.top.topScope.entries.size)))
+        MontunoPure.top.topScope.entries.add(TopEntry(l, n, gvt, gva))
     }
+}
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+class ConstArray(val it: Array<Any>) : TruffleObject {
+    @ExportMessage
+    fun hasArrayElements() = true
+    @ExportMessage
+    fun getArraySize() = it.size
+    @ExportMessage
+    fun isArrayElementReadable(i: Long) = i < it.size
+    @ExportMessage
+    fun isArrayElementModifiable(i: Long) = false
+    @ExportMessage
+    fun isArrayElementInsertable(i: Long) = false
+    @ExportMessage
+    @Throws(InvalidArrayIndexException::class)
+    fun readArrayElement(i: Long): Any =
+        if (i < it.size) it[i.toInt()] else throw InvalidArrayIndexException.create(i)
+    @ExportMessage
+    @Throws(UnsupportedMessageException::class)
+    fun writeArrayElement(i: Long, o: Any): Any = throw UnsupportedMessageException.create()
+}
+
+@ExportLibrary(InteropLibrary::class)
+class TopLevelScope(val entries: MutableList<TopEntry> = mutableListOf()) : TruffleObject {
+    @ExportMessage
+    fun hasMembers() = true
+    @ExportMessage
+    fun getMembers(includeInternal: Boolean): TruffleObject = ConstArray(entries.map { it.name }.toTypedArray())
+    @ExportMessage
+    @Throws(UnsupportedMessageException::class)
+    fun invokeMember(member: String, arguments: Array<Any?>): Any {
+        return when (member) {
+            "leakContext" -> MontunoPure.top.env.asGuestValue(MontunoPure.top)
+            else -> throw UnsupportedMessageException.create()
+        }
+    }
+    @ExportMessage
+    fun isMemberInvocable(member: String) = member == "leakContext"
+    @ExportMessage
+    fun isScope(): Boolean = true
+    @ExportMessage
+    fun hasScopeParent() = false
+    @ExportMessage
+    @Throws(UnsupportedMessageException::class)
+    fun getScopeParent(): Any = UnsupportedMessageException.create()
+    @ExportMessage
+    fun hasLanguage() = true
+    @ExportMessage
+    fun getLanguage(): Class<MontunoPure> = MontunoPure::class.java
+    @ExportMessage
+    fun toDisplayString(allowSideEffects: Boolean) = "MontunoScope"
 }
 
 sealed class MetaEntry : WithPos

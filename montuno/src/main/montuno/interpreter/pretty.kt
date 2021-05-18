@@ -46,7 +46,7 @@ fun Term.pretty(ns: NameEnv = NameEnv(), p: Boolean = false): Doc<Nothing> = whe
                 Icit.Impl -> " {$x}".text()
             }
         }
-        par(p, b + ". ".text() + rest.pretty(ns, false))
+        par(p, b + ". ".text() + rest.pretty(nsLocal, false))
     }
     is TPi -> {
         var x = ns.fresh(n)
@@ -66,6 +66,6 @@ fun Term.pretty(ns: NameEnv = NameEnv(), p: Boolean = false): Doc<Nothing> = whe
             nsLocal += x
             rest = rest.tm
         }
-        par(p, b + " → ".text() + rest.pretty(ns, p))
+        par(p, b + " → ".text() + rest.pretty(nsLocal, p))
     }
 }
