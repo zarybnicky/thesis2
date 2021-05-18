@@ -69,11 +69,11 @@ fun MontunoParser.TopContext.toAst(): TopLevel = when (this) {
 
 fun toPragma(s: String) = when (s) {
     "TYPE" -> Pragma.Type
-    "NORMAL-TYPE" -> Pragma.NormalType
+    "NORMAL_TYPE" -> Pragma.NormalType
     "ELABORATE" -> Pragma.Elaborate
     "NORMALIZE" -> Pragma.Normalize
     "PARSE" -> Pragma.ParseOnly
-    "WHOLE-PROGRAM" -> Pragma.WholeProgram
+    "WHOLE_PROGRAM" -> Pragma.WholeProgram
     "SYMBOLS" -> Pragma.Symbols
     "RESET" -> Pragma.Reset
     else -> throw UnsupportedOperationException("Unrecognized command $s")

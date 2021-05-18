@@ -18,13 +18,14 @@ sealed class Either<out L, out R> {
 inline class Ix(val it: Int) {
     operator fun plus(i: Int) = Ix(it + i)
     operator fun minus(i: Int) = Ix(it - i)
+    fun toLvl(depth: Lvl) = Lvl(depth.it - it - 1)
     override fun toString(): String = "Ix($it)"
 }
 
 inline class Lvl(val it: Int) {
     operator fun plus(i: Int) = Lvl(it + i)
     operator fun minus(i: Int) = Lvl(it - i)
-    fun toIx(x: Lvl) = Ix(it - x.it - 1)
+    fun toIx(depth: Lvl) = Ix(depth.it - it - 1)
     override fun toString(): String = "Lvl($it)"
 }
 
@@ -63,7 +64,7 @@ inline class NameTable(val it: HashMap<String, MutableList<NameInfo>> = hashMapO
 }
 
 inline class Renaming(val it: Array<Pair<Lvl, Lvl>>)
-fun Renaming.apply(x: Lvl): Int = it.find { it.first == x }?.second?.it ?: -1
+fun Renaming.apply(x: Lvl): Lvl? = it.find { it.first == x }?.second
 operator fun Renaming.plus(x: Pair<Lvl, Lvl>) = Renaming(it.plus(x))
 
 inline class LvlSet(val it: BitSet)

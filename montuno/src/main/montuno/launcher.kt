@@ -102,12 +102,13 @@ class Launcher : AbstractLanguageLauncher() {
             null
         } else Source.newBuilder(currentLang, "{-# $cmd ${res[1]} #-}", "<stdin>").build() }
         return when (res[0]) {
+            ":quit" -> exitProcess(0)
             ":elaborate" -> wrapCmd("ELABORATE")
             ":normalize" -> wrapCmd("NORMALIZE")
             ":type" -> wrapCmd("TYPE")
-            ":normalType" -> wrapCmd("NORMAL-TYPE")
+            ":normalType" -> wrapCmd("NORMAL_TYPE")
             ":parse" -> wrapCmd("PARSE")
-            ":print" -> Source.create(currentLang, "{-# WHOLE-FILE #-}")
+            ":print" -> Source.create(currentLang, "{-# WHOLE_PROGRAM #-}")
             ":list" -> { ctx.getBindings(currentLang).memberKeys.forEach { println(it) }; null }
             ":reload" -> {
                 ctx.eval(currentLang, "{-# RESET #-}")

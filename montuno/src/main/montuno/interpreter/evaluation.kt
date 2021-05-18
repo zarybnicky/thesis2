@@ -1,14 +1,14 @@
 package montuno.interpreter
 
 fun Term.evalBox(env: VEnv): Lazy<Val> = when (this) {
-    is TLocal -> env.local(ix)
+    is TLocal -> env.local(ix.toLvl(env.lvl))
     is TTop -> lazyOf(vTop(lvl))
     is TMeta -> lazyOf(vMeta(meta))
     else -> lazy { eval(env) }
 }
 
 fun Term.eval(env: VEnv): Val = when (this) {
-    is TLocal -> env.local(ix).value
+    is TLocal -> env.local(ix.toLvl(env.lvl)).value
     is TTop -> vTop(lvl)
     is TMeta -> MontunoPure.top.getMetaForce(meta)
     is TApp -> l.eval(env).app(icit, r.evalBox(env))
@@ -23,14 +23,14 @@ fun Term.eval(env: VEnv): Val = when (this) {
 }
 
 fun Term.gEvalBox(env: VEnv, genv: GEnv): Glued = when (this) {
-    is TLocal -> genv.local(ix)
+    is TLocal -> genv.local(ix.toLvl(env.lvl))
     is TTop -> MontunoPure.top.getTopGlued(lvl)
     is TMeta -> MontunoPure.top.getMetaGlued(meta)
     else -> gEval(env, genv) // lazy
 }
 
 fun Term.gEval(env: VEnv, genv: GEnv): Glued = when (this) {
-    is TLocal -> genv.local(ix)
+    is TLocal -> genv.local(ix.toLvl(env.lvl))
     is TTop -> MontunoPure.top.getTopGlued(lvl)
     is TMeta -> MontunoPure.top.getMetaGlued(meta)
     is TApp -> l.gEval(env, genv).app(icit, GluedVal(lazy { r.eval(env) }, r.gEvalBox(env, genv)))
@@ -78,7 +78,7 @@ fun Val.quote(lvl: Lvl, metaless: Boolean = false): Term = when (val v = this.fo
                     else -> TMeta(v.head.meta)
                 }
             }
-            is HLocal -> TLocal(Ix(lvl.it - v.head.ix.it - 1))
+            is HLocal -> TLocal(v.head.lvl.toIx(lvl))
             is HTop -> TTop(v.head.lvl)
         }
         for ((icit, t) in v.spine.it.reversedArray()) {
@@ -86,8 +86,8 @@ fun Val.quote(lvl: Lvl, metaless: Boolean = false): Term = when (val v = this.fo
         }
         x
     }
-    is VLam -> TLam(v.n, v.icit, v.cl.inst(lazyOf(vLocal(Ix(lvl.it)))).quote(lvl + 1))
-    is VPi -> TPi(v.n, v.icit, v.ty.value.quote(lvl), v.cl.inst(lazyOf(vLocal(Ix(lvl.it)))).quote(lvl + 1))
+    is VLam -> TLam(v.n, v.icit, v.cl.inst(lazyOf(vLocal(lvl))).quote(lvl + 1))
+    is VPi -> TPi(v.n, v.icit, v.ty.value.quote(lvl), v.cl.inst(lazyOf(vLocal(lvl))).quote(lvl + 1))
     is VFun -> TFun(v.a.value.quote(lvl), v.b.value.quote(lvl))
     is VU -> TU
     is VNat -> TNat(v.n)
@@ -97,7 +97,7 @@ fun Glued.quote(lvl: Lvl): Term = when (this) {
     is GNe -> {
         var x = when (head) {
             is HMeta -> TMeta(head.meta)
-            is HLocal -> TLocal(Ix(lvl.it - head.ix.it - 1))
+            is HLocal -> TLocal(head.lvl.toIx(lvl))
             is HTop -> TTop(head.lvl)
         }
         for ((icit, t) in gspine.it.reversedArray()) {
@@ -105,8 +105,8 @@ fun Glued.quote(lvl: Lvl): Term = when (this) {
         }
         x
     }
-    is GLam -> TLam(n, icit, cl.inst(gvLocal(Ix(lvl.it))).quote(lvl + 1))
-    is GPi -> TPi(n, icit, ty.g.quote(lvl), cl.inst(gvLocal(Ix(lvl.it))).quote(lvl + 1))
+    is GLam -> TLam(n, icit, cl.inst(gvLocal(lvl)).quote(lvl + 1))
+    is GPi -> TPi(n, icit, ty.g.quote(lvl), cl.inst(gvLocal(lvl)).quote(lvl + 1))
     is GFun -> TFun(a.g.quote(lvl), b.g.quote(lvl))
     is GU -> TU
     is GNat -> TNat(n)

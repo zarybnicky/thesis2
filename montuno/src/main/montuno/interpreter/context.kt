@@ -136,33 +136,32 @@ data class MetaSolved(override val loc: Loc, val gv: GluedVal, val tm: Term, val
 
 data class LocalContext(
     val nameTable: NameTable,
-    val lvl: Lvl = Lvl(0),
     val gVals: GEnv = emptyGEnv,
     val vVals: VEnv = emptyVEnv,
     val types: Array<GluedVal> = arrayOf(),
     val names: Array<String> = arrayOf(),
-    val boundIndices: IntArray = IntArray(0)
-)
+    val boundLevels: IntArray = IntArray(0)
+) {
+    val lvl: Lvl get() = Lvl(names.size)
+}
 
 fun LocalContext.localBind(loc: Loc, n: String, inserted: Boolean, gv: GluedVal): LocalContext = LocalContext(
     nameTable.withName(n, NILocal(loc, lvl, inserted)),
-    lvl + 1,
     gVals.skip(),
     vVals.skip(),
     types + gv,
     names + n,
-    boundIndices.plus(lvl.it)
+    boundLevels.plus(lvl.it)
 )
 fun LocalContext.localBindSrc(loc: Loc, n: String, gv: GluedVal) = localBind(loc, n, false, gv)
 fun LocalContext.localBindIns(loc: Loc, n: String, gv: GluedVal) = localBind(loc, n, true, gv)
 fun LocalContext.localDefine(loc: Loc, n: String, gv: GluedVal, gvty: GluedVal) = LocalContext(
     nameTable.withName(n, NILocal(loc, lvl, false)),
-    lvl + 1,
     gVals.def(gv.g),
     vVals.def(gv.v),
     types + gvty,
     names + n,
-    boundIndices
+    boundLevels
 )
 
 sealed class NameInfo : WithPos

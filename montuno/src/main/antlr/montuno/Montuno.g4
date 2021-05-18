@@ -7,7 +7,7 @@ file : END* decls+=top? (END+ decls+=top)* END* EOF ;
 top
     : id=IDENT ':' type=term                   #Decl
     | id=binder (':' type=term)? '=' defn=term #Defn
-    | '{-#' cmd=IDENT target=term? '#-}'       #Pragma
+    | '{-#' cmd=IDENT (target=term)? '#-}'   #Pragma
     | term                                     #Expr
     ;
 term
@@ -42,10 +42,8 @@ binder
     : IDENT #Bind
     | '_' #Irrel
     ;
-
-IDENT : [a-zA-Z] [a-zA-Z0-9']*;
+IDENT : [a-zA-Z] [a-zA-Z0-9'_]*;
 NAT : [0-9]+;
-COMMAND : [A-Z]+;
 
 END : (SEMICOLON | NEWLINE) NEWLINE*;
 fragment SEMICOLON : ';';

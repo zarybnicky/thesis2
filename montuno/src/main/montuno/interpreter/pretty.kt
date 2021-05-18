@@ -25,26 +25,26 @@ fun Term.pretty(ns: NameEnv = NameEnv(), p: Boolean = false): Doc<Nothing> = whe
         par(p, r)
     }
     is TApp -> par(p, l.pretty(ns, true) + " ".text() + when (icit) {
-        Icit.Expl -> "{".text() + r.pretty(ns, false) + "}".text()
-        Icit.Impl -> r.pretty(ns, true)
+        Icit.Impl -> "{".text() + r.pretty(ns, false) + "}".text()
+        Icit.Expl -> r.pretty(ns, true)
     })
     is TFun -> par(p, l.pretty(ns, l !is TApp) + " → ".text() + r.pretty(ns, false))
     is TLam -> {
         var x = ns.fresh(n)
         var nsLocal = ns + x
-        var rest = tm
         var b = when (icit) {
             Icit.Expl -> "λ $x".text()
             Icit.Impl -> "λ {$x}".text()
         }
+        var rest = tm
         while (rest is TLam) {
             x = nsLocal.fresh(rest.n)
             nsLocal += x
-            rest = rest.tm
-            b += when (icit) {
+            b += when (rest.icit) {
                 Icit.Expl -> " $x".text()
                 Icit.Impl -> " {$x}".text()
             }
+            rest = rest.tm
         }
         par(p, b + ". ".text() + rest.pretty(nsLocal, false))
     }

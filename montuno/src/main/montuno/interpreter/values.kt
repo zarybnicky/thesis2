@@ -5,20 +5,19 @@ inline class VSpine(val it: Array<Pair<Icit, Lazy<Val>>>) // lazy ref to Val
 fun GSpine.with(x: Pair<Icit, Glued>) = GSpine(it.plus(x))
 fun VSpine.with(x: Pair<Icit, Lazy<Val>>) = VSpine(it.plus(x))
 
-inline class VEnv(val it: Array<Lazy<Val>?>)
-fun VEnv.local(ix: Ix): Lazy<Val> = it[ix.it] ?: lazyOf(vLocal(ix))
-fun VEnv.skip() = VEnv(it.plus(null))
-fun VEnv.def(x: Lazy<Val>) = VEnv(it.plus(x))
-inline class GEnv(val it: Array<Glued?>) // LAZY
-fun GEnv.local(ix: Ix): Glued = it[ix.it] ?: gLocal(ix)
-fun GEnv.skip() = GEnv(it.plus(null))
-fun GEnv.def(x: Glued) = GEnv(it.plus(x))
+inline class VEnv(val it: List<Lazy<Val>?>)
+fun VEnv.local(ix: Lvl): Lazy<Val> = it[ix.it] ?: lazyOf(vLocal(ix))
+fun VEnv.skip() = VEnv(listOf(null) + it)
+fun VEnv.def(x: Lazy<Val>) = VEnv(listOf(x) + it)
+val VEnv.lvl: Lvl get() = Lvl(it.size)
+inline class GEnv(val it: List<Glued?>) // LAZY
+fun GEnv.local(ix: Lvl): Glued = it[ix.it] ?: gLocal(ix)
+fun GEnv.skip() = GEnv(listOf(null) + it)
+fun GEnv.def(x: Glued) = GEnv(listOf(x) + it)
+val GEnv.lvl: Lvl get() = Lvl(it.size)
 
 inline class NameEnv(val it: List<String> = listOf()) {
-    operator fun get(ix: Ix): String {
-        println(it)
-        return it.getOrNull(ix.it) ?: throw TypeCastException("Names[$ix] out of bounds")
-    }
+    operator fun get(ix: Ix): String = it.getOrNull(ix.it) ?: throw TypeCastException("Names[$ix] out of bounds")
     operator fun plus(x: String) = NameEnv(listOf(x) + it)
     fun fresh(x: String): String {
         if (x == "_") return "_"
@@ -43,14 +42,14 @@ data class GluedVal(val v: Lazy<Val>, val g: Glued) {
     override fun toString(): String = "$g" //TODO: ???
 }
 
-val emptyGEnv = GEnv(arrayOf())
-val emptyVEnv = VEnv(arrayOf())
+val emptyGEnv = GEnv(listOf())
+val emptyVEnv = VEnv(listOf())
 val emptyGSpine = GSpine(arrayOf())
 val emptyVSpine = VSpine(arrayOf())
 
 sealed class Head
 data class HMeta(val meta: Meta) : Head() { override fun toString(): String = "HMeta(${meta.i}, ${meta.j})" }
-data class HLocal(val ix: Ix) : Head() { override fun toString(): String = "HLocal(ix=${ix.it})" }
+data class HLocal(val lvl: Lvl) : Head() { override fun toString(): String = "HLocal(lvl=${lvl.it})" }
 data class HTop(val lvl: Lvl) : Head() { override fun toString(): String = "HTop(lvl=${lvl.it})" }
 
 sealed class Val
@@ -70,7 +69,7 @@ data class GPi(val n: String, val icit: Icit, val ty: GluedVal, val cl: GCl) : G
 data class GFun(val a: GluedVal, val b: GluedVal) : Glued()
 data class GNe(val head: Head, val gspine: GSpine, val spine: VSpine) : Glued() {
     override fun toString(): String = when (head) {
-        is HLocal -> "GNeLocal(ix=${head.ix.it}, gspine=[${gspine.it.joinToString(", ")}])"
+        is HLocal -> "GNeLocal(ix=${head.lvl.it}, gspine=[${gspine.it.joinToString(", ")}])"
         is HMeta -> "GNeMeta(meta=${head.meta.i}.${head.meta.j}, gspine=[${gspine.it.joinToString(", ")}])"
         is HTop -> "GNeTop(lvl=${head.lvl.it}, gspine=[${gspine.it.joinToString(", ")}])"
     }
@@ -78,9 +77,9 @@ data class GNe(val head: Head, val gspine: GSpine, val spine: VSpine) : Glued() 
 data class GNat(val n: Int) : Glued()
 
 val GVU = GluedVal(lazyOf(VU), GU)
-fun gLocal(ix: Ix) = GNe(HLocal(ix), emptyGSpine, emptyVSpine)
-fun vLocal(ix: Ix) = VNe(HLocal(ix), emptyVSpine)
-fun gvLocal(ix: Ix) = GluedVal(lazyOf(vLocal(ix)), gLocal(ix))
+fun gLocal(ix: Lvl) = GNe(HLocal(ix), emptyGSpine, emptyVSpine)
+fun vLocal(ix: Lvl) = VNe(HLocal(ix), emptyVSpine)
+fun gvLocal(ix: Lvl) = GluedVal(lazyOf(vLocal(ix)), gLocal(ix))
 fun gTop(lvl: Lvl) = GNe(HTop(lvl), emptyGSpine, emptyVSpine)
 fun vTop(lvl: Lvl) = VNe(HTop(lvl), emptyVSpine)
 fun gMeta(meta: Meta) = GNe(HMeta(meta), emptyGSpine, emptyVSpine)
