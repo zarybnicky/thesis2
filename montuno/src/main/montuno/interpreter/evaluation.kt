@@ -1,5 +1,8 @@
 package montuno.interpreter
 
+import montuno.*
+import montuno.common.MetaSolved
+
 fun Term.evalBox(env: VEnv): Lazy<Val> = when (this) {
     is TLocal -> env.local(ix.toLvl(env.lvl))
     is TTop -> lazyOf(vTop(lvl))
@@ -16,7 +19,7 @@ fun Term.eval(env: VEnv): Val = when (this) {
     is TPi -> VPi(n, icit, arg.evalBox(env), VCl(env, tm))
     is TFun -> VFun(l.evalBox(env), r.evalBox(env))
     is TLet -> tm.eval(env.def(lazy { v.eval(env) }))
-    is TU -> VU
+    is TU -> VUnit
     is TNat -> VNat(n)
     is TIrrelevant -> VIrrelevant
     is TForeign -> TODO("VForeign not implemented")
@@ -38,7 +41,7 @@ fun Term.gEval(env: VEnv, genv: GEnv): Glued = when (this) {
     is TPi -> GPi(n, icit, GluedVal(lazy { arg.eval(env) }, arg.gEvalBox(env, genv)), GCl(genv, env, tm))
     is TFun -> GFun(GluedVal(lazy { l.eval(env) }, l.gEvalBox(env, genv)), GluedVal(lazy { r.eval(env) }, r.gEvalBox(env, genv)))
     is TLet -> tm.gEval(env.def(lazy { v.eval(env) }), genv.def(v.gEvalBox(env, genv)))
-    is TU -> GU
+    is TU -> GUnit
     is TNat -> GNat(n)
     is TIrrelevant -> GIrrelevant
     is TForeign -> TODO("GForeign not implemented")
@@ -74,7 +77,7 @@ fun Val.quote(lvl: Lvl, metaless: Boolean = false): Term = when (val v = this.fo
             is HMeta -> {
                 val meta = if (metaless) MontunoPure.top[v.head.meta] else null
                 when {
-                    metaless && meta is MetaSolved && meta.unfoldable -> meta.gv.v.value.appSpine(v.spine).quote(lvl)
+                    metaless && meta is MetaSolved && meta.unfoldable -> meta.v.v.value.appSpine(v.spine).quote(lvl)
                     else -> TMeta(v.head.meta)
                 }
             }
@@ -89,7 +92,7 @@ fun Val.quote(lvl: Lvl, metaless: Boolean = false): Term = when (val v = this.fo
     is VLam -> TLam(v.n, v.icit, v.cl.inst(lazyOf(vLocal(lvl))).quote(lvl + 1))
     is VPi -> TPi(v.n, v.icit, v.ty.value.quote(lvl), v.cl.inst(lazyOf(vLocal(lvl))).quote(lvl + 1))
     is VFun -> TFun(v.a.value.quote(lvl), v.b.value.quote(lvl))
-    is VU -> TU
+    is VUnit -> TU
     is VNat -> TNat(v.n)
     is VIrrelevant -> TIrrelevant
 }
@@ -108,7 +111,7 @@ fun Glued.quote(lvl: Lvl): Term = when (this) {
     is GLam -> TLam(n, icit, cl.inst(gvLocal(lvl)).quote(lvl + 1))
     is GPi -> TPi(n, icit, ty.g.quote(lvl), cl.inst(gvLocal(lvl)).quote(lvl + 1))
     is GFun -> TFun(a.g.quote(lvl), b.g.quote(lvl))
-    is GU -> TU
+    is GUnit -> TU
     is GNat -> TNat(n)
     is GIrrelevant -> TIrrelevant
 }
@@ -129,7 +132,7 @@ fun Val.force(): Val = when {
     this is VNe && head is HMeta -> {
         val m = MontunoPure.top[head.meta]
         when {
-            m is MetaSolved && m.unfoldable -> m.gv.v.value.appSpine(spine).force()
+            m is MetaSolved && m.unfoldable -> m.v.v.value.appSpine(spine).force()
             else -> this
         }
     }
@@ -144,7 +147,7 @@ fun Glued.appSpine(gsp: GSpine, vsp: VSpine): Glued {
 }
 fun Glued.force(): Glued = when {
     this is GNe && head is HMeta -> when (val m = MontunoPure.top[head.meta]) {
-        is MetaSolved -> m.gv.g.appSpine(gspine, spine).force()
+        is MetaSolved -> m.v.g.appSpine(gspine, spine).force()
         else -> this
     }
     else -> this

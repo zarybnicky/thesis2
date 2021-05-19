@@ -1,5 +1,7 @@
 package montuno.interpreter
 
+import montuno.*
+import montuno.common.*
 import montuno.syntax.*
 import kotlin.Throws
 
@@ -13,12 +15,12 @@ fun contract(lvlRen: Pair<Lvl, Renaming>, v: Val): Pair<Pair<Lvl, Renaming>, Val
         .map { it.first to it.second.value }
         .map { (_, vSp) -> if (vSp is VNe && vSp.head is HLocal) vSp.head.lvl.it else -1 }.toTypedArray()
     if (renOverlap contentEquals spineLocal) {
-        return (lvl - renOverlap.size to Renaming(ren.it.copyOfRange(0, mid))) to VNe(v.head, emptyVSpine)
+        return (lvl - renOverlap.size to Renaming(ren.it.copyOfRange(0, mid))) to VNe(v.head, VSpine())
     }
     return (lvl to ren) to v
 }
 
-fun Term.lams(lvl: Lvl, names: Array<String>, ren: Renaming): Term {
+fun Term.lams(lvl: Lvl, names: List<String>, ren: Renaming): Term {
     var t = this
     for ((x, _) in ren.it) {
         t = TLam(names[x.toIx(lvl).it], Icit.Expl, t)
@@ -29,12 +31,12 @@ fun Term.lams(lvl: Lvl, names: Array<String>, ren: Renaming): Term {
 data class ErrRef(var err: FlexRigidError? = null)
 data class ScopeCheckState(val occurs: Meta, val errRef: ErrRef?, val shift: Int)
 @Throws(FlexRigidError::class)
-fun Val.quoteSolution(topLvl: Lvl, names: Array<String>, occurs: Meta, renL: Pair<Lvl, Renaming>, errRef: ErrRef?): Term {
+fun Val.quoteSolution(topLvl: Lvl, names: List<String>, occurs: Meta, renL: Pair<Lvl, Renaming>, errRef: ErrRef?): Term {
     val (renl, ren) = renL
     return scopeCheck(ScopeCheckState(occurs, errRef, topLvl.it - renl.it), topLvl, ren).lams(topLvl, names, ren)
 }
 fun Val.scopeCheck(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when (val v = force()) {
-    VU -> TU
+    VUnit -> TU
     VIrrelevant -> TIrrelevant
     is VNat -> TNat(v.n)
     is VFun -> TFun(v.a.value.scopeCheck(state, lvl, ren), v.b.value.scopeCheck(state, lvl, ren))
@@ -75,7 +77,7 @@ fun Val.scopeCheck(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when
 const val unfoldLimit = 2
 
 @Throws(FlexRigidError::class)
-fun LocalContext.unifySp(lvl: Lvl, unfold: Int, names: Array<String>, r: Rigidity, a: VSpine, b: VSpine) {
+fun LocalContext.unifySp(lvl: Lvl, unfold: Int, names: List<String>, r: Rigidity, a: VSpine, b: VSpine) {
     if (a.it.size != b.it.size) throw FlexRigidError(r, "spine length mismatch")
     for ((aa, bb) in a.it.zip(b.it)) {
         if (aa.first != bb.first) throw FlexRigidError(r, "icity mismatch")
@@ -88,13 +90,13 @@ fun LocalContext.unify(a: Val, b: Val) {
 }
 
 @Throws(FlexRigidError::class)
-fun LocalContext.unify(lvl: Lvl, unfold: Int, names: Array<String>, r: Rigidity, a: Val, b: Val) {
+fun LocalContext.unify(lvl: Lvl, unfold: Int, names: List<String>, r: Rigidity, a: Val, b: Val) {
     val v = a.force()
     val w = b.force()
     val local = lazyOf(vLocal(lvl))
     when {
         v is VIrrelevant || w is VIrrelevant -> {}
-        v is VU && w is VU -> {}
+        v is VUnit && w is VUnit -> {}
         v is VFun && w is VFun -> {
             unify(lvl, unfold, names, r, v.a.value, w.a.value)
             unify(lvl, unfold, names, r, v.b.value, w.b.value)
@@ -171,7 +173,7 @@ fun GSpine.check(): Pair<Lvl, Renaming> {
     return Lvl(it.size) to Renaming(x.toTypedArray())
 }
 
-fun solve(lvl: Lvl, names: Array<String>, occurs: Meta, vsp: VSpine, v: Val) {
+fun solve(lvl: Lvl, names: List<String>, occurs: Meta, vsp: VSpine, v: Val) {
     val (lvlRen, vNew) = contract(vsp.check(), v)
     MontunoPure.top[occurs] = vNew.quoteSolution(lvl, names, occurs, lvlRen, null)
 }
@@ -205,7 +207,7 @@ fun GSpine.strip(topLvl: Lvl, lvl: Lvl): Boolean {
 fun Glued.scopeCheck(state: GluedSolutionState, lvl: Lvl, ren: Renaming) {
     val local = gvLocal(lvl)
     when (val g = force()) {
-        is GU -> {}
+        is GUnit -> {}
         is GIrrelevant -> {}
         is GFun -> { g.a.g.scopeCheck(state, lvl, ren); g.b.g.scopeCheck(state, lvl, ren) }
         is GPi -> { g.ty.g.scopeCheck(state, lvl, ren); g.cl.inst(local).scopeCheck(state, lvl + 1, ren + (lvl to lvl - state.shift)) }
@@ -235,12 +237,12 @@ fun LocalContext.gvUnify(a: GluedVal, b: GluedVal) {
     }
 }
 
-fun LocalContext.gvUnify(lvl: Lvl, names: Array<String>, a: GluedVal, b: GluedVal) {
+fun LocalContext.gvUnify(lvl: Lvl, names: List<String>, a: GluedVal, b: GluedVal) {
     val v = a.g.force()
     val w = b.g.force()
     val local = gvLocal(lvl)
     when {
-        v is GU && w is GU -> {}
+        v is GUnit && w is GUnit -> {}
 
         v is GNe && w is GNe && v.head is HMeta && w.head is HMeta -> when {
             v.head.meta < w.head.meta -> solve(lvl, names, w.head.meta, w.gspine, GluedVal(a.v, v))
@@ -282,7 +284,7 @@ fun LocalContext.gvUnify(lvl: Lvl, names: Array<String>, a: GluedVal, b: GluedVa
     }
 }
 
-fun LocalContext.gvUnifySp(lvl: Lvl, names: Array<String>, ga: GSpine, gb: GSpine, va: VSpine, vb: VSpine) {
+fun LocalContext.gvUnifySp(lvl: Lvl, names: List<String>, ga: GSpine, gb: GSpine, va: VSpine, vb: VSpine) {
     if (setOf(ga.it.size, gb.it.size, va.it.size, vb.it.size).size != 1) throw UnifyError("spines differ")
     for (i in ga.it.indices) {
         if (setOf(ga.it[i].first, gb.it[i].first, va.it[i].first, vb.it[i].first).size != 1) throw UnifyError("spines differ")
@@ -290,7 +292,7 @@ fun LocalContext.gvUnifySp(lvl: Lvl, names: Array<String>, ga: GSpine, gb: GSpin
     }
 }
 
-fun LocalContext.solve(lvl: Lvl, names: Array<String>, occurs: Meta, gsp: GSpine, v: GluedVal) {
+fun LocalContext.solve(lvl: Lvl, names: List<String>, occurs: Meta, gsp: GSpine, v: GluedVal) {
     val (renC, vC) = contract(gsp.check(), v.v.value)
     val errRef = ErrRef()
     val rhs = vC.quoteSolution(lvl, names, occurs, renC, errRef)
@@ -300,12 +302,6 @@ fun LocalContext.solve(lvl: Lvl, names: Array<String>, occurs: Meta, gsp: GSpine
         err.rigidity == Rigidity.Rigid -> throw err
         else -> if (!v.g.checkSolution(occurs, this.lvl, renC)) MontunoPure.top[occurs] = rhs
     }
-}
-
-sealed class MetaInsertion {
-    data class UntilName(val n: String) : MetaInsertion()
-    object Yes : MetaInsertion()
-    object No : MetaInsertion()
 }
 
 fun LocalContext.gvEval(t: Term): GluedVal = t.gvEval(vVals, gVals)
@@ -387,7 +383,7 @@ fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, GluedVal>): Pair<T
 fun LocalContext.inferVar(n: String): Pair<Term, GluedVal> {
     for (ni in nameTable[n].asReversed()) {
         return when {
-            ni is NITop -> TTop(ni.lvl) to MontunoPure.top.topScope.entries[ni.lvl.it].type.gv
+            ni is NITop -> TTop(ni.lvl) to MontunoPure.top.topScope.entries[ni.lvl.it].type.second
             ni is NILocal && !ni.inserted -> TLocal(ni.lvl.toIx(lvl)) to types[ni.lvl.it]
             else -> continue
         }
@@ -399,7 +395,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, GluedVal> {
     MontunoPure.top.loc = r.loc
     return when (r) {
         is RU -> TU to GVU
-        is RNat -> TNat(r.n) to inferVar("Nat").first.gvEval(emptyVEnv, emptyGEnv)
+        is RNat -> TNat(r.n) to inferVar("Nat").first.gvEval(VEnv(), GEnv())
         is RVar -> insertMetas(mi, inferVar(r.n))
         is RStopMeta -> infer(MetaInsertion.No, r.body)
         is RForeign -> {
@@ -425,7 +421,6 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, GluedVal> {
             val (u, gvb) = localDefine(r.loc, r.n, gvt, gva).infer(mi, r.body)
             TLet(r.n, a, t, u) to gvb
         }
-//  -- TODO: do the case where a meta is inferred for "t"
         is RApp -> {
             val ins = when (r.ni) {
                 is NIName -> MetaInsertion.UntilName(r.ni.n)
@@ -471,34 +466,35 @@ fun checkTopLevel(e: TopLevel): Any? {
     MontunoPure.top.metas.add(mutableListOf())
     val ctx = LocalContext(MontunoPure.top.ntbl)
     MontunoPure.top.loc = e.loc
+    val ntbl = MontunoPure.top.ntbl
     return when (e) {
         is RTerm -> when (e.cmd) {
             Pragma.ParseOnly -> e.tm.toString()
             Pragma.Reset -> { MontunoPure.top.reset(); null }
             Pragma.Symbols -> MontunoPure.top.topScope.entries.map { it.name }.toTypedArray()
             Pragma.WholeProgram -> { MontunoPure.top.printElaborated(); null }
-            Pragma.Nothing -> ctx.infer(MetaInsertion.No, e.tm!!).first.pretty().toString()
+            Pragma.Nothing -> ctx.infer(MetaInsertion.No, e.tm!!).first.pretty(NameEnv(ntbl)).toString()
             Pragma.Type -> {
                 val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
-                ty.g.force().quote(Lvl(0)).pretty().toString()
+                ty.g.force().quote(Lvl(0)).pretty(NameEnv(ntbl)).toString()
             }
             Pragma.NormalType -> {
                 val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
-                ty.v.value.force().quote(Lvl(0), true).pretty().toString()
+                ty.v.value.force().quote(Lvl(0), true).pretty(NameEnv(ntbl)).toString()
             }
             Pragma.Elaborate -> {
                 val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)
-                ctx.gvEval(tm).g.force().quote((Lvl(0))).pretty().toString()
+                ctx.gvEval(tm).g.force().quote((Lvl(0))).pretty(NameEnv(ntbl)).toString()
             }
             Pragma.Normalize -> {
                 val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)
-                ctx.gvEval(tm).v.value.force().quote(Lvl(0), true).pretty().toString()
+                ctx.gvEval(tm).v.value.force().quote(Lvl(0), true).pretty(NameEnv(ntbl)).toString()
             }
         }
         is RDecl -> {
             var a = ctx.check(e.ty, GVU)
             ctx.simplifyMetaBlock()
-            a = a.inline(Lvl(0), emptyVEnv)
+            a = a.inline(Lvl(0), VEnv())
             MontunoPure.top.addTopLevel(e.n, e.loc, null, a)
             return null
         }
@@ -512,8 +508,8 @@ fun checkTopLevel(e: TopLevel): Any? {
             }
             var t = ctx.check(e.tm, ctx.gvEval(a))
             ctx.simplifyMetaBlock()
-            a = a.inline(Lvl(0), emptyVEnv)
-            t = t.inline(Lvl(0), emptyVEnv)
+            a = a.inline(Lvl(0), VEnv())
+            t = t.inline(Lvl(0), VEnv())
             MontunoPure.top.addTopLevel(e.n, e.loc, t, a)
             return null
         }

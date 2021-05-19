@@ -1,11 +1,13 @@
 package montuno.interpreter
 
 import pretty.*
+import montuno.*
+import montuno.common.NameEnv
 
 fun <A> par(c: Boolean, x: Doc<A>): Doc<A> =
     if (c) "(".text() + x + ")".text() else x
 
-fun Term.pretty(ns: NameEnv = NameEnv(), p: Boolean = false): Doc<Nothing> = when (this) {
+fun Term.pretty(ns: NameEnv, p: Boolean = false): Doc<Nothing> = when (this) {
     is TMeta -> "?${meta.i}.${meta.j}".text()
     is TTop -> MontunoPure.top[lvl].name.text()
     is TLocal -> ns[ix].text()

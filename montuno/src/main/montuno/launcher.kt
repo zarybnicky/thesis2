@@ -90,7 +90,7 @@ class Launcher : AbstractLanguageLauncher() {
                 if (source != null) {
                     var v = ctx.eval(source)
                     if (v.canExecute()) v = v.execute()
-                    if (!v.isBoolean) println(v)
+                    if (!v.isNull) println(v)
                 }
             } catch (e: UserInterruptException) {
             } catch (e: EndOfFileException) {
@@ -140,7 +140,7 @@ class Launcher : AbstractLanguageLauncher() {
                     println("Invalid language")
                     null
                 } else {
-                    ctx.eval(currentLang, "{-# RESET #-}").executeVoid()
+                    ctx.eval(currentLang, "{-# RESET #-}")
                     currentLang = res[1]
                     if (currentFile != null) Source.newBuilder(currentLang, Paths.get(currentFile!!).toFile()).build()
                     else null

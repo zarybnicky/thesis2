@@ -2,12 +2,12 @@ package montuno.syntax
 
 import com.oracle.truffle.api.source.Source
 import com.oracle.truffle.api.source.SourceSection
-import montuno.*
-import montuno.interpreter.Icit
+import montuno.Icit
+import montuno.MontunoLexer
+import montuno.MontunoParser
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
-import org.antlr.v4.runtime.tree.TerminalNode
 
 interface WithPos {
     val loc: Loc

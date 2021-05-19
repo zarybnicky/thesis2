@@ -17,7 +17,7 @@ import montuno.syntax.parsePreSyntax
     contextPolicy = TruffleLanguage.ContextPolicy.SHARED,
 )
 class MontunoPure : TruffleLanguage<MontunoPureContext>() {
-    override fun createContext(env: Env): MontunoPureContext = MontunoPureContext(env)
+    override fun createContext(env: Env): MontunoPureContext = MontunoPureContext(this, env)
     override fun isThreadAccessAllowed(thread: Thread, singleThreaded: Boolean) = true
     override fun isObjectOfLanguage(obj: Any): Boolean = false
     override fun getScope(ctx: MontunoPureContext) = ctx.topScope

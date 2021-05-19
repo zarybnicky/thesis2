@@ -1,10 +1,14 @@
 package montuno.interpreter
 
+import montuno.*
+import montuno.common.MetaSolved
+import montuno.common.MetaUnsolved
+
 fun Term.inlineSp(lvl: Lvl, vs: VEnv): Either<Val, Term> = when(this) {
     is TMeta -> {
         val it = MontunoPure.top[meta]
         when {
-            it is MetaSolved && it.unfoldable -> Either.Left(it.tm.eval(emptyVEnv))
+            it is MetaSolved && it.unfoldable -> Either.Left(it.tm.eval(VEnv()))
             else -> Either.Right(this)
         }
     }
@@ -21,7 +25,7 @@ fun Term.inline(lvl: Lvl, vs: VEnv) : Term = when (this) {
     is TMeta -> {
         val it = MontunoPure.top[meta]
         when {
-            it is MetaSolved && it.unfoldable -> it.tm.eval(emptyVEnv).quote(lvl)
+            it is MetaSolved && it.unfoldable -> it.tm.eval(VEnv()).quote(lvl)
             else -> this
         }
     }
@@ -60,8 +64,8 @@ fun LocalContext.simplifyMetaBlock() {
     for ((ix, meta) in block.withIndex()) when (meta) {
         is MetaUnsolved -> throw ElabError(meta.loc, this, "Unsolved meta ${Meta(blockIx, ix)}")
         is MetaSolved -> {
-            val t = meta.tm.inline(Lvl(0), emptyVEnv)
-            val s = MetaSolved(meta.loc, t.gvEval(emptyVEnv, emptyGEnv), t)
+            val t = meta.tm.inline(Lvl(0), VEnv())
+            val s = MetaSolved(meta.loc, t.gvEval(VEnv(), GEnv()), t, t.isUnfoldable())
             block[ix] = s
             markOccurs(s.tm)
         }
@@ -69,7 +73,7 @@ fun LocalContext.simplifyMetaBlock() {
     for ((ix, meta) in block.withIndex()) when (meta) {
         is MetaUnsolved -> throw ElabError(meta.loc, this, "Unsolved meta ${Meta(blockIx, ix)}")
         is MetaSolved -> if (!meta.unfoldable && occurs[ix] == 0) {
-            block[ix] = MetaSolved(meta.loc, meta.gv, meta.tm, true)
+            block[ix] = MetaSolved(meta.loc, meta.v, meta.tm, true)
         }
     }
 }

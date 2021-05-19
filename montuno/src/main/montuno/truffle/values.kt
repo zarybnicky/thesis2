@@ -1,23 +1,24 @@
 package montuno.truffle
 
 import com.oracle.truffle.api.CompilerDirectives
-import com.oracle.truffle.api.RootCallTarget
 import com.oracle.truffle.api.dsl.ImplicitCast
 import com.oracle.truffle.api.dsl.TypeCheck
 import com.oracle.truffle.api.dsl.TypeSystem
-import com.oracle.truffle.api.interop.ArityException
+import com.oracle.truffle.api.frame.MaterializedFrame
 import com.oracle.truffle.api.interop.InteropLibrary
 import com.oracle.truffle.api.interop.TruffleObject
-import com.oracle.truffle.api.interop.UnsupportedTypeException
 import com.oracle.truffle.api.library.ExportLibrary
 import com.oracle.truffle.api.library.ExportMessage
-import com.oracle.truffle.api.nodes.ExplodeLoop
-import kotlin.jvm.Throws
+import montuno.Head
+import montuno.Lvl
 
 @TypeSystem(
-    Term::class,
-    VClosure::class,
-    VU::class,
+    VUnit::class,
+    VIrrelevant::class,
+    VLam::class,
+    VPi::class,
+    VFun::class,
+    VNe::class,
 
     Boolean::class,
     Int::class,
@@ -25,41 +26,45 @@ import kotlin.jvm.Throws
 )
 open class Types {
     companion object {
-        @ImplicitCast
         @CompilerDirectives.TruffleBoundary
-        fun castLong(value: Int): Long = value.toLong()
+        @ImplicitCast fun castLong(value: Int): Long = value.toLong()
 
-        @TypeCheck(VU::class)
-        fun isU(value: Any): Boolean = value === VU
+        @TypeCheck(VUnit::class) fun isVUnit(value: Any): Boolean = value === VUnit
+        @TypeCheck(VIrrelevant::class) fun isVIrrelevant(value: Any): Boolean = value === VIrrelevant
     }
+}
+
+sealed class Val : TruffleObject {
+    fun quote(lvl: Lvl): Term = todo
 }
 
 @CompilerDirectives.ValueType
 @ExportLibrary(InteropLibrary::class)
-object VU : TruffleObject {
-    override fun toString() = "VU"
-
-    @ExportMessage
-    fun isNull() = true
+object VUnit : Val() {
+    @ExportMessage fun isNull() = true
+    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VUnit"
+}
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+object VIrrelevant : Val() {
+    @ExportMessage fun isNull() = true
+    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VIrrelevant"
 }
 
 @CompilerDirectives.ValueType
 @ExportLibrary(InteropLibrary::class)
-data class VClosure (
-    @JvmField @CompilerDirectives.CompilationFinal(dimensions = 1) val papArgs: Array<Any?>,
-    @JvmField val arity: Int,
-    @JvmField val maxArity: Int,
-    @JvmField val callTarget: RootCallTarget
-) : TruffleObject {
-    @ExportMessage
-    fun isExecutable() = true
-
-    @ExportMessage
-    @ExplodeLoop
-    @Throws(ArityException::class, UnsupportedTypeException::class)
-    fun execute(vararg arguments: Any?): Any? {
-        val len = arguments.size
-        if (len > maxArity) throw ArityException.create(maxArity, len)
-        return callTarget.call(arguments) //TODO: PAP, exact, overapplied
-    }
+class VPi(val closure: TermRootNode, val frame: MaterializedFrame) : Val() {
+    @ExportMessage fun isExecutable() = true
+    @ExportMessage fun execute(vararg args: Any?): Any? = closure.callTarget.call(args)
 }
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+class VLam(val closure: TermRootNode, val frame: MaterializedFrame) : Val() {
+    @ExportMessage fun isExecutable() = true
+    @ExportMessage fun execute(vararg args: Any?): Any? = closure.callTarget.call(args)
+}
+@CompilerDirectives.ValueType
+class VFun(@JvmField val lhs: Any, @JvmField val rhs: Any) : Val()
+
+@CompilerDirectives.ValueType
+class VNe (val head: Head, val spine: Array<Any>) : Val()

@@ -1,7 +1,6 @@
 package montuno.interpreter
 
-import montuno.interpreter.LocalContext
-import montuno.interpreter.Rigidity
+import montuno.Rigidity
 import montuno.syntax.Loc
 
 class UnifyError(val reason: String) : RuntimeException(reason)

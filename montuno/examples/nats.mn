@@ -9,4 +9,4 @@ hundred  : Nat = mul ten ten
 thousand : Nat = mul ten hundred
 
 nfun : Nat → * = λ n. n * (λ A. * → A) *
-nten : nfun ten -> nfun ten = \x.x
+nten : nfun hundred -> nfun hundred = \x.x

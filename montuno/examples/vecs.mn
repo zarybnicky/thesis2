@@ -1,4 +1,8 @@
-Vec : * → Nat → * = λ a n. (V : Nat → *) → V zero → ((n : Nat) → a → V n → V (succ n)) → V n.
-vnil : (a : *) → Vec a zero = λ V n c. n.
-vcons : (a n : *) → a → Vec a n → Vec a (succ n) = λ a as V n c. c a (as V n c).
-%nf vcons true (vcons false (vcons true vnil)).
+Vec : * → Nat → * =
+  λ a n. (V : Nat → *) → V zero → ((n : Nat) → a → V n → V (succ n)) → V n
+vnil : (a : *) → Vec a zero =
+  λ V n c. n
+vcons : (a n : *) → a → Vec a n → Vec a (succ n) =
+  λ a as V n c. c a (as V n c)
+
+{-# NORMALIZE vcons true (vcons false (vcons true vnil)) #-}
