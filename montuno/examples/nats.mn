@@ -1,12 +1,12 @@
 Nat : * = (N : *) -> (N -> N) -> N -> N
 zero : Nat = λ N s z. z
 succ : Nat → Nat = λ a N s z. s (a N s z)
-five : Nat = \N s z. s (s (s (s (s z))))
-add  : Nat -> Nat -> Nat = \a b N s z. a N s (b N s z)
-mul  : Nat -> Nat -> Nat = \a b N s z. a N (b N s) z
-ten      : Nat = add five five
-hundred  : Nat = mul ten ten
-thousand : Nat = mul ten hundred
-
-nfun : Nat → * = λ n. n * (λ A. * → A) *
-nten : nfun hundred -> nfun hundred = \x.x
+--five : Nat = \N s z. s (s (s (s (s z))))
+--add  : Nat -> Nat -> Nat = \a b N s z. a N s (b N s z)
+--mul  : Nat -> Nat -> Nat = \a b N s z. a N (b N s) z
+--ten      : Nat = add five five
+--hundred  : Nat = mul ten ten
+--thousand : Nat = mul ten hundred
+--
+--nfun : Nat → * = λ n. n * (λ A. * → A) *
+--nten : nfun hundred -> nfun hundred = \x.x

@@ -2,60 +2,94 @@ package montuno.interpreter
 
 import montuno.*
 import montuno.common.ITerm
+import montuno.common.MetaSolved
 
-inline class GSpine(val it: Array<Pair<Icit, Glued>> = emptyArray()) // lazy ref to Glued
-inline class VSpine(val it: Array<Pair<Icit, Lazy<Val>>> = emptyArray()) // lazy ref to Val
-fun GSpine.with(x: Pair<Icit, Glued>) = GSpine(it.plus(x))
-fun VSpine.with(x: Pair<Icit, Lazy<Val>>) = VSpine(it.plus(x))
+internal object uninitializedValue
 
-inline class VEnv(val it: Array<Lazy<Val>?> = emptyArray())
-fun VEnv.local(lvl: Lvl): Lazy<Val> = it[lvl.it] ?: lazyOf(vLocal(lvl))
-fun VEnv.skip() = VEnv(it + null)
-fun VEnv.def(x: Lazy<Val>) = VEnv(it + x)
-val VEnv.lvl: Lvl get() = Lvl(it.size)
-inline class GEnv(val it: Array<Glued?> = emptyArray()) // LAZY
-fun GEnv.local(ix: Lvl): Glued = it[ix.it] ?: gLocal(ix)
-fun GEnv.skip() = GEnv(it + null)
-fun GEnv.def(x: Glued) = GEnv(it + x)
-
-data class VCl(val env: VEnv, val tm: Term)
-data class GCl(val genv: GEnv, val env: VEnv, val tm: Term)
-
-data class GluedVal(val v: Lazy<Val>, val g: Glued) {
-    override fun toString(): String = "$g" //TODO: ???
-}
-
-sealed class Val
-object VUnit : Val() { override fun toString() = "VUnit" }
-object VIrrelevant : Val() { override fun toString() = "VIrrelevant" }
-data class VLam(val n: String, val icit: Icit, val cl: VCl) : Val()
-data class VPi(val n: String, val icit: Icit, val ty: Lazy<Val>, val cl: VCl) : Val()
-data class VFun(val a: Lazy<Val>, val b: Lazy<Val>) : Val()
-data class VNe(val head: Head, val spine: VSpine) : Val()
-data class VNat(val n: Int) : Val()
-
-sealed class Glued
-object GUnit : Glued() { override fun toString() = "GU" }
-object GIrrelevant : Glued() { override fun toString() = "GIrrelevant" }
-data class GLam(val n: String, val icit: Icit, val cl: GCl) : Glued()
-data class GPi(val n: String, val icit: Icit, val ty: GluedVal, val cl: GCl) : Glued()
-data class GFun(val a: GluedVal, val b: GluedVal) : Glued()
-data class GNe(val head: Head, val gspine: GSpine, val spine: VSpine) : Glued() {
-    override fun toString(): String = when (head) {
-        is HLocal -> "GNeLocal(ix=${head.lvl.it}, gspine=[${gspine.it.joinToString(", ")}])"
-        is HMeta -> "GNeMeta(meta=${head.meta.i}.${head.meta.j}, gspine=[${gspine.it.joinToString(", ")}])"
-        is HTop -> "GNeTop(lvl=${head.lvl.it}, gspine=[${gspine.it.joinToString(", ")}])"
+fun <T> thunkOf(x: T) = InitializedThunk(x)
+class Thunk<out T>(initializer: () -> T) : Lazy<T> {
+    private var _initializer: (() -> T)? = initializer
+    @Suppress("UNCHECKED_CAST")
+    private var _value: T = uninitializedValue as T
+    override fun isInitialized(): Boolean = _value !== uninitializedValue
+    override fun toString(): String = if (isInitialized()) value.toString() else "<thunk>"
+    override val value: T get() {
+        if (_value === uninitializedValue) {
+            _value = _initializer!!()
+            _initializer = null
+        }
+        return _value
     }
 }
-data class GNat(val n: Int) : Glued()
+class InitializedThunk<out T>(override val value: T) : Lazy<T> {
+    override fun isInitialized(): Boolean = true
+    override fun toString(): String = value.toString()
+}
 
-val GVU = GluedVal(lazyOf(VUnit), GUnit)
-fun gLocal(ix: Lvl) = GNe(HLocal(ix), GSpine(), VSpine())
+inline class VSpine(val it: Array<Pair<Icit, Val>> = emptyArray()) // lazy ref to Val
+fun VSpine.with(x: Pair<Icit, Val>) = VSpine(it.plus(x))
+
+inline class VEnv(val it: Array<Val?> = emptyArray())
+fun VEnv.local(lvl: Lvl): Val = it[lvl.it] ?: vLocal(lvl)
+fun VEnv.skip() = VEnv(it + null)
+fun VEnv.def(x: Val) = VEnv(it + x)
+val VEnv.lvl: Lvl get() = Lvl(it.size)
+
+data class VCl(val env: VEnv, val tm: Term) {
+    fun inst(v: Val): Val = tm.eval(env.def(v))
+}
+
+sealed class Val {
+    fun appSpine(sp: VSpine): Val = sp.it.fold(this, { l, r -> l.app(r.first, r.second) })
+    fun app(icit: Icit, r: Val) = when (this) {
+        is VLam -> cl.inst(r)
+        is VNe -> VNe(head, spine.with(icit to r))
+        else -> TODO("impossible")
+    }
+    fun force(unfold: Boolean): Val = when (this) {
+        is VNe -> when (head) {
+            is HMeta -> MontunoPure.top[head.meta].let {
+                if (it is MetaSolved && (it.unfoldable || unfold))
+                    it.v.appSpine(spine).force(unfold)
+                else this
+            }
+            is HTop -> if (unfold) MontunoPure.top[head.lvl].defn?.second ?: this else this
+            is HLocal -> this
+        }
+        else -> this
+    }
+    fun quote(lvl: Lvl, unfold: Boolean = false): Term = when (val v = force(unfold)) {
+        is VNe -> {
+            var x = when (v.head) {
+                is HMeta -> MontunoPure.top[v.head.meta].let {
+                    if (it is MetaSolved && (it.unfoldable || unfold))
+                        it.v.appSpine(v.spine).quote(lvl)
+                    else TMeta(v.head.meta)
+                }
+                is HLocal -> TLocal(v.head.lvl.toIx(lvl))
+                is HTop -> TTop(v.head.lvl)
+            }
+            for ((icit, t) in v.spine.it.reversedArray()) { x = TApp(icit, x, t.quote(lvl)) }
+            x
+        }
+        is VLam -> TLam(v.n, v.icit, v.cl.inst(vLocal(lvl)).quote(lvl + 1))
+        is VPi -> TPi(v.n, v.icit, v.ty.quote(lvl), v.cl.inst(vLocal(lvl)).quote(lvl + 1))
+        is VFun -> TFun(v.a.quote(lvl), v.b.quote(lvl))
+        is VUnit -> TU
+        is VNat -> TNat(v.n)
+        is VIrrelevant -> TIrrelevant
+    }
+}
+object VUnit : Val() { override fun toString() = "VUnit" }
+object VIrrelevant : Val() { override fun toString() = "VIrrelevant" }
+data class VNat(val n: Int) : Val()
+data class VLam(val n: String, val icit: Icit, val cl: VCl) : Val()
+data class VPi(val n: String, val icit: Icit, val ty: Val, val cl: VCl) : Val()
+data class VFun(val a: Val, val b: Val) : Val()
+data class VNe(val head: Head, val spine: VSpine) : Val()
+
 fun vLocal(ix: Lvl) = VNe(HLocal(ix), VSpine())
-fun gvLocal(ix: Lvl) = GluedVal(lazyOf(vLocal(ix)), gLocal(ix))
-fun gTop(lvl: Lvl) = GNe(HTop(lvl), GSpine(), VSpine())
 fun vTop(lvl: Lvl) = VNe(HTop(lvl), VSpine())
-fun gMeta(meta: Meta) = GNe(HMeta(meta), GSpine(), VSpine())
 fun vMeta(meta: Meta) = VNe(HMeta(meta), VSpine())
 
 sealed class Term : ITerm {
@@ -66,6 +100,26 @@ sealed class Term : ITerm {
         is TU -> true
         is TLam -> tm.isUnfoldable()
         else -> false
+    }
+    private fun evalBox(env: VEnv): Val = when (this) {
+        is TLocal -> env.local(ix.toLvl(env.lvl))
+        is TTop -> vTop(lvl)
+        is TMeta -> vMeta(meta)
+        else -> eval(env)
+    }
+    fun eval(env: VEnv): Val = when (this) {
+        is TU -> VUnit
+        is TNat -> VNat(n)
+        is TIrrelevant -> VIrrelevant
+        is TLocal -> env.local(ix.toLvl(env.lvl))
+        is TTop -> MontunoPure.top.getTop(lvl)
+        is TMeta -> MontunoPure.top.getMeta(meta)
+        is TApp -> l.eval(env).app(icit, r.evalBox(env)) // lazy
+        is TLam -> VLam(n, icit, VCl(env, tm))
+        is TPi -> VPi(n, icit, arg.evalBox(env), VCl(env, tm)) // lazy
+        is TFun -> VFun(l.evalBox(env), r.evalBox(env))
+        is TLet -> tm.eval(env.def(v.eval(env)))   // lazy
+        is TForeign -> TODO("VForeign not implemented")
     }
 }
 object TU : Term()

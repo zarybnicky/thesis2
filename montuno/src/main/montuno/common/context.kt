@@ -38,7 +38,6 @@ abstract class MontunoContext<T : ITerm, V>(val lang: TruffleLanguage<*>, env: T
     operator fun get(meta: Meta) = metas[meta.i][meta.j]
     operator fun set(meta: Meta, m: MetaEntry<T, V>) {
         val (i, j) = meta
-        assert(metas[i].size == j)
-        metas[i].add(m)
+        if (metas[i].size == j) metas[i].add(m) else metas[i][j] = m
     }
 }

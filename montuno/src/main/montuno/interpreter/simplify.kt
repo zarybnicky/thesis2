@@ -13,7 +13,7 @@ fun Term.inlineSp(lvl: Lvl, vs: VEnv): Either<Val, Term> = when(this) {
         }
     }
     is TApp -> when (val x = l.inlineSp(lvl, vs)) {
-        is Either.Left -> Either.Left(x.it.app(icit, lazy { r.eval(vs) }))
+        is Either.Left -> Either.Left(x.it.app(icit, r.eval(vs)))
         is Either.Right -> Either.Right(TApp(icit, x.it, r.inline(lvl, vs)))
     }
     else -> Either.Right(this.inline(lvl, vs))
@@ -31,7 +31,7 @@ fun Term.inline(lvl: Lvl, vs: VEnv) : Term = when (this) {
     }
     is TLet -> TLet(n, ty.inline(lvl, vs), v.inline(lvl, vs), tm.inline(lvl + 1, vs.skip()))
     is TApp -> when (val x = l.inlineSp(lvl, vs)) {
-        is Either.Left -> x.it.app(icit, lazy { r.eval(vs) }).quote(lvl)
+        is Either.Left -> x.it.app(icit, r.eval(vs)).quote(lvl)
         is Either.Right -> TApp(icit, x.it, r.inline(lvl, vs))
     }
     is TLam -> TLam(n, icit, tm.inline(lvl + 1, vs.skip()))
@@ -65,7 +65,7 @@ fun LocalContext.simplifyMetaBlock() {
         is MetaUnsolved -> throw ElabError(meta.loc, this, "Unsolved meta ${Meta(blockIx, ix)}")
         is MetaSolved -> {
             val t = meta.tm.inline(Lvl(0), VEnv())
-            val s = MetaSolved(meta.loc, t.gvEval(VEnv(), GEnv()), t, t.isUnfoldable())
+            val s = MetaSolved(meta.loc, t.eval(VEnv()), t, t.isUnfoldable())
             block[ix] = s
             markOccurs(s.tm)
         }
