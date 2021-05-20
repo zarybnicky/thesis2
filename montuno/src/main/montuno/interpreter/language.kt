@@ -1,8 +1,12 @@
 package montuno.interpreter
 
-import com.oracle.truffle.api.*
+import com.oracle.truffle.api.CallTarget
+import com.oracle.truffle.api.CompilerAsserts
+import com.oracle.truffle.api.Truffle
+import com.oracle.truffle.api.TruffleLanguage
 import com.oracle.truffle.api.frame.VirtualFrame
 import com.oracle.truffle.api.nodes.RootNode
+import montuno.common.checkTopLevel
 import montuno.syntax.TopLevel
 import montuno.syntax.parsePreSyntax
 
@@ -38,7 +42,7 @@ class ProgramRootNode(lang: MontunoPure, private val pre: List<TopLevel>) : Root
     override fun execute(frame: VirtualFrame?): Any {
         var ret: Any = true
         for (e in pre) {
-            checkTopLevel(e).let { if (it != null) ret = it }
+            checkTopLevel(MontunoPure.top, e).let { if (it != null) ret = it }
         }
         return ret
     }

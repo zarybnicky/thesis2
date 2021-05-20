@@ -1,6 +1,6 @@
 package montuno.syntax
 
-import montuno.Icit
+import montuno.common.Icit
 
 sealed class TopLevel : WithPos
 data class RDecl(override val loc: Loc, val n: String, val ty: PreTerm) : TopLevel()

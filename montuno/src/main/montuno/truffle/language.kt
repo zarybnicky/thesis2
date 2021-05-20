@@ -7,7 +7,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame
 import com.oracle.truffle.api.frame.VirtualFrame
 import com.oracle.truffle.api.nodes.ExplodeLoop
 import com.oracle.truffle.api.nodes.RootNode
-import montuno.common.ITerm
+import montuno.common.checkTopLevel
 import montuno.syntax.TopLevel
 import montuno.syntax.parsePreSyntax
 import java.io.IOException
@@ -76,9 +76,8 @@ class ProgramRootNode(l: MontunoTruffle, fd: FrameDescriptor, private val pre: L
 }
 
 @TypeSystemReference(Types::class)
-class TermRootNode(l: MontunoTruffle, @field:Child var root: Term, frame: MaterializedFrame) : RootNode(l, frame.frameDescriptor), ITerm {
+class TermRootNode(l: MontunoTruffle, @field:Child var root: Term, frame: MaterializedFrame) : RootNode(l, frame.frameDescriptor) {
     override fun execute(frame: VirtualFrame): Any {
         return root.execute(frame)
     }
-    override fun isUnfoldable(): Boolean = todo
 }

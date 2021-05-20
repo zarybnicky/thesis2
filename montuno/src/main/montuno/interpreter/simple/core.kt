@@ -1,6 +1,7 @@
 package montuno.interpreter.simple
 
-import montuno.*
+import montuno.common.Ix
+import montuno.common.Lvl
 import montuno.syntax.*
 
 sealed class Term

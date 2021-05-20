@@ -1,11 +1,11 @@
-package montuno
+package montuno.common
 
 import java.util.*
 
 data class Ix(val it: Int) {
     operator fun plus(i: Int) = Ix(it + i)
     operator fun minus(i: Int) = Ix(it - i)
-    fun toLvl(depth: Int) = Lvl(it - it - 1)
+    fun toLvl(depth: Int) = Lvl(depth - it - 1)
     fun toLvl(depth: Lvl) = Lvl(depth.it - it - 1)
     override fun toString(): String = "Ix($it)"
 }
@@ -13,7 +13,7 @@ data class Ix(val it: Int) {
 data class Lvl(val it: Int) {
     operator fun plus(i: Int) = Lvl(it + i)
     operator fun minus(i: Int) = Lvl(it - i)
-    fun toIx(depth: Int) = Ix(it - it - 1)
+    fun toIx(depth: Int) = Ix(depth - it - 1)
     fun toIx(depth: Lvl) = Ix(depth.it - it - 1)
     override fun toString(): String = "Lvl($it)"
 }
@@ -22,11 +22,6 @@ data class Meta(val i: Int, val j: Int) : Comparable<Meta> {
     override fun compareTo(other: Meta) = compareValuesBy(this, other, { it.i }, { it.j })
     override fun toString(): String = "Meta($i, $j)"
 }
-
-sealed class Head
-data class HMeta(val meta: Meta) : Head() { override fun toString(): String = "HMeta(${meta.i}, ${meta.j})" }
-data class HLocal(val lvl: Lvl) : Head() { override fun toString(): String = "HLocal(lvl=${lvl.it})" }
-data class HTop(val lvl: Lvl) : Head() { override fun toString(): String = "HTop(lvl=${lvl.it})" }
 
 enum class Icit { Expl, Impl }
 

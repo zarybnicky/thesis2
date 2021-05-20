@@ -1,13 +1,15 @@
 package montuno.truffle
 
-import com.oracle.truffle.api.dsl.*
+import com.oracle.truffle.api.dsl.CachedContext
+import com.oracle.truffle.api.dsl.ReportPolymorphism
+import com.oracle.truffle.api.dsl.Specialization
+import com.oracle.truffle.api.dsl.TypeSystemReference
 import com.oracle.truffle.api.frame.VirtualFrame
 import com.oracle.truffle.api.instrumentation.*
 import com.oracle.truffle.api.nodes.Node
 import com.oracle.truffle.api.nodes.NodeInfo
 import com.oracle.truffle.api.source.SourceSection
-import montuno.*
-import montuno.common.NameEnv
+import montuno.common.*
 import montuno.syntax.Loc
 import org.graalvm.polyglot.Context
 
@@ -30,7 +32,9 @@ abstract class Term(val loc: Loc?) : Node(), InstrumentableNode {
     open fun executeVLam(frame: VirtualFrame): VLam = TypesGen.expectVLam(execute(frame))
     open fun executeVPi(frame: VirtualFrame): VPi = TypesGen.expectVPi(execute(frame))
     open fun executeVFun(frame: VirtualFrame): VFun = TypesGen.expectVFun(execute(frame))
-    open fun executeVNe(frame: VirtualFrame): VNe = TypesGen.expectVNe(execute(frame))
+    open fun executeVTop(frame: VirtualFrame): VTop = TypesGen.expectVTop(execute(frame))
+    open fun executeVMeta(frame: VirtualFrame): VMeta = TypesGen.expectVMeta(execute(frame))
+    open fun executeVLocal(frame: VirtualFrame): VLocal = TypesGen.expectVLocal(execute(frame))
     open fun executeNat(frame: VirtualFrame): Int = TypesGen.expectInteger(execute(frame))
 }
 
@@ -59,7 +63,7 @@ abstract class TLet(val n: String, @field:Child var value: Term, @field:Child va
     }
 }
 
-open class TApp(@field:Child var lhs: Term, @field:Child var rhs: Term, loc: Loc?) : Term(loc) {
+open class TApp(val icit: Icit, @field:Child var lhs: Term, @field:Child var rhs: Term, loc: Loc?) : Term(loc) {
     override fun pretty(ns: NameEnv): String = "(${lhs.pretty(ns)}) (${rhs.pretty(ns)})"
     override fun hasTag(tag: Class<out Tag>?) = tag == StandardTags.CallTag::class.java || super.hasTag(tag)
     @Child
@@ -92,7 +96,7 @@ open class TEval(val lang: String, val code: String, @field:Child var type: Term
         return Context.getCurrent().eval(lang, code)
     }
 }
-abstract class TLocal(@Suppress("unused") val ix: Ix, loc: Loc?) : Term(loc) {
+open class TLocal(@Suppress("unused") val ix: Ix, loc: Loc?) : Term(loc) {
     override fun pretty(ns: NameEnv): String = ns[ix]
     override fun execute(frame: VirtualFrame): Any {
         val fd = frame.frameDescriptor
@@ -100,7 +104,7 @@ abstract class TLocal(@Suppress("unused") val ix: Ix, loc: Loc?) : Term(loc) {
     }
 }
 abstract class TTop(protected val lvl: Lvl, loc: Loc?) : Term(loc) {
-    override fun pretty(ns: NameEnv): String = MontunoTruffle.top.getTopTerm(lvl).root.pretty(ns)
+    override fun pretty(ns: NameEnv): String = MontunoTruffle.top.getTopTerm(lvl).pretty(ns)
     @Specialization
     protected fun read(
         frame: VirtualFrame,

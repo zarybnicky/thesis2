@@ -1,7 +1,7 @@
 package montuno.interpreter
 
 import pretty.*
-import montuno.*
+import montuno.common.Icit
 import montuno.common.NameEnv
 
 fun <A> par(c: Boolean, x: Doc<A>): Doc<A> =

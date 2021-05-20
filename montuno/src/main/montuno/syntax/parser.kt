@@ -2,7 +2,7 @@ package montuno.syntax
 
 import com.oracle.truffle.api.source.Source
 import com.oracle.truffle.api.source.SourceSection
-import montuno.Icit
+import montuno.common.Icit
 import montuno.MontunoLexer
 import montuno.MontunoParser
 import org.antlr.v4.runtime.CharStreams
