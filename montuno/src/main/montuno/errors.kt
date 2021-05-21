@@ -1,4 +1,4 @@
-package montuno.common
+package montuno
 
 import com.oracle.truffle.api.CompilerDirectives
 

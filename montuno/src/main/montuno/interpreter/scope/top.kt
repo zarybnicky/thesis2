@@ -1,4 +1,4 @@
-package montuno.common
+package montuno.interpreter.scope
 
 import com.oracle.truffle.api.CompilerDirectives
 import com.oracle.truffle.api.TruffleLanguage
@@ -8,27 +8,26 @@ import com.oracle.truffle.api.interop.TruffleObject
 import com.oracle.truffle.api.interop.UnsupportedMessageException
 import com.oracle.truffle.api.library.ExportLibrary
 import com.oracle.truffle.api.library.ExportMessage
-import montuno.syntax.Loc
-import montuno.syntax.WithPos
-
-data class TopEntry<T, V>(
-    override val loc: Loc,
-    val name: String,
-    val defn: T?, val defnV: V?,
-    val type: T, val typeV: V
-) : WithPos
+import montuno.Lvl
+import montuno.interpreter.MontunoContext
 
 @ExportLibrary(InteropLibrary::class)
-class TopLevelScope<T, V>(
-    private val lang: TruffleLanguage<*>,
-    private val ctx: TopLevelContext<T, V>,
-    private val env: TruffleLanguage.Env,
-    val entries: MutableList<TopEntry<T, V>> = mutableListOf()
+class TopScope(
+    private val env: TruffleLanguage.Env
 ) : TruffleObject {
+    lateinit var lang: TruffleLanguage<*>
+    lateinit var ctx: MontunoContext
+
+    val it: MutableList<TopEntry> = mutableListOf()
+    operator fun get(lvl: Lvl) = it[lvl.it]
+    fun reset() {
+        it.removeAll { true }
+    }
+
     @ExportMessage
     fun hasMembers() = true
     @ExportMessage
-    fun getMembers(includeInternal: Boolean): TruffleObject = ConstArray(entries.map { it.name }.toTypedArray())
+    fun getMembers(includeInternal: Boolean = true) = ConstArray(it.map { it.name }.toTypedArray())
     @ExportMessage
     @Throws(UnsupportedMessageException::class)
     fun invokeMember(member: String, arguments: Array<Any?>): Any {

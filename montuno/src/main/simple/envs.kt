@@ -1,6 +1,6 @@
-package montuno.interpreter.simple
+package simple
 
-import montuno.common.Ix
+import montuno.Ix
 
 data class Env(val value: Val, val next: Env?)
 operator fun Env?.plus(v: Val): Env = Env(v, this)

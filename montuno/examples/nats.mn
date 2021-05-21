@@ -10,3 +10,7 @@ thousand : Nat = mul ten hundred
 
 nfun : Nat → * = λ n. n * (λ A. * → A) *
 nten : nfun hundred -> nfun hundred = \x.x
+{-# ELABORATE nfun #-}
+{-# NORMALIZE nfun #-}
+{-# TYPE nten #-}
+{-# NORMAL_TYPE nten #-}

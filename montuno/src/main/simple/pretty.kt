@@ -1,4 +1,4 @@
-package montuno.interpreter.simple
+package simple
 
 import pretty.*
 

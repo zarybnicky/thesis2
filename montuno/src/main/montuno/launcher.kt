@@ -2,7 +2,10 @@ package montuno
 
 import org.graalvm.launcher.AbstractLanguageLauncher
 import org.graalvm.options.OptionCategory
-import org.graalvm.polyglot.*
+import org.graalvm.polyglot.Context
+import org.graalvm.polyglot.PolyglotAccess
+import org.graalvm.polyglot.PolyglotException
+import org.graalvm.polyglot.Source
 import org.jline.reader.Candidate
 import org.jline.reader.EndOfFileException
 import org.jline.reader.LineReaderBuilder
@@ -29,7 +32,7 @@ class Launcher : AbstractLanguageLauncher() {
     private var initialCommand: String? = null
 
     override fun getDefaultLanguages(): Array<String> = arrayOf("montuno", "montuno-pure") // "js","r","ruby"};
-    override fun getLanguageId() = "montuno-pure"
+    override fun getLanguageId() = "montuno-pure" // default engine
 
     override fun launch(contextBuilder: Context.Builder) {
         contextBuilder.arguments(languageId, programArgs)
@@ -48,7 +51,6 @@ class Launcher : AbstractLanguageLauncher() {
     }
 
     private fun evalNonInteractive(ctx: Context) {
-        println("$currentFile $currentLang $initialCommand")
         val source: Source? = try {
             when {
                 currentFile != null -> Source.newBuilder(currentLang, Paths.get(currentFile!!).toFile()).build()
@@ -59,13 +61,17 @@ class Launcher : AbstractLanguageLauncher() {
             println("Error loading file '$currentFile' (${e.message})")
             exitProcess(-1)
         }
-        var v = ctx.eval(source).let { if (it.canExecute()) it.execute() else it }
-        println(v)
-        v = when (val x = initialCommand) {
-            null -> v
-            else -> ctx.eval(processCommand(ctx, x)).let { if (it.canExecute()) it.execute() else it }
+        if (source != null) {
+            var v = ctx.eval(source)
+            if (v.canExecute()) v = v.execute()
+            if (!v.isNull) println(v)
         }
-        println(v)
+        val cmd = initialCommand
+        if (cmd != null) {
+            var v = ctx.eval(processCommand(ctx, cmd))
+            if (v.canExecute()) v = v.execute()
+            if (!v.isNull) println(v)
+        }
     }
 
     private fun readEvalPrint(ctx: Context) {
@@ -114,6 +120,7 @@ class Launcher : AbstractLanguageLauncher() {
             ":type" -> wrapCmd("TYPE")
             ":normalType" -> wrapCmd("NORMAL_TYPE")
             ":parse" -> wrapCmd("PARSE")
+            ":raw" -> wrapCmd("RAW")
             ":print" -> Source.create(currentLang, "{-# WHOLE_PROGRAM #-}")
             ":list" -> { ctx.getBindings(currentLang).memberKeys.forEach { println(it) }; null }
             ":reload" -> {

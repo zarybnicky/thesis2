@@ -2,7 +2,7 @@ package montuno.syntax
 
 import com.oracle.truffle.api.source.Source
 import com.oracle.truffle.api.source.SourceSection
-import montuno.common.Icit
+import montuno.Icit
 import montuno.MontunoLexer
 import montuno.MontunoParser
 import org.antlr.v4.runtime.CharStreams
@@ -33,8 +33,6 @@ sealed class NameOrIcit
 object NIImpl : NameOrIcit() { override fun toString(): String = "NIImpl" }
 object NIExpl : NameOrIcit() { override fun toString(): String = "NIExpl" }
 data class NIName(val n: String) : NameOrIcit()
-
-enum class Pragma { Elaborate, Normalize, Type, NormalType, ParseOnly, Nothing, Reset, WholeProgram, Symbols }
 
 fun ParserRuleContext.range() = Loc.Range(this.start.startIndex, this.stop.stopIndex - this.start.startIndex + 1)
 
@@ -67,12 +65,15 @@ fun MontunoParser.TopContext.toAst(): TopLevel = when (this) {
     else -> throw UnsupportedOperationException(javaClass.canonicalName)
 }
 
+enum class Pragma { Elaborate, Normalize, Type, NormalType, Raw, ParseOnly, Nothing, Reset, WholeProgram, Symbols }
+
 fun toPragma(s: String) = when (s) {
     "TYPE" -> Pragma.Type
     "NORMAL_TYPE" -> Pragma.NormalType
     "ELABORATE" -> Pragma.Elaborate
     "NORMALIZE" -> Pragma.Normalize
     "PARSE" -> Pragma.ParseOnly
+    "RAW" -> Pragma.Raw
     "WHOLE_PROGRAM" -> Pragma.WholeProgram
     "SYMBOLS" -> Pragma.Symbols
     "RESET" -> Pragma.Reset

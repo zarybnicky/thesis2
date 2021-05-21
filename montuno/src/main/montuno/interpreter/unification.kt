@@ -1,0 +1,295 @@
+package montuno.interpreter
+
+import montuno.*
+import java.util.*
+
+inline class Renaming(val it: Array<Pair<Lvl, Lvl>>) {
+    fun apply(x: Lvl): Lvl? = it.find { it.first == x }?.second
+    operator fun plus(x: Pair<Lvl, Lvl>) = Renaming(it.plus(x))
+}
+
+inline class LvlSet(val it: BitSet) {
+    fun disjoint(r: Renaming): Boolean = r.it.any { this.it[it.first.it] }
+}
+
+fun contract(lvlRen: Pair<Lvl, Renaming>, v: Val): Pair<Pair<Lvl, Renaming>, Val> {
+    val (lvl, ren) = lvlRen
+    val spine = when (v) {
+        is VLocal -> v.spine
+        is VTop -> v.spine
+        is VMeta -> v.spine
+        else -> return (lvl to ren) to v
+    }
+    if (spine.it.size <= ren.it.size) return (lvl to ren) to v
+    val mid = ren.it.size - spine.it.size
+    val renOverlap = ren.it.copyOfRange(mid, ren.it.size).map { it.first.it }.toTypedArray()
+    val spineLocal = spine.it
+        .map { it.first to it.second }
+        .map { (_, vSp) -> if (vSp is VLocal) vSp.head.it else -1 }.toTypedArray()
+    if (renOverlap contentEquals spineLocal) {
+        return (lvl - renOverlap.size to Renaming(ren.it.copyOfRange(0, mid))) to v.replaceSpine(VSpine())
+    }
+    return (lvl to ren) to v
+}
+
+fun Term.lams(lvl: Lvl, names: List<String>, ren: Renaming): Term {
+    var t = this
+    for ((x, _) in ren.it) {
+        t = TLam(names[x.toIx(lvl).it], Icit.Expl, t)
+    }
+    return t
+}
+
+data class ErrRef(var err: FlexRigidError? = null)
+data class ScopeCheckState(val occurs: Meta, val errRef: ErrRef?, val shift: Int)
+@Throws(FlexRigidError::class)
+fun Val.quoteSolution(topLvl: Lvl, names: List<String>, occurs: Meta, renL: Pair<Lvl, Renaming>, errRef: ErrRef?): Term {
+    val (renl, ren) = renL
+    return scopeCheck(ScopeCheckState(occurs, errRef, topLvl.it - renl.it), topLvl, ren).lams(topLvl, names, ren)
+}
+fun Term.scopeCheckSp(state: ScopeCheckState, lvl: Lvl, ren: Renaming, spine: VSpine): Term {
+    return spine.it.fold(this) { l, it -> TApp(it.first, l, it.second.scopeCheck(state, lvl, ren)) }
+}
+fun Val.scopeCheck(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when (val v = force(false)) {
+    VUnit -> TUnit
+    VIrrelevant -> TIrrelevant
+    is VNat -> TNat(v.n)
+    is VFun -> TFun(v.lhs.scopeCheck(state, lvl, ren), v.rhs.scopeCheck(state, lvl, ren))
+    is VLam -> TLam(v.name, v.icit, v.closure.inst(VLocal(lvl)).scopeCheck(state,lvl + 1, ren + (lvl to lvl - state.shift)))
+    is VPi -> TPi(v.name, v.icit, v.bound.scopeCheck(state, lvl, ren),
+        v.closure.inst(VLocal(lvl)).scopeCheck(state, lvl + 1, ren + (lvl to lvl - state.shift)))
+    is VTop -> TTop(v.head, v.slot).scopeCheckSp(state, lvl, ren, v.spine)
+    is VLocal -> {
+        val x = ren.apply(v.head)
+        if (x == null) {
+            val err = FlexRigidError(Rigidity.Flex)
+            if (state.errRef == null) throw err else state.errRef.err = err
+            TIrrelevant
+        }
+        else TLocal(x.toIx(lvl) - state.shift).scopeCheckSp(state, lvl, ren, v.spine)
+    }
+    is VMeta -> when {
+        v.head == state.occurs -> {
+            val err = FlexRigidError(Rigidity.Flex)
+            if (state.errRef == null) throw err else state.errRef.err = err
+            TIrrelevant
+        }
+        v.slot.solved ->
+            if (state.occurs.i == v.head.i) throw FlexRigidError(Rigidity.Flex)
+            else TMeta(v.head, v.slot).scopeCheckSp(state, lvl, ren, v.spine)
+        else -> TMeta(v.head, v.slot).scopeCheckSp(state, lvl, ren, v.spine)
+    }
+}
+
+const val unfoldLimit = 2
+
+@Throws(FlexRigidError::class)
+fun LocalContext.unifySp(lvl: Lvl, unfold: Int, names: List<String>, r: Rigidity, a: VSpine, b: VSpine) {
+    if (a.it.size != b.it.size) throw FlexRigidError(r, "spine length mismatch")
+    for ((aa, bb) in a.it.zip(b.it)) {
+        if (aa.first != bb.first) throw FlexRigidError(r, "icity mismatch")
+        unify(lvl, unfold, names, r, aa.second, bb.second)
+    }
+}
+
+@Throws(FlexRigidError::class)
+fun LocalContext.unify(lvl: Lvl, unfold: Int, names: List<String>, r: Rigidity, a: Val, b: Val) {
+    val v = a.force(true)
+    val w = b.force(true)
+    val local = VLocal(lvl)
+    when {
+        v is VIrrelevant || w is VIrrelevant -> {}
+        v is VUnit && w is VUnit -> {}
+        v is VFun && w is VFun -> {
+            unify(lvl, unfold, names, r, v.lhs, w.lhs)
+            unify(lvl, unfold, names, r, v.rhs, w.rhs)
+        }
+
+        v is VLam && w is VLam -> unify(lvl + 1, unfold, names + v.name, r, v.closure.inst(local), w.closure.inst(local))
+        v is VLam -> unify(lvl + 1, unfold, names + v.name, r, v.closure.inst(local), w.app(v.icit, local))
+        w is VLam -> unify(lvl + 1, unfold, names + w.name, r, w.closure.inst(local), v.app(w.icit, local))
+
+        v is VPi && w is VPi && v.icit == w.icit -> {
+            unify(lvl, unfold, names, r, v.bound, w.bound)
+            unify(lvl + 1, unfold, names, r, v.closure.inst(local), w.closure.inst(local))
+        }
+        v is VPi && w is VFun -> {
+            unify(lvl, unfold, names, r, v.bound, w.lhs)
+            unify(lvl + 1, unfold, names + v.name, r, v.closure.inst(local), w.rhs)
+        }
+        w is VPi && v is VFun -> {
+            unify(lvl, unfold, names, r, w.bound, v.lhs)
+            unify(lvl + 1, unfold, names + w.name, r, w.closure.inst(local), v.rhs)
+        }
+
+        v is VLocal && w is VLocal && v.head == w.head -> unifySp(lvl, unfold, names, r, v.spine, w.spine)
+
+        v is VMeta && w is VMeta && v.head == w.head -> {
+            val rSp = r.meld(v.slot.rigidity).meld(w.slot.rigidity)
+            unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
+        }
+        v is VMeta && !v.slot.solved && r == Rigidity.Rigid -> solve(Rigidity.Flex, lvl, names, v.head, v.spine, w)
+        w is VMeta && !w.slot.solved && r == Rigidity.Rigid -> solve(Rigidity.Flex, lvl, names, w.head, w.spine, v)
+        v is VMeta && v.slot.solved ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(v.spine), w)
+            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
+        w is VMeta && w.slot.solved ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(w.spine), v)
+            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
+
+        v is VTop && w is VTop && v.head == w.head -> {
+            val rSp = r.meld(v.slot.rigidity).meld(w.slot.rigidity)
+            unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
+        }
+        v is VTop && v.slot.defn != null ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(v.spine), w)
+            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
+        w is VTop && w.slot.defn != null ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(w.spine), v)
+            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
+
+        else -> throw FlexRigidError(r, "failed to unify:\n$v\n$w")
+    }
+}
+
+fun VSpine.check(mode: Rigidity): Pair<Lvl, Renaming> {
+    val s = it.size
+    val x = mutableListOf<Pair<Lvl, Lvl>>()
+    for ((i, v) in it.reversed().withIndex()) {
+        val vsp = v.second.force(false)
+        if (vsp !is VLocal) throw FlexRigidError(mode,"not local")
+        x.add(vsp.head to Lvl(s - i - 1))
+    }
+    return Lvl(it.size) to Renaming(x.toTypedArray())
+}
+fun VSpine.strip(topLvl: Lvl, lvl: Lvl): Boolean {
+    //TODO: maybe in reverse?
+    var l = lvl.it
+    for ((_, v) in it.reversed()) {
+        if (v !is VLocal || v.head.it != l - 1) return false
+        l--
+    }
+    return l == topLvl.it
+}
+
+fun Val.checkSolution(occurs: Meta, topLvl: Lvl, renLvl: Pair<Lvl, Renaming>): Boolean {
+    val (renl, ren) = renLvl
+    return checkSolution(occurs, topLvl.it - renl.it, topLvl, topLvl, ren)
+}
+fun Val.checkSolution(occurs: Meta, shift: Int, topLvl: Lvl, lvl: Lvl, ren: Renaming): Boolean {
+    val v = force(false)
+    return when {
+        v is VLam -> v.closure.inst(VLocal(lvl)).checkSolution(occurs, shift, topLvl, lvl + 1, ren + (lvl to lvl - shift))
+        v is VMeta && v.head == occurs && v.spine.strip(topLvl, lvl) -> true
+        else -> {
+            v.scopeCheck(occurs, shift, topLvl, lvl, ren)
+            false
+        }
+    }
+}
+fun Val.scopeCheck(occurs: Meta, shift: Int, topLvl: Lvl, lvl: Lvl, ren: Renaming) {
+    val local = VLocal(lvl)
+    when (val v = force(false)) {
+        is VUnit -> {}
+        is VIrrelevant -> {}
+        is VFun -> {
+            v.lhs.scopeCheck(occurs, shift, topLvl, lvl, ren)
+            v.lhs.scopeCheck(occurs, shift, topLvl, lvl, ren)
+        }
+        is VPi -> {
+            v.bound.scopeCheck(occurs, shift, topLvl, lvl, ren)
+            v.closure.inst(local).scopeCheck(occurs, shift, topLvl, lvl + 1, ren + (lvl to lvl - shift))
+        }
+        is VLam -> v.closure.inst(local).scopeCheck(occurs, shift, topLvl, lvl + 1, ren + (lvl to lvl - shift))
+        is VTop -> v.spine.it.forEach { it.second.scopeCheck(occurs, shift, topLvl, lvl, ren) }
+        is VMeta -> {
+            if (v.head == occurs) throw UnifyError("SEOccurs")
+            v.spine.it.forEach { it.second.scopeCheck(occurs, shift, topLvl, lvl, ren) }
+        }
+        is VLocal -> {
+            if (ren.apply(v.head) == null) throw UnifyError("SEScope")
+            v.spine.it.forEach { it.second.scopeCheck(occurs, shift, topLvl, lvl, ren) }
+        }
+    }
+}
+
+@Throws(ElabError::class)
+fun LocalContext.unify(a: Val, b: Val) {
+    try {
+        unify(env.lvl, unfoldLimit, env.names, Rigidity.Rigid, a, b)
+    } catch (fr: FlexRigidError) {
+        when (fr.rigidity) {
+            Rigidity.Rigid -> throw fr
+            Rigidity.Flex -> gUnify(env.lvl, env.names, a, b)
+        }
+    }
+}
+
+fun LocalContext.gUnify(lvl: Lvl, names: List<String>, a: Val, b: Val) {
+    val v = a.force(true)
+    val w = b.force(true)
+    val local = VLocal(lvl)
+    when {
+        v is VUnit && w is VUnit -> {}
+
+        v is VMeta && w is VMeta -> when {
+            v.head < w.head -> solve(Rigidity.Rigid, lvl, names, w.head, w.spine, a)
+            v.head > w.head -> solve(Rigidity.Rigid, lvl, names, v.head, v.spine, b)
+            else -> unifySp(lvl, names, v.spine, w.spine)
+        }
+
+        v is VMeta -> solve(Rigidity.Rigid, lvl, names, v.head, v.spine, b)
+        w is VMeta -> solve(Rigidity.Rigid, lvl, names, w.head, w.spine, a)
+
+        v is VLam && w is VLam -> gUnify(lvl + 1, names + v.name, v.closure.inst(local), w.closure.inst(local))
+        v is VLam -> gUnify(lvl + 1, names + v.name, v.closure.inst(local), w.app(v.icit, local))
+        w is VLam -> gUnify(lvl + 1, names + w.name, w.closure.inst(local), v.app(w.icit, local))
+
+        v is VPi && w is VPi && v.name == w.name -> {
+            gUnify(lvl, names, v.bound, w.bound)
+            gUnify(lvl + 1, names + v.name, v.closure.inst(local), w.closure.inst(local))
+        }
+        v is VPi && w is VFun -> {
+            gUnify(lvl, names, v.bound, w.lhs)
+            gUnify(lvl + 1, names + v.name, v.closure.inst(local), w.rhs)
+        }
+        w is VPi && v is VFun -> {
+            gUnify(lvl, names, w.bound, v.lhs)
+            gUnify(lvl + 1, names + w.name, w.closure.inst(local), v.rhs)
+        }
+
+        v is VFun && w is VFun -> {
+            gUnify(lvl, names, v.lhs, w.lhs)
+            gUnify(lvl, names, v.rhs, w.rhs)
+        }
+
+        v is VTop && w is VTop && v.head == w.head -> unifySp(lvl, names, v.spine, w.spine)
+        v is VLocal && w is VLocal && v.head == w.head -> unifySp(lvl, names, v.spine, w.spine)
+
+        else -> throw UnifyError("failed to unify in glued mode")
+    }
+}
+
+fun LocalContext.unifySp(lvl: Lvl, names: List<String>, va: VSpine, vb: VSpine) {
+    if (va.it.size != vb.it.size) throw UnifyError("spines differ")
+    for (i in va.it.indices) {
+        if (va.it[i].first != vb.it[i].first) throw UnifyError("spines differ")
+        gUnify(lvl, names, va.it[i].second, vb.it[i].second)
+    }
+}
+//
+//fun LocalContext.solve(lvl: Lvl, names: List<String>, occurs: Meta, vsp: VSpine, v: Val) {
+//    val (lvlRen, vNew) = contract(vsp.check(), v)
+//    MontunoPure.top[occurs] = vNew.quoteSolution(lvl, names, occurs, lvlRen, null)
+//}
+fun LocalContext.solve(mode: Rigidity, lvl: Lvl, names: List<String>, occurs: Meta, sp: VSpine, v: Val) {
+    val (renC, vC) = contract(sp.check(mode), v)
+    val errRef = ErrRef()
+    val rhs = vC.quoteSolution(lvl, names, occurs, renC, errRef)
+    val err = errRef.err
+    if (err != null) {
+        if (err.rigidity == Rigidity.Rigid) throw err
+        if (v.checkSolution(occurs, this.env.lvl, renC)) return
+    }
+    ctx.compileMeta(occurs, rhs)
+}

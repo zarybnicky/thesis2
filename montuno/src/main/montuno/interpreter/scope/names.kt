@@ -1,34 +1,10 @@
-package montuno.common
+package montuno.interpreter.scope
 
+import montuno.Ix
+import montuno.Lvl
 import montuno.syntax.Loc
 import montuno.syntax.WithPos
 import java.util.*
-
-class LocalEnv<V>(
-    val nameTable: NameTable,
-    val vals: Array<V?>,
-    val types: List<V> = listOf(),
-    val names: List<String> = listOf(),
-    val boundLevels: IntArray = IntArray(0)
-) {
-    val lvl: Lvl get() = Lvl(names.size)
-    fun bindSrc(loc: Loc, n: String, ty: V) = bind(loc, n, false, ty)
-    fun bindIns(loc: Loc, n: String, ty: V) = bind(loc, n, true, ty)
-    fun bind(loc: Loc, n: String, inserted: Boolean, ty: V) = LocalEnv(
-        nameTable.withName(n, NILocal(loc, lvl, inserted)),
-        vals + null,
-        types + ty,
-        names + n,
-        boundLevels.plus(lvl.it)
-    )
-    fun define(loc: Loc, n: String, tm: V, ty: V) = LocalEnv(
-        nameTable.withName(n, NILocal(loc, lvl, false)),
-        vals + tm,
-        types + ty,
-        names + n,
-        boundLevels
-    )
-}
 
 sealed class NameInfo : WithPos
 data class NITop(override val loc: Loc, val lvl: Lvl) : NameInfo()
@@ -67,18 +43,5 @@ data class NameEnv(val ntbl: NameTable, val it: List<String> = emptyList()) {
             i++
         }
         return res
-    }
-}
-
-class MetaEntry<T, V>(val loc: Loc) {
-    var term: T? = null
-    var value: V? = null
-    var solved: Boolean = false
-    var unfoldable: Boolean = false
-    fun solve(v: V, t: T, u: Boolean) {
-        term = t
-        value = v
-        solved = true
-        unfoldable = u
     }
 }

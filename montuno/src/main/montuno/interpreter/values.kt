@@ -1,59 +1,77 @@
 package montuno.interpreter
 
-import montuno.common.*
+import com.oracle.truffle.api.CompilerDirectives
+import com.oracle.truffle.api.TruffleLanguage
+import com.oracle.truffle.api.dsl.ImplicitCast
+import com.oracle.truffle.api.dsl.TypeCheck
+import com.oracle.truffle.api.dsl.TypeSystem
+import com.oracle.truffle.api.interop.InteropLibrary
+import com.oracle.truffle.api.interop.TruffleObject
+import com.oracle.truffle.api.library.ExportLibrary
+import com.oracle.truffle.api.library.ExportMessage
+import montuno.Icit
+import montuno.Ix
+import montuno.Lvl
+import montuno.Meta
+import montuno.interpreter.scope.MetaEntry
+import montuno.interpreter.scope.TopEntry
+import montuno.truffle.Callable
 
-inline class VSpine(val it: Array<Pair<Icit, Val>> = emptyArray()) // lazy ref to Val
-operator fun VSpine.plus(x: Pair<Icit, Val>) = VSpine(it.plus(x))
+@TypeSystem(
+    VUnit::class,
+    VIrrelevant::class,
+    VLam::class,
+    VPi::class,
+    VFun::class,
+    VMeta::class,
+    VLocal::class,
+    VTop::class,
 
-data class VCl(val env: Array<Val?>, val tm: Term)
+    Boolean::class,
+    Int::class,
+    Long::class
+)
+open class Types {
+    companion object {
+        @CompilerDirectives.TruffleBoundary
+        @JvmStatic @ImplicitCast fun castLong(value: Int): Long = value.toLong()
 
-object VUnit : Val() { override fun toString() = "VUnit" }
-object VIrrelevant : Val() { override fun toString() = "VIrrelevant" }
-data class VNat(val n: Int) : Val()
-data class VLam(val n: String, val icit: Icit, val cl: VCl) : Val() {
-    fun inst(v: Val) = cl.tm.eval(cl.env + v)
+        @TypeCheck(VUnit::class)
+        @JvmStatic fun isVUnit(value: Any): Boolean = value === VUnit
+        @TypeCheck(VIrrelevant::class)
+        @JvmStatic fun isVIrrelevant(value: Any): Boolean = value === VIrrelevant
+    }
 }
-data class VPi(val n: String, val icit: Icit, val ty: Val, val cl: VCl) : Val() {
-    fun inst(v: Val) = cl.tm.eval(cl.env + v)
-}
-data class VFun(val a: Val, val b: Val) : Val()
-data class VLocal(val head: Lvl, val spine: VSpine = VSpine()) : Val()
-data class VMeta(val head: Meta, val spine: VSpine, val slot: MetaEntry<Term, Val>) : Val()
-data class VTop(val head: Lvl, val spine: VSpine, val slot: TopEntry<Term, Val>) : Val()
 
-sealed class Val {
-    fun appSpine(sp: VSpine): Val = sp.it.fold(this, { l, r -> l.app(r.first, r.second) })
+sealed class Val : TruffleObject {
+    fun appSpine(sp: VSpine): Val = sp.it.fold(this) { l, r -> l.app(r.first, r.second) }
     fun app(icit: Icit, r: Val) = when (this) {
-        is VLam -> inst(r)
+        is VLam -> closure.inst(r)
         is VTop -> VTop(head, spine + (icit to r), slot)
         is VMeta -> VMeta(head, spine + (icit to r), slot)
         is VLocal -> VLocal(head, spine + (icit to r))
         else -> TODO("impossible")
     }
 
-    fun force(unfold: Boolean): Val = when (this) {
-        is VTop -> if (unfold) MontunoPure.top[head].defnV ?: this else this
-        is VMeta -> MontunoPure.top[head].let {
-            if (it.solved && (it.unfoldable || unfold))
-                it.value!!.appSpine(spine).force(unfold)
-            else this
-        }
+    fun force(unfold: Boolean): Val = when {
+        this is VTop && slot.callTarget != null && unfold -> slot.call(spine)
+        this is VMeta && slot.solved && (slot.unfoldable || unfold) -> slot.call(spine)
         else -> this
     }
 
     fun quote(lvl: Lvl, unfold: Boolean = false): Term = when (val v = force(unfold)) {
-        is VLocal -> TLocal(v.head.toIx(lvl)).appSpine(v.spine, lvl)
-        is VTop -> TTop(v.head, v.slot).appSpine(v.spine, lvl)
-        is VMeta -> {
-            if (v.slot.solved && (v.slot.unfoldable || unfold))
-                v.slot.value!!.appSpine(v.spine).quote(lvl)
-            else TMeta(v.head, v.slot).appSpine(v.spine, lvl)
-        }
-        is VLam -> TLam(v.n, v.icit, v.inst(VLocal(lvl)).quote(lvl + 1))
-        is VPi -> TPi(v.n, v.icit, v.ty.quote(lvl), v.inst(VLocal(lvl)).quote(lvl + 1))
-        is VFun -> TFun(v.a.quote(lvl), v.b.quote(lvl))
-        is VUnit -> TU
+        is VTop ->
+            if (v.slot.callTarget != null) v.slot.call(v.spine).quote(lvl, unfold)
+            else TTop(v.head, v.slot).wrapSpine(v.spine, lvl)
+        is VMeta ->
+            if (v.slot.solved && (v.slot.unfoldable || unfold)) v.slot.call(v.spine).quote(lvl, unfold)
+            else TMeta(v.head, v.slot).wrapSpine(v.spine, lvl)
+        is VLocal -> TLocal(v.head.toIx(lvl)).wrapSpine(v.spine, lvl)
+        is VLam -> TLam(v.name, v.icit, v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
+        is VPi -> TPi(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
+        is VFun -> TFun(v.lhs.quote(lvl, unfold), v.rhs.quote(lvl, unfold))
         is VNat -> TNat(v.n)
+        is VUnit -> TUnit
         is VIrrelevant -> TIrrelevant
     }
 
@@ -64,3 +82,71 @@ sealed class Val {
         else -> this
     }
 }
+
+inline class VEnv(val it: Array<Val?> = emptyArray()) {
+    operator fun plus(v: Val) = VEnv(it + v)
+    fun skip() = VEnv(it + null)
+    val depth: Lvl get() = Lvl(it.size)
+    operator fun get(lvl: Lvl) = it[lvl.it] ?: VLocal(lvl, VSpine())
+    operator fun get(ix: Ix) = ix.toLvl(it.size).let { lvl -> it[lvl.it] ?: VLocal(lvl, VSpine()) }
+}
+
+// lazy ref to Val
+inline class VSpine(val it: Array<Pair<Icit, Val>> = emptyArray()) {
+    operator fun plus(x: Pair<Icit, Val>) = VSpine(it.plus(x))
+    fun getVals() = it.map { it.second }.toTypedArray()
+}
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+object VUnit : Val() {
+    @ExportMessage fun isNull() = true
+    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VUnit"
+    override fun toString(): String = "VUnit"
+}
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+object VIrrelevant : Val() {
+    @ExportMessage fun isNull() = true
+    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VIrrelevant"
+    override fun toString(): String = "VIrrelevant"
+}
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+data class VNat(val n: Int) : Val() {
+    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VNat($n)"
+}
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+class VPi(val name: String, val icit: Icit, val bound: Val, val closure: Callable) : Val(), Callable {
+    @ExportMessage fun isExecutable() = true
+    @ExportMessage fun execute(vararg args: Any?): Any = closure.inst(args[0] as Val)
+    override fun inst(v: Val): Val = closure.inst(v)
+    override fun getCallTarget(lang: TruffleLanguage<*>) = closure.getCallTarget(lang)
+    override fun getArgs() = closure.getArgs()
+}
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+class VLam(val name: String, val icit: Icit, val closure: Callable) : Val(), Callable {
+    @ExportMessage fun isExecutable() = true
+    @ExportMessage fun execute(vararg args: Any?): Any = closure.inst(args[0] as Val)
+    override fun inst(v: Val): Val = closure.inst(v)
+    override fun getCallTarget(lang: TruffleLanguage<*>) = closure.getCallTarget(lang)
+    override fun getArgs() = closure.getArgs()
+}
+
+@CompilerDirectives.ValueType
+class VFun(@JvmField val lhs: Val, @JvmField val rhs: Val) : Val()
+
+@CompilerDirectives.ValueType
+class VTop(val head: Lvl, val spine: VSpine, val slot: TopEntry) : Val()
+
+@CompilerDirectives.ValueType
+class VLocal(val head: Lvl, val spine: VSpine = VSpine()) : Val()
+
+@CompilerDirectives.ValueType
+class VMeta(val head: Meta, val spine: VSpine, val slot: MetaEntry) : Val()

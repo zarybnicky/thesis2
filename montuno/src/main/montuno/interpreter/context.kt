@@ -1,60 +1,89 @@
 package montuno.interpreter
 
 import com.oracle.truffle.api.TruffleLanguage
-import montuno.common.*
+import montuno.Lvl
+import montuno.Meta
+import montuno.interpreter.scope.*
 import montuno.syntax.Loc
-import montuno.syntax.PreTerm
+import montuno.truffle.Compiler
 
-class MontunoPureContext(lang: TruffleLanguage<*>, env: TruffleLanguage.Env) : TopLevelContext<Term, Val>() {
-    override val topScope = TopLevelScope(lang, this, env)
-    override fun makeLocalContext(): LocalLevelContext<Term, Val> = LocalContext(this, LocalEnv(ntbl, emptyArray()))
-    override val valFactory: ValFactory<Term, Val> = object : ValFactory<Term, Val> {
-        override fun top(lvl: Lvl, slot: TopEntry<Term, Val>) = VTop(lvl, VSpine(), slot)
-        override fun meta(meta: Meta, slot: MetaEntry<Term, Val>) = VMeta(meta, VSpine(), slot)
-        override fun unit() = VUnit
-        override fun nat(n: Int) = VNat(n)
-        override fun local(ix: Lvl): Val = VLocal(ix)
-    }
-    override val termFactory: TermFactory<Term, Val> = object : TermFactory<Term, Val> {
-        override fun meta(meta: Meta, slot: MetaEntry<Term, Val>) = TMeta(meta, slot)
-        override fun local(ix: Ix) = TLocal(ix)
-        override fun app(icit: Icit, l: Term, r: Term) = TApp(icit, l, r)
-        override fun unit() = TU
-        override fun nat(n: Int) = TNat(n)
-        override fun top(lvl: Lvl, slot: TopEntry<Term, Val>): Term = TTop(lvl, slot)
+class LocalContext(val ctx: MontunoContext, val env: LocalEnv) {
+    fun bind(loc: Loc, n: String, inserted: Boolean, ty: Val): LocalContext = LocalContext(ctx, env.bind(loc, n, inserted, ty))
+    fun define(loc: Loc, n: String, tm: Val, ty: Val): LocalContext = LocalContext(ctx, env.define(loc, n, tm, ty))
+
+    fun eval(t: Term): Val = t.eval(env.vals)
+    fun quote(v: Val, unfold: Boolean, depth: Lvl): Term = v.quote(depth, unfold)
+
+    fun newMeta() = ctx.metas.newMeta(env.lvl, env.boundLevels)
+
+    fun pretty(t: Term): String = t.pretty(NameEnv(ctx.ntbl)).toString()
+    fun inline(t: Term): Term = t.inline(Lvl(0), env.vals)
+    fun force(v: Val, unfold: Boolean): Val = v.force(unfold)
+
+    fun markOccurs(occurs: IntArray, blockIx: Int, t: Term): Unit = when {
+        t is TMeta && t.meta.i == blockIx -> occurs[t.meta.j] += 1
+        t is TLet -> { markOccurs(occurs, blockIx, t.type); markOccurs(occurs, blockIx, t.bound); markOccurs(occurs, blockIx, t.body) }
+        t is TApp -> { markOccurs(occurs, blockIx, t.lhs); markOccurs(occurs, blockIx, t.rhs); }
+        t is TLam -> markOccurs(occurs, blockIx, t.body)
+        t is TPi -> { markOccurs(occurs, blockIx, t.bound); markOccurs(occurs, blockIx, t.body) }
+        t is TFun -> { markOccurs(occurs, blockIx, t.lhs); markOccurs(occurs, blockIx, t.rhs) }
+        else -> {}
     }
 }
 
-class LocalContext(
-    override val top: TopLevelContext<Term, Val>,
-    override val env: LocalEnv<Val>
-) : LocalLevelContext<Term, Val>() {
-    override fun eval(t: Term): Val = t.eval(env.vals)
-    override fun quote(v: Val, unfold: Boolean, depth: Lvl): Term = v.quote(depth, unfold)
-    override fun force(v: Val, unfold: Boolean): Val = v.force(unfold)
-    override fun inline(t: Term): Term = t.inline(Lvl(0), emptyArray())
-    override fun infer(mi: MetaInsertion, e: PreTerm): Pair<Term, Val> = infer(this, mi, e)
-    override fun inferVar(n: String): Pair<Term, Val> = inferVar(this, n)
-    override fun check(e: PreTerm, v: Val): Term = check(this, e, v)
-    override fun pretty(t: Term): String = t.pretty(NameEnv(top.ntbl)).toString()
-    override fun markOccurs(occurs: IntArray, blockIx: Int, t: Term): Unit = when {
-        t is TMeta && t.meta.i == blockIx -> occurs[t.meta.j] += 1
-        t is TLet -> { markOccurs(occurs, blockIx, t.ty); markOccurs(occurs, blockIx, t.v); markOccurs(occurs, blockIx, t.tm) }
-        t is TApp -> { markOccurs(occurs, blockIx, t.l); markOccurs(occurs, blockIx, t.r); }
-        t is TLam -> markOccurs(occurs, blockIx, t.tm)
-        t is TPi -> { markOccurs(occurs, blockIx, t.arg); markOccurs(occurs, blockIx, t.tm) }
-        t is TFun -> { markOccurs(occurs, blockIx, t.l); markOccurs(occurs, blockIx, t.r) }
-        else -> {}
-    }
-    override fun isUnfoldable(t: Term): Boolean = when (t) {
-        is TLocal -> true
-        is TMeta -> true
-        is TTop -> true
-        is TU -> true
-        is TLam -> isUnfoldable(t.tm)
-        else -> false
+class LocalEnv(
+    val nameTable: NameTable,
+    val vals: VEnv = VEnv(),
+    val types: List<Val> = listOf(),
+    val names: List<String> = listOf(),
+    val boundLevels: IntArray = IntArray(0)
+) {
+    val lvl: Lvl get() = Lvl(names.size)
+    fun bind(loc: Loc, n: String, inserted: Boolean, ty: Val) = LocalEnv(
+        nameTable.withName(n, NILocal(loc, lvl, inserted)),
+        vals.skip(),
+        types + ty,
+        names + n,
+        boundLevels.plus(lvl.it)
+    )
+    fun define(loc: Loc, n: String, tm: Val, ty: Val) = LocalEnv(
+        nameTable.withName(n, NILocal(loc, lvl, false)),
+        vals + tm,
+        types + ty,
+        names + n,
+        boundLevels
+    )
+}
+
+class MontunoContext(val env: TruffleLanguage.Env) {
+    val top = TopScope(env)
+    var ntbl = NameTable()
+    var loc: Loc = Loc.Unavailable
+    var metas = MetaContext(this)
+    lateinit var compiler: Compiler
+
+    fun makeLocalContext() = LocalContext(this, LocalEnv(ntbl))
+    fun reset() {
+        top.reset()
+        metas = MetaContext(this)
+        loc = Loc.Unavailable
+        ntbl = NameTable()
     }
 
-    override fun bind(loc: Loc, n: String, inserted: Boolean, ty: Val): LocalLevelContext<Term, Val> = LocalContext(top, env.bind(loc, n, inserted, ty))
-    override fun define(loc: Loc, n: String, tm: Val, ty: Val): LocalLevelContext<Term, Val> = LocalContext(top, env.define(loc, n, tm, ty))
+    fun compileMeta(m: Meta, term: Term) {
+        val slot = metas[m]
+        slot.solved = true
+        slot.unfoldable = term.isUnfoldable()
+        slot.term = term
+        slot.value = makeLocalContext().eval(term)
+        slot.callTarget = compiler.compile(term)
+    }
+    fun compileTop(name: String, loc: Loc, defn: Term?, type: Term) {
+        ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
+        val ct = if (defn != null) compiler.compile(defn) else null
+        val ctx = makeLocalContext()
+        val typeV = ctx.eval(type)
+        val defnV = if (defn != null) ctx.eval(defn) else null
+        top.it.add(TopEntry(name, loc, ct, defn, defnV, type, typeV))
+    }
 }

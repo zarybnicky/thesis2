@@ -1,6 +1,4 @@
-package montuno.common
-
-import java.util.*
+package montuno
 
 data class Ix(val it: Int) {
     operator fun plus(i: Int) = Ix(it + i)
@@ -36,15 +34,6 @@ sealed class MetaInsertion {
     data class UntilName(val n: String) : MetaInsertion()
     object Yes : MetaInsertion()
     object No : MetaInsertion()
-}
-
-inline class Renaming(val it: Array<Pair<Lvl, Lvl>>) {
-    fun apply(x: Lvl): Lvl? = it.find { it.first == x }?.second
-    operator fun plus(x: Pair<Lvl, Lvl>) = Renaming(it.plus(x))
-}
-
-inline class LvlSet(val it: BitSet) {
-    fun disjoint(r: Renaming): Boolean = r.it.any { this.it[it.first.it] }
 }
 
 sealed class Either<out L, out R> {
