@@ -14,7 +14,6 @@ import montuno.Meta
 import montuno.interpreter.scope.MetaEntry
 import montuno.interpreter.scope.TopEntry
 import montuno.syntax.Icit
-import montuno.todo
 import montuno.truffle.Closure
 
 @TypeSystem(
@@ -43,12 +42,11 @@ open class Types {
 }
 
 sealed class Val : TruffleObject {
-    fun appSpine(sp: VSpine): Val = sp.it.fold(this) { l, r -> l.app(r.first, r.second) }
     fun app(icit: Icit, r: Val) = when (this) {
         is VLam -> closure.inst(r)
-        is VTop -> VTop(head, spine + (icit to r), slot)
-        is VMeta -> VMeta(head, spine + (icit to r), slot)
-        is VLocal -> VLocal(head, spine + (icit to r))
+        is VTop -> VTop(head, spine + SApp(icit, r), slot)
+        is VMeta -> VMeta(head, spine + SApp(icit, r), slot)
+        is VLocal -> VLocal(head, spine + SApp(icit, r))
         else -> TODO("impossible")
     }
 
@@ -84,16 +82,23 @@ sealed class Val : TruffleObject {
 
     fun proj1(): Val = when (this) {
         is VPair -> left
-        is VTop -> VTop(head, spine + todo, slot)
-        is VMeta -> VMeta(head, spine + todo, slot)
-        is VLocal -> VLocal(head, spine + todo)
+        is VTop -> VTop(head, spine + SProj1, slot)
+        is VMeta -> VMeta(head, spine + SProj1, slot)
+        is VLocal -> VLocal(head, spine + SProj1)
         else -> TODO("impossible")
     }
     fun proj2(): Val = when (this) {
         is VPair -> right
-        is VTop -> VTop(head, spine + todo, slot)
-        is VMeta -> VMeta(head, spine + todo, slot)
-        is VLocal -> VLocal(head, spine + todo)
+        is VTop -> VTop(head, spine + SProj2, slot)
+        is VMeta -> VMeta(head, spine + SProj2, slot)
+        is VLocal -> VLocal(head, spine + SProj2)
+        else -> TODO("impossible")
+    }
+    fun projF(n: String, i: Int): Val = when (this) {
+        is VTop -> VTop(head, spine + SProjF(n, i), slot)
+        is VMeta -> VMeta(head, spine + SProjF(n, i), slot)
+        is VLocal -> VLocal(head, spine + SProjF(n, i))
+        is VPair -> if (i == 0) left else right.projF(n, i - 1)
         else -> TODO("impossible")
     }
 }
@@ -106,9 +111,23 @@ inline class VEnv(val it: Array<Val?> = emptyArray()) {
 }
 
 // lazy ref to Val
-inline class VSpine(val it: Array<Pair<Icit, Val>> = emptyArray()) {
-    operator fun plus(x: Pair<Icit, Val>) = VSpine(it.plus(x))
-    fun getVals() = it.map { it.second }.toTypedArray()
+sealed class SpineVal
+object SProj1 : SpineVal()
+object SProj2 : SpineVal()
+data class SProjF(val n: String, val i: Int): SpineVal()
+data class SApp(val icit: Icit, val v: Val): SpineVal()
+inline class VSpine(val it: Array<SpineVal> = emptyArray()) {
+    operator fun plus(x: SpineVal) = VSpine(it.plus(x))
+    fun applyTo(v: Val): Val {
+        var res = v
+        for (sp in it) res = when (sp) {
+            SProj1 -> v.proj1()
+            SProj2 -> v.proj2()
+            is SProjF -> v.projF(sp.n, sp.i)
+            is SApp -> v.app(sp.icit, sp.v)
+        }
+        return res
+    }
 }
 
 // neutrals

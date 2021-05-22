@@ -25,7 +25,6 @@ fun contract(lvlRen: Pair<Lvl, Renaming>, v: Val): Pair<Pair<Lvl, Renaming>, Val
     val mid = ren.it.size - spine.it.size
     val renOverlap = ren.it.copyOfRange(mid, ren.it.size).map { it.first.it }.toTypedArray()
     val spineLocal = spine.it
-        .map { it.first to it.second }
         .map { (_, vSp) -> if (vSp is VLocal) vSp.head.it else -1 }.toTypedArray()
     if (renOverlap contentEquals spineLocal) {
         return (lvl - renOverlap.size to Renaming(ren.it.copyOfRange(0, mid))) to v.replaceSpine(VSpine())
@@ -82,65 +81,6 @@ fun Val.rename(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when (va
     }
     is VPair -> TODO()
     is VSg -> TODO()
-}
-
-const val unfoldLimit = 2
-
-@Throws(FlexRigidError::class)
-fun LocalContext.unifySp(lvl: Lvl, unfold: Int, names: List<String?>, r: Rigidity, a: VSpine, b: VSpine) {
-    if (a.it.size != b.it.size) throw FlexRigidError(r, "spine length mismatch")
-    for ((aa, bb) in a.it.zip(b.it)) {
-        if (aa.first != bb.first) throw FlexRigidError(r, "icity mismatch")
-        unify(lvl, unfold, names, r, aa.second, bb.second)
-    }
-}
-
-@Throws(FlexRigidError::class)
-fun LocalContext.unify(lvl: Lvl, unfold: Int, names: List<String?>, r: Rigidity, a: Val, b: Val) {
-    val v = a.force(true)
-    val w = b.force(true)
-    val local = VLocal(lvl)
-    when {
-        v is VIrrelevant || w is VIrrelevant -> {}
-        v is VUnit && w is VUnit -> {}
-
-        v is VLam && w is VLam -> unify(lvl + 1, unfold, names + v.name, r, v.closure.inst(local), w.closure.inst(local))
-        v is VLam -> unify(lvl + 1, unfold, names + v.name, r, v.closure.inst(local), w.app(v.icit, local))
-        w is VLam -> unify(lvl + 1, unfold, names + w.name, r, w.closure.inst(local), v.app(w.icit, local))
-
-        v is VPi && w is VPi && v.icit == w.icit -> {
-            unify(lvl, unfold, names, r, v.bound, w.bound)
-            unify(lvl + 1, unfold, names, r, v.closure.inst(local), w.closure.inst(local))
-        }
-
-        v is VLocal && w is VLocal && v.head == w.head -> unifySp(lvl, unfold, names, r, v.spine, w.spine)
-
-        v is VMeta && w is VMeta && v.head == w.head -> {
-            val rSp = r.meld(v.slot.rigidity).meld(w.slot.rigidity)
-            unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
-        }
-        v is VMeta && !v.slot.solved && r == Rigidity.Rigid -> solve(Rigidity.Flex, lvl, names, v.head, v.spine, w)
-        w is VMeta && !w.slot.solved && r == Rigidity.Rigid -> solve(Rigidity.Flex, lvl, names, w.head, w.spine, v)
-        v is VMeta && v.slot.solved ->
-            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(v.spine), w)
-            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
-        w is VMeta && w.slot.solved ->
-            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(w.spine), v)
-            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
-
-        v is VTop && w is VTop && v.head == w.head -> {
-            val rSp = r.meld(v.slot.rigidity).meld(w.slot.rigidity)
-            unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
-        }
-        v is VTop && v.slot.defn != null ->
-            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.appSpine(v.spine), w)
-            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
-        w is VTop && w.slot.defn != null ->
-            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.appSpine(w.spine), v)
-            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
-
-        else -> throw FlexRigidError(r, "failed to unify:\n$v\n$w")
-    }
 }
 
 fun VSpine.check(mode: Rigidity): Pair<Lvl, Renaming> {
@@ -212,6 +152,73 @@ fun LocalContext.unify(has: Val, want: Val) {
     }
 }
 
+const val unfoldLimit = 2
+
+@Throws(FlexRigidError::class)
+fun LocalContext.unifySp(lvl: Lvl, unfold: Int, names: List<String?>, r: Rigidity, a: VSpine, b: VSpine) {
+    if (a.it.size != b.it.size) throw FlexRigidError(r, "spine length mismatch")
+    for ((aa, bb) in a.it.zip(b.it)) {
+        if (aa.first != bb.first) throw FlexRigidError(r, "icity mismatch")
+        unify(lvl, unfold, names, r, aa.second, bb.second)
+    }
+}
+
+fun LocalContext.unifySp(lvl: Lvl, names: List<String?>, va: VSpine, vb: VSpine) {
+    if (va.it.size != vb.it.size) throw UnifyError("spines differ")
+    for (i in va.it.indices) {
+        if (va.it[i].first != vb.it[i].first) throw UnifyError("spines differ")
+        gUnify(lvl, names, va.it[i].second, vb.it[i].second)
+    }
+}
+
+@Throws(FlexRigidError::class)
+fun LocalContext.unify(lvl: Lvl, unfold: Int, names: List<String?>, r: Rigidity, a: Val, b: Val) {
+    val v = a.force(true)
+    val w = b.force(true)
+    val local = VLocal(lvl)
+    when {
+        v is VIrrelevant || w is VIrrelevant -> {}
+        v is VUnit && w is VUnit -> {}
+
+        v is VLam && w is VLam -> unify(lvl + 1, unfold, names + v.name, r, v.closure.inst(local), w.closure.inst(local))
+        v is VLam -> unify(lvl + 1, unfold, names + v.name, r, v.closure.inst(local), w.app(v.icit, local))
+        w is VLam -> unify(lvl + 1, unfold, names + w.name, r, w.closure.inst(local), v.app(w.icit, local))
+
+        v is VPi && w is VPi && v.icit == w.icit -> {
+            unify(lvl, unfold, names, r, v.bound, w.bound)
+            unify(lvl + 1, unfold, names, r, v.closure.inst(local), w.closure.inst(local))
+        }
+
+        v is VLocal && w is VLocal && v.head == w.head -> unifySp(lvl, unfold, names, r, v.spine, w.spine)
+
+        v is VMeta && w is VMeta && v.head == w.head -> {
+            val rSp = r.meld(v.slot.rigidity).meld(w.slot.rigidity)
+            unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
+        }
+        v is VMeta && !v.slot.solved && r == Rigidity.Rigid -> solve(Rigidity.Flex, lvl, names, v.head, v.spine, w)
+        w is VMeta && !w.slot.solved && r == Rigidity.Rigid -> solve(Rigidity.Flex, lvl, names, w.head, w.spine, v)
+        v is VMeta && v.slot.solved ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.spine.applyTo(v), w)
+            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
+        w is VMeta && w.slot.solved ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.spine.applyTo(w), v)
+            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
+
+        v is VTop && w is VTop && v.head == w.head -> {
+            val rSp = r.meld(v.slot.rigidity).meld(w.slot.rigidity)
+            unifySp(lvl, unfold, names, rSp, v.spine, w.spine)
+        }
+        v is VTop && v.slot.defn != null ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, v.spine.applyTo(v), w)
+            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
+        w is VTop && w.slot.defn != null ->
+            if (unfold > 0) unify(lvl, unfold - 1, names, r, w.spine.applyTo(w), v)
+            else throw FlexRigidError(Rigidity.Flex, "cannot unfold")
+
+        else -> throw FlexRigidError(r, "failed to unify:\n$v\n$w")
+    }
+}
+
 fun LocalContext.gUnify(lvl: Lvl, names: List<String?>, a: Val, b: Val) {
     val v = a.force(true)
     val w = b.force(true)
@@ -244,13 +251,6 @@ fun LocalContext.gUnify(lvl: Lvl, names: List<String?>, a: Val, b: Val) {
     }
 }
 
-fun LocalContext.unifySp(lvl: Lvl, names: List<String?>, va: VSpine, vb: VSpine) {
-    if (va.it.size != vb.it.size) throw UnifyError("spines differ")
-    for (i in va.it.indices) {
-        if (va.it[i].first != vb.it[i].first) throw UnifyError("spines differ")
-        gUnify(lvl, names, va.it[i].second, vb.it[i].second)
-    }
-}
 //
 //fun LocalContext.solve(lvl: Lvl, names: List<String>, occurs: Meta, vsp: VSpine, v: Val) {
 //    val (lvlRen, vNew) = contract(vsp.check(), v)

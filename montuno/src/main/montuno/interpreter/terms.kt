@@ -16,7 +16,7 @@ data class TApp(val icit: Icit, val lhs: Term, val rhs: Term) : Term()
 data class TLam(val name: String?, val icit: Icit, val type: Term, val body: Term) : Term()
 data class TPi(val name: String?, val icit: Icit, val bound: Term, val body: Term) : Term()
 data class TPair(val lhs: Term, val rhs: Term) : Term()
-data class TProjF(val name: String, val body: Term) : Term()
+data class TProjF(val name: String, val body: Term, val i: Int) : Term()
 data class TProj1(val body: Term) : Term()
 data class TProj2(val body: Term) : Term()
 data class TSg(val name: String?, val bound: Term, val body: Term) : Term()
@@ -27,7 +27,12 @@ data class TMeta(val meta: Meta, val slot: MetaEntry) : Term() { override fun to
 
 fun rewrapSpine(term: Term, spine: VSpine, lvl: Lvl): Term {
     var x = term
-    for ((icit, t) in spine.it.reversedArray()) { x = TApp(icit, x, t.quote(lvl)) }
+    for (sp in spine.it.reversedArray()) x = when (sp) {
+        SProj1 -> TProj1(x)
+        SProj2 -> TProj2(x)
+        is SProjF -> TProjF(sp.n, x, sp.i)
+        is SApp -> TApp(sp.icit, x, sp.v.quote(lvl))
+    }
     return x
 }
 

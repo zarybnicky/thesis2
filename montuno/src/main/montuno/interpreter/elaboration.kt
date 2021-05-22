@@ -1,6 +1,9 @@
 package montuno.interpreter
 
-import montuno.*
+import montuno.ElabError
+import montuno.Lvl
+import montuno.MetaInsertion
+import montuno.UnifyError
 import montuno.interpreter.scope.NILocal
 import montuno.interpreter.scope.NITop
 import montuno.syntax.*
@@ -145,15 +148,19 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
         }
         is RProjF -> {
             val (t, va) = infer(mi, r.body)
-            val sg: VSg = todo
-            /*
-    let go :: S.Tm -> V.Val -> V.Ty -> Int -> IO Infer
-        go topT t sg i = case forceFUE cxt sg of
-          V.Sg x a au b bu
-            | NName topX == x -> pure $ Infer (S.ProjField topT x i) a au
-            | otherwise       -> go topT (vProj2 t) (b $$$ unS (vProj2 t)) (i + 1)
-          _ -> elabError cxt topmostT $ NoSuchField topX */
-            TProjF(r.field, t) to sg.bound
+            var i = 0
+            var sg = va.force(true)
+            while (sg is VSg) {
+                if (sg.name == r.field) return TProjF(r.field, t, i) to sg.bound
+                i += 1
+                sg = sg.proj2().force(true)
+            }
+            // let go :: S.Tm -> V.Val -> V.Ty -> Int -> IO Infer
+            //     go topT t sg i = case forceFUE cxt sg of
+            //         V.Sg x a au b bu
+            //             | NName topX == x -> pure $ Infer (S.ProjField topT x i) a au
+            ///            | otherwise       -> go topT (vProj2 t) (b $$$ unS (vProj2 t)) (i + 1)
+            throw ElabError(r.loc, "no such field ${r.field} in $va")
         }
 
         is RU -> TUnit to VUnit
