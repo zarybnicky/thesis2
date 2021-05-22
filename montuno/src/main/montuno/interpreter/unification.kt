@@ -291,5 +291,5 @@ fun LocalContext.solve(mode: Rigidity, lvl: Lvl, names: List<String>, occurs: Me
         if (err.rigidity == Rigidity.Rigid) throw err
         if (v.checkSolution(occurs, this.env.lvl, renC)) return
     }
-    ctx.compileMeta(occurs, rhs)
+    ctx.compileMeta(occurs, rhs, rhs.arity)
 }

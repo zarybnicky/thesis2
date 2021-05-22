@@ -129,7 +129,6 @@ fun Ctx.infer(r: PreTerm): Pair<Term, Val> = when (r) {
         TLet(r.n, a, t, u) to uty
     }
     is RForeign -> TODO("infer(RForeign)")
-    is RFun -> TODO("infer(RFun)")
     is RStopMeta -> TODO("infer(RStopMeta)")
 }
 

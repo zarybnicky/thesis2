@@ -52,9 +52,10 @@ fun Term.pretty(ns: NameEnv, p: Boolean = false): Doc<Nothing> = when (this) {
     }
     is TPi -> {
         var x = ns.fresh(name)
-        var b = when (icit) {
-            Icit.Expl -> "($x : ".text() + bound.pretty(ns, false) + ")".text()
-            Icit.Impl -> "{$x : ".text() + bound.pretty(ns, false) + "}".text()
+        var b = when {
+            x == "_" -> bound.pretty(ns, false)
+            icit == Icit.Impl -> "{$x : ".text() + bound.pretty(ns, false) + "}".text()
+            else -> "($x : ".text() + bound.pretty(ns, false) + ")".text()
         }
         var nsLocal = ns + x
         var rest = body

@@ -13,7 +13,9 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException
 import com.oracle.truffle.api.source.SourceSection
 import montuno.Icit
 import montuno.Ix
-import montuno.interpreter.*
+import montuno.interpreter.Types
+import montuno.interpreter.VFun
+import montuno.interpreter.Val
 import montuno.interpreter.scope.MetaEntry
 import montuno.panic
 import montuno.syntax.Loc
@@ -35,7 +37,7 @@ abstract class Code(val loc: Loc?) : Node(), InstrumentableNode {
     @Throws(UnexpectedResultException::class)
     open fun executeVal(frame: VirtualFrame): Val = execute(frame).let { if (it is Val) it else throw UnexpectedResultException(it) }
     @Throws(UnexpectedResultException::class)
-    open fun executeCallable(frame: VirtualFrame): Callable = execute(frame).let { if (it is Callable) it else throw UnexpectedResultException(it) }
+    open fun executeClosure(frame: VirtualFrame): Closure = execute(frame).let { if (it is Closure) it else throw UnexpectedResultException(it) }
 }
 
 open class CConstant(val v: Val, loc: Loc?) : Code(loc) {
@@ -70,22 +72,15 @@ open class CArg(val ix: Ix, val fs: FrameSlot, loc: Loc?) : Code(loc) {
         return null
     }
 }
-open class CLam(val n: String, val icit: Icit, val root: CallTarget, loc: Loc?) : Code(loc) {
-    override fun execute(frame: VirtualFrame): Any {
-        return VLam(n, icit, TruffleClosure(root, buildArgs(frame.materialize())))
-    }
+open class CLam(val n: String, val icit: Icit, val root: Closure, loc: Loc?) : Code(loc) {
+    override fun execute(frame: VirtualFrame): Any? = root.execute(*buildArgs(frame.materialize()))
 }
-open class CPi(val n: String, val icit: Icit, @field:Child var type: Code, val root: CallTarget, loc: Loc?) : Code(loc) {
-    override fun execute(frame: VirtualFrame): Any {
-        return VPi(n, icit, type.executeVal(frame), TruffleClosure(root, buildArgs(frame.materialize())))
-    }
+open class CPi(val n: String, val icit: Icit, @field:Child var type: Code, val root: Closure, loc: Loc?) : Code(loc) {
+    override fun execute(frame: VirtualFrame): Any? = root.execute(*buildArgs(frame.materialize()))
 }
 open class CApp(val icit: Icit, @field:Child var lhs: Code, @field:Child var rhs: Code, val lang: TruffleLanguage<*>, loc: Loc?) : Code(loc) {
     override fun hasTag(tag: Class<out Tag>?) = tag == StandardTags.CallTag::class.java || super.hasTag(tag)
     @Child private var dispatch: Dispatch = DispatchNodeGen.create()
-    override fun execute(frame: VirtualFrame): Any? {
-        val callable = lhs.executeCallable(frame)
-        val args = callable.getArgs() + rhs.execute(frame)
-        return dispatch.executeDispatch(callable.getCallTarget(lang), args)
-    }
+    override fun execute(frame: VirtualFrame): Any? =
+        dispatch.executeDispatch(lhs.executeClosure(frame).callTarget, arrayOf(rhs.execute(frame)))
 }

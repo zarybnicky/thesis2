@@ -1,7 +1,6 @@
 package montuno.interpreter
 
 import com.oracle.truffle.api.CompilerDirectives
-import com.oracle.truffle.api.TruffleLanguage
 import com.oracle.truffle.api.dsl.ImplicitCast
 import com.oracle.truffle.api.dsl.TypeCheck
 import com.oracle.truffle.api.dsl.TypeSystem
@@ -15,7 +14,7 @@ import montuno.Lvl
 import montuno.Meta
 import montuno.interpreter.scope.MetaEntry
 import montuno.interpreter.scope.TopEntry
-import montuno.truffle.Callable
+import montuno.truffle.Closure
 
 @TypeSystem(
     VUnit::class,
@@ -62,13 +61,13 @@ sealed class Val : TruffleObject {
     fun quote(lvl: Lvl, unfold: Boolean = false): Term = when (val v = force(unfold)) {
         is VTop ->
             if (v.slot.callTarget != null) v.slot.call(v.spine).quote(lvl, unfold)
-            else TTop(v.head, v.slot).wrapSpine(v.spine, lvl)
+            else rewrapSpine(TTop(v.head, v.slot), v.spine, lvl)
         is VMeta ->
             if (v.slot.solved && (v.slot.unfoldable || unfold)) v.slot.call(v.spine).quote(lvl, unfold)
-            else TMeta(v.head, v.slot).wrapSpine(v.spine, lvl)
-        is VLocal -> TLocal(v.head.toIx(lvl)).wrapSpine(v.spine, lvl)
+            else rewrapSpine(TMeta(v.head, v.slot), v.spine, lvl)
         is VLam -> TLam(v.name, v.icit, v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
         is VPi -> TPi(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
+        is VLocal -> rewrapSpine(TLocal(v.head.toIx(lvl)), v.spine, lvl)
         is VFun -> TFun(v.lhs.quote(lvl, unfold), v.rhs.quote(lvl, unfold))
         is VNat -> TNat(v.n)
         is VUnit -> TUnit
@@ -86,7 +85,6 @@ sealed class Val : TruffleObject {
 inline class VEnv(val it: Array<Val?> = emptyArray()) {
     operator fun plus(v: Val) = VEnv(it + v)
     fun skip() = VEnv(it + null)
-    val depth: Lvl get() = Lvl(it.size)
     operator fun get(lvl: Lvl) = it[lvl.it] ?: VLocal(lvl, VSpine())
     operator fun get(ix: Ix) = ix.toLvl(it.size).let { lvl -> it[lvl.it] ?: VLocal(lvl, VSpine()) }
 }
@@ -121,22 +119,16 @@ data class VNat(val n: Int) : Val() {
 
 @CompilerDirectives.ValueType
 @ExportLibrary(InteropLibrary::class)
-class VPi(val name: String, val icit: Icit, val bound: Val, val closure: Callable) : Val(), Callable {
+class VPi(val name: String, val icit: Icit, val bound: Val, val closure: Closure) : Val() {
     @ExportMessage fun isExecutable() = true
-    @ExportMessage fun execute(vararg args: Any?): Any = closure.inst(args[0] as Val)
-    override fun inst(v: Val): Val = closure.inst(v)
-    override fun getCallTarget(lang: TruffleLanguage<*>) = closure.getCallTarget(lang)
-    override fun getArgs() = closure.getArgs()
+    @ExportMessage fun execute(vararg args: Any?): Any? = closure.execute(args)
 }
 
 @CompilerDirectives.ValueType
 @ExportLibrary(InteropLibrary::class)
-class VLam(val name: String, val icit: Icit, val closure: Callable) : Val(), Callable {
+class VLam(val name: String, val icit: Icit, val closure: Closure) : Val() {
     @ExportMessage fun isExecutable() = true
-    @ExportMessage fun execute(vararg args: Any?): Any = closure.inst(args[0] as Val)
-    override fun inst(v: Val): Val = closure.inst(v)
-    override fun getCallTarget(lang: TruffleLanguage<*>) = closure.getCallTarget(lang)
-    override fun getArgs() = closure.getArgs()
+    @ExportMessage fun execute(vararg args: Any?): Any? = closure.execute(args)
 }
 
 @CompilerDirectives.ValueType

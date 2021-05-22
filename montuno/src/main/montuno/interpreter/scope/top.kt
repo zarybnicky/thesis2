@@ -15,7 +15,7 @@ import montuno.interpreter.MontunoContext
 class TopScope(
     private val env: TruffleLanguage.Env
 ) : TruffleObject {
-    lateinit var lang: TruffleLanguage<*>
+    lateinit var lang: TruffleLanguage<MontunoContext>
     lateinit var ctx: MontunoContext
 
     val it: MutableList<TopEntry> = mutableListOf()

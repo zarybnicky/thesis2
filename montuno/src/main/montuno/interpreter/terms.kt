@@ -3,7 +3,6 @@ package montuno.interpreter
 import montuno.*
 import montuno.interpreter.scope.MetaEntry
 import montuno.interpreter.scope.TopEntry
-import montuno.truffle.PureClosure
 
 object TUnit : Term()
 object TIrrelevant : Term()
@@ -18,56 +17,62 @@ data class TLocal(val ix: Ix) : Term() { override fun toString() = "TLocal(ix=${
 data class TTop(val lvl: Lvl, val slot: TopEntry) : Term() { override fun toString() = "TTop(lvl=${lvl.it})" }
 data class TMeta(val meta: Meta, val slot: MetaEntry) : Term() { override fun toString() = "TMeta(${meta.i}, ${meta.j})" }
 
+fun rewrapSpine(term: Term, spine: VSpine, lvl: Lvl): Term {
+    var x = term
+    for ((icit, t) in spine.it.reversedArray()) { x = TApp(icit, x, t.quote(lvl)) }
+    return x
+}
+
 sealed class Term {
-    fun wrapSpine(spine: VSpine, lvl: Lvl): Term {
-        var x = this
-        for ((icit, t) in spine.it.reversedArray()) { x = TApp(icit, x, t.quote(lvl)) }
-        return x
+    val arity: Int get() = when (this) {
+        is TLam -> 1 + body.arity
+        is TPi -> 1 + body.arity
+        else -> 0
     }
 
-    fun eval(env: VEnv): Val = when (this) {
+    fun eval(ctx: MontunoContext, env: VEnv): Val = when (this) {
         is TUnit -> VUnit
         is TNat -> VNat(n)
         is TIrrelevant -> VIrrelevant
         is TLocal -> env[ix]
         is TTop -> VTop(lvl, VSpine(), slot)
         is TMeta -> VMeta(meta, VSpine(), slot)
-        is TApp -> lhs.eval(env).app(icit, rhs.eval(env)) // lazy
-        is TLam -> VLam(name, icit, PureClosure(env, body))
-        is TPi -> VPi(name, icit, bound.eval(env), PureClosure(env, body)) // lazy
-        is TFun -> VFun(lhs.eval(env), rhs.eval(env)) // lazy
-        is TLet -> body.eval(env + bound.eval(env))   // lazy
+        is TApp -> lhs.eval(ctx, env).app(icit, rhs.eval(ctx, env)) // lazy
+        is TLam -> VLam(name, icit, ctx.compiler.buildClosure(body, env.it))
+        is TPi -> VPi(name, icit, bound.eval(ctx, env), ctx.compiler.buildClosure(body, env.it)) // lazy
+        is TFun -> VFun(lhs.eval(ctx, env), rhs.eval(ctx, env)) // lazy
+        is TLet -> body.eval(ctx, env + bound.eval(ctx, env))   // lazy
         is TForeign -> TODO("VForeign not implemented")
     }
 
-    fun inline(lvl: Lvl, vs: VEnv) : Term = when (this) {
+    fun inline(ctx:MontunoContext, lvl: Lvl, vs: VEnv) : Term = when (this) {
         is TTop -> this
         is TLocal -> this
         is TMeta -> if (slot.solved && slot.unfoldable) slot.term!! else this
-        is TLet -> TLet(name, type.inline(lvl, vs), bound.inline(lvl, vs), body.inline(lvl + 1, vs.skip()))
-        is TApp -> when (val x = lhs.inlineSp(lvl, vs)) {
-            is Either.Left -> x.it.app(icit, rhs.eval(vs)).quote(lvl)
-            is Either.Right -> TApp(icit, x.it, rhs.inline(lvl, vs))
+        is TLet -> TLet(name, type.inline(ctx, lvl, vs), bound.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
+        is TApp -> when (val x = lhs.inlineSp(ctx, lvl, vs)) {
+            is Either.Left -> x.it.app(icit, rhs.eval(ctx, vs)).quote(lvl)
+            is Either.Right -> TApp(icit, x.it, rhs.inline(ctx, lvl, vs))
         }
-        is TLam -> TLam(name, icit, body.inline(lvl + 1, vs.skip()))
-        is TFun -> TFun(lhs.inline(lvl, vs), rhs.inline(lvl, vs))
-        is TPi -> TPi(name, icit, bound.inline(lvl, vs), body.inline(lvl + 1, vs.skip()))
+        is TLam -> TLam(name, icit, body.inline(ctx, lvl + 1, vs.skip()))
+        is TFun -> TFun(lhs.inline(ctx, lvl, vs), rhs.inline(ctx, lvl, vs))
+        is TPi -> TPi(name, icit, bound.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
         TUnit -> this
         TIrrelevant -> this
         is TForeign -> this
         is TNat -> this
     }
 
-    private fun inlineSp(lvl: Lvl, vs: VEnv): Either<Val, Term> = when(this) {
+    private fun inlineSp(ctx: MontunoContext, lvl: Lvl, vs: VEnv): Either<Val, Term> = when(this) {
         is TMeta -> when {
             slot.solved && slot.unfoldable -> Either.Left(slot.value!!)
             else -> Either.Right(this)
         }
-        is TApp -> when (val x = lhs.inlineSp(lvl, vs)) {
-            is Either.Left -> Either.Left(x.it.app(icit, rhs.eval(vs)))
-            is Either.Right -> Either.Right(TApp(icit, x.it, rhs.inline(lvl, vs)))
+        is TApp -> when (val x = lhs.inlineSp(ctx, lvl, vs)) {
+            is Either.Left -> Either.Left(x.it.app(icit, rhs.eval(ctx, vs)))
+            is Either.Right -> Either.Right(TApp(icit, x.it, rhs.inline(ctx, lvl, vs)))
         }
-        else -> Either.Right(this.inline(lvl, vs))
+        else -> Either.Right(this.inline(ctx, lvl, vs))
     }
 
     fun isUnfoldable(): Boolean = when (this) {

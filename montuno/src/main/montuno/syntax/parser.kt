@@ -89,7 +89,7 @@ fun MontunoParser.TermContext.toAst(): PreTerm = when (this) {
     is MontunoParser.PiContext -> spine.foldRight(body.toAst()) { l, r -> l.toAst()(r) }
     is MontunoParser.AppContext -> {
         val expr = rands.fold(rator.toAst()) { l, r -> r.toAst()(l) }
-        if (body == null) expr else RFun(range(), expr, body.toAst())
+        if (body == null) expr else RPi(range(), "_", Icit.Expl, expr, body.toAst())
     }
     else -> throw UnsupportedOperationException(javaClass.canonicalName)
 }

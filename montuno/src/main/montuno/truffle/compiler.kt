@@ -8,48 +8,37 @@ import montuno.Lvl
 import montuno.interpreter.*
 
 abstract class Compiler(val ctx: MontunoContext) {
-    abstract fun compile(t: Term): CallTarget
+    abstract fun compile(t: Term, arity: Int): CallTarget
+    fun buildClosure(t: Term, env: Array<Val?>): Closure {
+        val bodyArity = t.arity
+        return Closure(env, env.size - bodyArity, bodyArity, compile(t, bodyArity))
+    }
 }
 
 class PureCompiler(ctx: MontunoContext): Compiler(ctx) {
-    override fun compile(t: Term): CallTarget = EvalRootNode(t, ctx.top.lang).callTarget
+    override fun compile(t: Term, arity: Int): CallTarget = PureRootNode(t, ctx, ctx.top.lang, FrameDescriptor()).callTarget
 }
 
-class TruffleCompiler(
-    ctx: MontunoContext,
-    private var depth: Lvl = Lvl(0),
-    private val fd: FrameDescriptor = FrameDescriptor(),
-) : Compiler(ctx) {
-    private var argPreamble = arrayOf<Code>()
-    init {
-        for (lvl in 0 until depth.it){
+class TruffleCompiler(ctx: MontunoContext) : Compiler(ctx) {
+    override fun compile(t: Term, arity: Int): CallTarget {
+        val depth = Lvl(0)
+        val fd = FrameDescriptor()
+        val code = mutableListOf<Code>()
+        for (lvl in 0 until arity) {
             val fs = fd.addFrameSlot(lvl)
-            argPreamble += CArg(Ix(depth.it - lvl - 1), fs, null)
+            code.add(CArg(Ix(depth.it - lvl - 1), fs, null))
         }
-    }
-    override fun compile(t: Term): CallTarget {
-        val code = compileTerm(t)
-        val root = ClosureRootNode(argPreamble + code, ctx.top.lang, fd).callTarget
+        code.add(compileTerm(t, depth, fd))
+        return TruffleRootNode(code.toTypedArray(), ctx.top.lang, fd).callTarget
         // println(root)
         // root.rootNode.children.forEach { it.accept { node -> println("  $node"); true } }
-        return root
     }
-    private fun compileTerm(t: Term): Code = when (t) {
-        is TPi -> {
-            val closure = TruffleCompiler(ctx, depth + 1).compile(t.body)
-            CPi(t.name, t.icit, compileTerm(t.bound), closure, null)
-        }
-        is TLam -> {
-            val closure = TruffleCompiler(ctx,depth + 1).compile(t.body)
-            CLam(t.name, t.icit, closure, null)
-        }
-        is TApp -> CApp(t.icit, compileTerm(t.lhs), compileTerm(t.rhs), ctx.top.lang, null)
-        is TFun -> CFun(compileTerm(t.lhs), compileTerm(t.rhs), null)
-        is TLet -> {
-            val fs = fd.addFrameSlot(depth.it)
-            depth += 1
-            CWriteLocal(fs, compileTerm(t.bound), compileTerm(t.body), null)
-        }
+    private fun compileTerm(t: Term, depth: Lvl, fd: FrameDescriptor): Code = when (t) {
+        is TPi -> CPi(t.name, t.icit, compileTerm(t.bound, depth, fd), buildClosure(t.body, emptyArray()), null)
+        is TLam -> CLam(t.name, t.icit, buildClosure(t.body, emptyArray()), null)
+        is TApp -> CApp(t.icit, compileTerm(t.lhs, depth, fd), compileTerm(t.rhs, depth, fd), ctx.top.lang, null)
+        is TFun -> CFun(compileTerm(t.lhs, depth, fd), compileTerm(t.rhs, depth, fd), null)
+        is TLet -> CWriteLocal(fd.addFrameSlot(depth.it), compileTerm(t.bound, depth + 1, fd), compileTerm(t.body, depth + 1, fd), null)
         is TLocal -> CReadLocal(fd.findFrameSlot(t.ix.toLvl(depth).it), null)
         is TForeign -> CInvoke(ctx.env.parseInternal(Source.newBuilder(t.lang, t.code, "<eval>").build()))
         is TMeta -> if (t.slot.callTarget != null) CInvoke(t.slot.callTarget!!) else CDerefMeta(t.slot, null)

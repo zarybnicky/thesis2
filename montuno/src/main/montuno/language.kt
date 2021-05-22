@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets
     fileTypeDetectors = [MontunoDetector::class]
 )
 class MontunoTruffle : Montuno() {
+    override fun getContext(): MontunoContext = MontunoPure.top
     override fun initializeContext(context: MontunoContext) {
         context.top.lang = this
         context.top.ctx = context
@@ -51,6 +52,7 @@ class MontunoTruffle : Montuno() {
     contextPolicy = TruffleLanguage.ContextPolicy.SHARED,
 )
 class MontunoPure : Montuno() {
+    override fun getContext(): MontunoContext = top
     override fun initializeContext(context: MontunoContext) {
         context.top.lang = this
         context.top.ctx = context
@@ -63,7 +65,8 @@ class MontunoPure : Montuno() {
     }
 }
 
-open class Montuno : TruffleLanguage<MontunoContext>() {
+abstract class Montuno : TruffleLanguage<MontunoContext>() {
+    abstract fun getContext(): MontunoContext
     override fun createContext(env: Env): MontunoContext = MontunoContext(env)
     override fun isThreadAccessAllowed(thread: Thread, singleThreaded: Boolean) = true
     override fun isObjectOfLanguage(obj: Any): Boolean = false

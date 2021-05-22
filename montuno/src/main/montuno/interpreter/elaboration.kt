@@ -4,7 +4,6 @@ import montuno.*
 import montuno.interpreter.scope.NILocal
 import montuno.interpreter.scope.NITop
 import montuno.syntax.*
-import montuno.truffle.PureClosure
 
 fun LocalContext.check(t: PreTerm, want: Val): Term {
     ctx.loc = t.loc
@@ -87,7 +86,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
     ctx.loc = r.loc
     return when (r) {
         is RU -> TUnit to VUnit
-        is RNat -> TNat(r.n) to inferVar("Nat").first.eval(env.vals)
+        is RNat -> TNat(r.n) to inferVar("Nat").first.eval(ctx, env.vals)
         is RVar -> insertMetas(mi, inferVar(r.n))
         is RStopMeta -> infer(MetaInsertion.No, r.body)
         is RForeign -> {
@@ -104,7 +103,6 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
             val b = bind(r.loc, r.n, false, eval(a)).check(r.body, VUnit)
             TPi(r.n, r.icit, a, b) to VUnit
         }
-        is RFun -> TFun(check(r.l, VUnit), check(r.r, VUnit)) to VUnit
         is RLet -> {
             val a = check(r.type, VUnit)
             val gva = eval(a)
@@ -146,7 +144,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
             val va = eval(newMeta())
             val (t, vb) = bind(r.loc, r.n, false, va).infer(MetaInsertion.Yes, r.body)
             val b = quote(vb, false, env.lvl + 1)
-            insertMetas(mi, TLam(r.n, icit, t) to VPi(r.n, icit, va, PureClosure(env.vals, b)))
+            insertMetas(mi, TLam(r.n, icit, t) to VPi(r.n, icit, va, ctx.compiler.buildClosure(b, emptyArray())))
         }
     }
 }
@@ -178,23 +176,19 @@ fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
             Pragma.Nothing -> ctx.pretty(ctx.infer(MetaInsertion.No, e.tm!!).first)
             Pragma.Type -> {
                 val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
-                println(ctx.pretty(ty.force(false).quote(Lvl(0), false)))
-                null
+                ctx.pretty(ty.force(false).quote(Lvl(0), false)).let { println(it); it }
             }
             Pragma.NormalType -> {
                 val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
-                println(ctx.pretty(ty.force(true).quote(Lvl(0), true)))
-                null
+                ctx.pretty(ty.force(true).quote(Lvl(0), true)).let { println(it); it }
             }
             Pragma.Elaborate -> {
                 val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)
-                println(ctx.pretty(tm.eval(VEnv()).force(false).quote(Lvl(0), false)))
-                null
+                ctx.pretty(tm.eval(top, VEnv()).force(false).quote(Lvl(0), false)).let { println(it); it }
             }
             Pragma.Normalize -> {
                 val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)
-                println(ctx.pretty(tm.eval(VEnv()).force(true).quote(Lvl(0), true)))
-                null
+                ctx.pretty(tm.eval(top, VEnv()).force(true).quote(Lvl(0), true)).let { println(it); it }
             }
         }
         is RDecl -> {
