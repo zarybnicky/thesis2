@@ -34,10 +34,9 @@ class TruffleCompiler(ctx: MontunoContext) : Compiler(ctx) {
         // root.rootNode.children.forEach { it.accept { node -> println("  $node"); true } }
     }
     private fun compileTerm(t: Term, depth: Lvl, fd: FrameDescriptor): Code = when (t) {
-        is TPi -> CPi(t.name, t.icit, compileTerm(t.bound, depth, fd), buildClosure(t.body, emptyArray()), null)
-        is TLam -> CLam(t.name, t.icit, buildClosure(t.body, emptyArray()), null)
+        is TPi -> CPi(t.name!!, t.icit, compileTerm(t.bound, depth, fd), buildClosure(t.body, emptyArray()), null)
+        is TLam -> CLam(t.name!!, t.icit, buildClosure(t.body, emptyArray()), null)
         is TApp -> CApp(t.icit, compileTerm(t.lhs, depth, fd), compileTerm(t.rhs, depth, fd), ctx.top.lang, null)
-        is TFun -> CFun(compileTerm(t.lhs, depth, fd), compileTerm(t.rhs, depth, fd), null)
         is TLet -> CWriteLocal(fd.addFrameSlot(depth.it), compileTerm(t.bound, depth + 1, fd), compileTerm(t.body, depth + 1, fd), null)
         is TLocal -> CReadLocal(fd.findFrameSlot(t.ix.toLvl(depth).it), null)
         is TForeign -> CInvoke(ctx.env.parseInternal(Source.newBuilder(t.lang, t.code, "<eval>").build()))
@@ -46,5 +45,10 @@ class TruffleCompiler(ctx: MontunoContext) : Compiler(ctx) {
         is TNat -> CConstant(VNat(t.n), null)
         TIrrelevant -> CConstant(VIrrelevant, null)
         TUnit -> CConstant(VUnit, null)
+        is TPair -> TODO()
+        is TProj1 -> TODO()
+        is TProj2 -> TODO()
+        is TProjF -> TODO()
+        is TSg -> TODO()
     }
 }

@@ -10,18 +10,32 @@ top
     | '{-#' cmd=IDENT (target=term)? '#-}'   #Pragma
     | term                                     #Expr
     ;
-term
-    : 'let' id=binder ':' type=term '=' defn=term 'in' body=term #Let
-    | LAMBDA (rands+=lamBind)* '.' body=term                     #Lam
-    | (spine+=piBind)+ ARROW body=term                           #Pi
-    | rator=atom (rands+=arg)* (ARROW body=term)?                #App
+term : lambda (',' tuple+=term)* ;
+lambda
+    : LAMBDA (rands+=lamBind)+ '.' body=lambda #Lam
+    | 'let' IDENT ':' type=term '=' defn=term 'in' body=lambda #LetType
+    | 'let' IDENT '=' defn=term 'in' body=lambda #Let
+    | (spine+=piBinder)+ ARROW body=lambda     #Pi
+    | sigma ARROW body=lambda                  #Fun
+    | sigma                                  #LamTerm
+    ;
+sigma
+    : '(' binder ':' type=term ')' TIMES body=term #SgNamed
+    | type=app TIMES body=term           #SgAnon
+    | app                                #SigmaTerm
+    ;
+app : proj (args+=arg)* ;
+proj
+    : proj '.' IDENT #ProjNamed
+    | proj '.1'      #ProjFst
+    | proj '.2'      #ProjSnd
+    | atom           #ProjTerm
     ;
 arg
     : '{' (IDENT '=')? term '}' #ArgImpl
-    | atom                      #ArgExpl
-    | '!'                       #ArgStop
+    | proj                      #ArgExpl
     ;
-piBind
+piBinder
     : '(' (ids+=binder)+ ':' type=term ')'    #PiExpl
     | '{' (ids+=binder)+ (':' type=term)? '}' #PiImpl
     ;
@@ -34,7 +48,7 @@ atom
     : '(' term ')'             #Rec
     | IDENT                    #Var
     | '_'                      #Hole
-    | '*'                      #Star
+    | ('()' | 'Unit')          #Star
     | NAT                      #Nat
     | '[' IDENT '|' FOREIGN? '|' term ']' #Foreign
     ;
@@ -53,4 +67,5 @@ LINE_COMMENT : '--' (~[\r\n])* -> skip;
 BLOCK_COMMENT : '{-'~[#] .*? '-}' -> skip;
 LAMBDA : '\\' | 'λ';
 ARROW : '->' | '→';
+TIMES : '×' | '*';
 FOREIGN : [^|]+;

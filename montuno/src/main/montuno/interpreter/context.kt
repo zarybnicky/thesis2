@@ -8,7 +8,7 @@ import montuno.syntax.Loc
 import montuno.truffle.Compiler
 
 class LocalContext(val ctx: MontunoContext, val env: LocalEnv) {
-    fun bind(loc: Loc, n: String, inserted: Boolean, ty: Val): LocalContext = LocalContext(ctx, env.bind(loc, n, inserted, ty))
+    fun bind(loc: Loc, n: String?, inserted: Boolean, ty: Val): LocalContext = LocalContext(ctx, env.bind(loc, n, inserted, ty))
     fun define(loc: Loc, n: String, tm: Val, ty: Val): LocalContext = LocalContext(ctx, env.define(loc, n, tm, ty))
 
     fun eval(t: Term): Val = t.eval(ctx, env.vals)
@@ -26,7 +26,6 @@ class LocalContext(val ctx: MontunoContext, val env: LocalEnv) {
         t is TApp -> { markOccurs(occurs, blockIx, t.lhs); markOccurs(occurs, blockIx, t.rhs); }
         t is TLam -> markOccurs(occurs, blockIx, t.body)
         t is TPi -> { markOccurs(occurs, blockIx, t.bound); markOccurs(occurs, blockIx, t.body) }
-        t is TFun -> { markOccurs(occurs, blockIx, t.lhs); markOccurs(occurs, blockIx, t.rhs) }
         else -> {}
     }
 }
@@ -35,12 +34,12 @@ class LocalEnv(
     val nameTable: NameTable,
     val vals: VEnv = VEnv(),
     val types: List<Val> = listOf(),
-    val names: List<String> = listOf(),
+    val names: List<String?> = listOf(),
     val boundLevels: IntArray = IntArray(0)
 ) {
     val lvl: Lvl get() = Lvl(names.size)
-    fun bind(loc: Loc, n: String, inserted: Boolean, ty: Val) = LocalEnv(
-        nameTable.withName(n, NILocal(loc, lvl, inserted)),
+    fun bind(loc: Loc, n: String?, inserted: Boolean, ty: Val) = LocalEnv(
+        if (n == null) nameTable else nameTable.withName(n, NILocal(loc, lvl, inserted)),
         vals.skip(),
         types + ty,
         names + n,

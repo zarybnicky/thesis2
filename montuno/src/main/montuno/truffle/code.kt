@@ -11,10 +11,9 @@ import com.oracle.truffle.api.nodes.Node
 import com.oracle.truffle.api.nodes.NodeInfo
 import com.oracle.truffle.api.nodes.UnexpectedResultException
 import com.oracle.truffle.api.source.SourceSection
-import montuno.Icit
+import montuno.syntax.Icit
 import montuno.Ix
 import montuno.interpreter.Types
-import montuno.interpreter.VFun
 import montuno.interpreter.Val
 import montuno.interpreter.scope.MetaEntry
 import montuno.panic
@@ -62,9 +61,6 @@ open class CWriteLocal(val slot: FrameSlot, @field:Child var value: Code, @field
         frame.setObject(slot, value.execute(frame))
         return body.execute(frame)
     }
-}
-open class CFun(@field:Child var lhs: Code, @field:Child var rhs: Code, loc: Loc?) : Code(loc) {
-    override fun execute(frame: VirtualFrame) = VFun(lhs.executeVal(frame), rhs.executeVal(frame))
 }
 open class CArg(val ix: Ix, val fs: FrameSlot, loc: Loc?) : Code(loc) {
     override fun execute(frame: VirtualFrame): Any? {

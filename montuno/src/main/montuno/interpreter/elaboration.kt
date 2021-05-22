@@ -9,36 +9,36 @@ fun LocalContext.check(t: PreTerm, want: Val): Term {
     ctx.loc = t.loc
     val v = want.force(true)
     return when {
+        t is RLam && v is VPi && t.arg.match(v) -> {
+            val inner = bind(t.loc, t.arg.name, false, v.bound)
+            val body = inner.check(t.body, v.closure.inst(VLocal(env.lvl)))
+            TLam(t.arg.name, v.icit, v.bound.quote(env.lvl), body)
+        }
+        v is VPi && v.icit == Icit.Impl -> {
+            val inner = bind(t.loc, v.name, true, v.bound)
+            val body = inner.check(t, v.closure.inst(VLocal(env.lvl)))
+            TLam(v.name, Icit.Impl, v.bound.quote(env.lvl), body)
+        }
         t is RHole -> newMeta()
         t is RLet -> {
-            val a = check(t.type, VUnit)
+            val a = if (t.type == null) newMeta() else check(t.type, VUnit)
             val va = eval(a)
             val tm = check(t.defn, va)
             val vt = eval(tm)
             val u = define(t.loc, t.n, va, vt).check(t.body, want)
             TLet(t.n, a, tm, u)
         }
-        t is RLam && v is VPi && t.ni.match(v) ->
-            TLam(t.n, v.icit, bind(t.loc, t.n, false, v.bound).check(t.body, v.closure.inst(VLocal(env.lvl))))
-        t is RLam && v is VFun && t.ni is NIExpl ->
-            TLam(t.n, Icit.Expl, bind(t.loc, t.n, false, v.lhs).check(t.body, v.rhs))
-        v is VPi && v.icit == Icit.Impl ->
-            TLam(v.name, Icit.Impl, bind(t.loc, v.name, true, v.bound).check(t, v.closure.inst(VLocal(env.lvl))))
+        t is RPair && v is VSg -> {
+            val lhs = check(t.lhs, v.bound)
+            val rhs = check(t.rhs, v.closure.inst(eval(lhs)))
+            TPair(lhs, rhs)
+        }
         else -> {
             val (tt, has) = infer(MetaInsertion.Yes, t)
-            try {
-                unify(has, want)
-            } catch (e: ElabError) {
-                throw ElabError(ctx.loc, "Failed to unify $has and $want")
-            }
+            unify(has, want)
             tt
         }
     }
-}
-fun NameOrIcit.match(v: VPi): Boolean = when (this) {
-    NIImpl -> v.icit == Icit.Impl
-    NIExpl -> v.icit == Icit.Expl
-    is NIName -> v.name == n
 }
 
 fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, Val>): Pair<Term, Val> {
@@ -85,10 +85,79 @@ fun LocalContext.inferVar(n: String): Pair<Term, Val> {
 fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
     ctx.loc = r.loc
     return when (r) {
+        is RVar -> insertMetas(mi, inferVar(r.n))
+        is RLet -> {
+            val a = if (r.type == null) newMeta() else check(r.type, VUnit)
+            val gva = eval(a)
+            val t = check(r.defn, gva)
+            val gvt = eval(t)
+            val (u, gvb) = define(r.loc, r.n, gvt, gva).infer(mi, r.body)
+            TLet(r.n, a, t, u) to gvb
+        }
+        is RPi -> {
+            val n = r.bind.name
+            val a = check(r.type, VUnit)
+            val b = bind(r.loc, n, false, eval(a)).check(r.body, VUnit)
+            TPi(n, r.icit, a, b) to VUnit
+        }
+        is RApp -> {
+            val icit = if (r.arg.icit == Icit.Expl) Icit.Expl else Icit.Impl
+            val (t, va) = infer(r.arg.metaInsertion, r.rator)
+            val v = va.force(true)
+            if (v !is VPi) throw ElabError(r.loc, "function type expected, instead got $v")
+            // else https://github.com/AndrasKovacs/setoidtt/blob/621aef2c4ae5a6acb418fa1153575b21e2dc48d2/setoidtt/src/Elaboration.hs#L228
+            if (v.icit != icit) throw ElabError(r.loc, "Icit mismatch")
+            val u = check(r.rand, v.bound)
+            insertMetas(mi, TApp(v.icit, t, u) to v.closure.inst(eval(u)))
+        }
+        is RLam -> {
+            val n = r.bind.name
+            val icit = r.arg.icit ?: throw ElabError(r.loc, "named lambda")
+            val a = newMeta()
+            val va = eval(a)
+            val (t, vb) = bind(r.loc, n, false, va).infer(MetaInsertion.Yes, r.body)
+            val b = quote(vb, false, env.lvl + 1)
+            insertMetas(mi, TLam(n, icit, a, t) to VPi(n, icit, va, ctx.compiler.buildClosure(b, emptyArray())))
+        }
+        is RSg -> {
+            val n = r.bind.name
+            val a = check(r.type, VUnit)
+            val b = bind(r.loc, n, false, eval(a)).check(r.body, VUnit)
+            TSg(n, a, b) to VUnit
+        }
+        is RPair -> {
+            val (t, va) = infer(mi, r.lhs)
+            val (u, vb) = infer(mi, r.rhs)
+            val b = quote(vb, false, env.lvl)
+            TPair(t, u) to VSg(null, va, ctx.compiler.buildClosure(b, emptyArray()))
+        }
+        is RProj1 -> {
+            val (t, va) = infer(mi, r.body)
+            val v = va.force(true)
+            if (v !is VSg) throw ElabError(r.loc, "sigma type expected, instead got $v")
+            TProj1(t) to v.bound
+        }
+        is RProj2 -> {
+            val (t, va) = infer(mi, r.body)
+            val v = va.force(true)
+            if (v !is VSg) throw ElabError(r.loc, "sigma type expected, instead got $v")
+            TProj2(t) to v.closure.inst(eval(t).proj1())
+        }
+        is RProjF -> {
+            val (t, va) = infer(mi, r.body)
+            val sg: VSg = todo
+            /*
+    let go :: S.Tm -> V.Val -> V.Ty -> Int -> IO Infer
+        go topT t sg i = case forceFUE cxt sg of
+          V.Sg x a au b bu
+            | NName topX == x -> pure $ Infer (S.ProjField topT x i) a au
+            | otherwise       -> go topT (vProj2 t) (b $$$ unS (vProj2 t)) (i + 1)
+          _ -> elabError cxt topmostT $ NoSuchField topX */
+            TProjF(r.field, t) to sg.bound
+        }
+
         is RU -> TUnit to VUnit
         is RNat -> TNat(r.n) to inferVar("Nat").first.eval(ctx, env.vals)
-        is RVar -> insertMetas(mi, inferVar(r.n))
-        is RStopMeta -> infer(MetaInsertion.No, r.body)
         is RForeign -> {
             val a = check(r.type, VUnit)
             TForeign(r.lang, r.eval, a) to eval(a)
@@ -97,54 +166,6 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
             val m1 = newMeta()
             val m2 = newMeta()
             m1 to eval(m2)
-        }
-        is RPi -> {
-            val a = check(r.type, VUnit)
-            val b = bind(r.loc, r.n, false, eval(a)).check(r.body, VUnit)
-            TPi(r.n, r.icit, a, b) to VUnit
-        }
-        is RLet -> {
-            val a = check(r.type, VUnit)
-            val gva = eval(a)
-            val t = check(r.defn, gva)
-            val gvt = eval(t)
-            val (u, gvb) = define(r.loc, r.n, gvt, gva).infer(mi, r.body)
-            TLet(r.n, a, t, u) to gvb
-        }
-        is RApp -> {
-            val ins = when (r.ni) {
-                is NIName -> MetaInsertion.UntilName(r.ni.n)
-                NIImpl -> MetaInsertion.No
-                NIExpl -> MetaInsertion.Yes
-            }
-            val (t, va) = infer(ins, r.rator)
-            insertMetas(mi, when (val v = va.force(true)) {
-                is VPi -> {
-                    when {
-                        r.ni is NIExpl && v.icit != Icit.Expl -> { ctx.loc = r.loc; throw ElabError(r.loc, "AppIcit") }
-                        r.ni is NIImpl && v.icit != Icit.Impl -> { ctx.loc = r.loc; throw ElabError(r.loc, "AppIcit") }
-                    }
-                    val u = check(r.rand, v.bound)
-                    TApp(v.icit, t, u) to v.closure.inst(eval(u))
-                }
-                is VFun -> {
-                    if (r.ni !is NIExpl) throw ElabError(r.loc, "Icit mismatch")
-                    val u = check(r.rand, v.lhs)
-                    TApp(Icit.Expl, t, u) to v.rhs
-                }
-                else -> throw ElabError(r.loc, "function type expected, instead got $v")
-            })
-        }
-        is RLam -> {
-            val icit = when (r.ni) {
-                NIImpl -> Icit.Impl
-                NIExpl -> Icit.Expl
-                is NIName -> throw ElabError(r.loc, "named lambda")
-            }
-            val va = eval(newMeta())
-            val (t, vb) = bind(r.loc, r.n, false, va).infer(MetaInsertion.Yes, r.body)
-            val b = quote(vb, false, env.lvl + 1)
-            insertMetas(mi, TLam(r.n, icit, t) to VPi(r.n, icit, va, ctx.compiler.buildClosure(b, emptyArray())))
         }
     }
 }
@@ -155,10 +176,10 @@ fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
     top.loc = e.loc
     return when (e) {
         is RTerm -> when (e.cmd) {
-            Pragma.ParseOnly -> e.tm.toString()
-            Pragma.Reset -> { top.reset(); null }
-            Pragma.Symbols -> top.top.getMembers().it
-            Pragma.WholeProgram -> {
+            Pragma.PARSE -> e.tm.toString()
+            Pragma.RESET -> { top.reset(); null }
+            Pragma.SYMBOLS -> top.top.getMembers().it
+            Pragma.PRINT -> {
                 for (i in top.top.it.indices) {
                     for ((j, meta) in top.metas.it[i].withIndex()) {
                         if (!meta.solved) throw UnifyError("Unsolved metablock")
@@ -172,21 +193,21 @@ fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
                 }
                 null
             }
-            Pragma.Raw -> { println(ctx.infer(MetaInsertion.No, e.tm!!)); null }
-            Pragma.Nothing -> ctx.pretty(ctx.infer(MetaInsertion.No, e.tm!!).first)
-            Pragma.Type -> {
+            Pragma.RAW -> { println(ctx.infer(MetaInsertion.No, e.tm!!)); null }
+            Pragma.NOTHING -> ctx.pretty(ctx.infer(MetaInsertion.No, e.tm!!).first)
+            Pragma.TYPE -> {
                 val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
                 ctx.pretty(ty.force(false).quote(Lvl(0), false)).let { println(it); it }
             }
-            Pragma.NormalType -> {
+            Pragma.NORMAL_TYPE -> {
                 val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
                 ctx.pretty(ty.force(true).quote(Lvl(0), true)).let { println(it); it }
             }
-            Pragma.Elaborate -> {
+            Pragma.ELABORATE -> {
                 val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)
                 ctx.pretty(tm.eval(top, VEnv()).force(false).quote(Lvl(0), false)).let { println(it); it }
             }
-            Pragma.Normalize -> {
+            Pragma.NORMALIZE -> {
                 val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)
                 ctx.pretty(tm.eval(top, VEnv()).force(true).quote(Lvl(0), true)).let { println(it); it }
             }

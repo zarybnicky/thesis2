@@ -8,12 +8,13 @@ import com.oracle.truffle.api.interop.InteropLibrary
 import com.oracle.truffle.api.interop.TruffleObject
 import com.oracle.truffle.api.library.ExportLibrary
 import com.oracle.truffle.api.library.ExportMessage
-import montuno.Icit
 import montuno.Ix
 import montuno.Lvl
 import montuno.Meta
 import montuno.interpreter.scope.MetaEntry
 import montuno.interpreter.scope.TopEntry
+import montuno.syntax.Icit
+import montuno.todo
 import montuno.truffle.Closure
 
 @TypeSystem(
@@ -21,7 +22,6 @@ import montuno.truffle.Closure
     VIrrelevant::class,
     VLam::class,
     VPi::class,
-    VFun::class,
     VMeta::class,
     VLocal::class,
     VTop::class,
@@ -65,13 +65,14 @@ sealed class Val : TruffleObject {
         is VMeta ->
             if (v.slot.solved && (v.slot.unfoldable || unfold)) v.slot.call(v.spine).quote(lvl, unfold)
             else rewrapSpine(TMeta(v.head, v.slot), v.spine, lvl)
-        is VLam -> TLam(v.name, v.icit, v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
+        is VLam -> TLam(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
         is VPi -> TPi(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
         is VLocal -> rewrapSpine(TLocal(v.head.toIx(lvl)), v.spine, lvl)
-        is VFun -> TFun(v.lhs.quote(lvl, unfold), v.rhs.quote(lvl, unfold))
         is VNat -> TNat(v.n)
         is VUnit -> TUnit
         is VIrrelevant -> TIrrelevant
+        is VPair -> TODO()
+        is VSg -> TODO()
     }
 
     fun replaceSpine(spine: VSpine) = when (this) {
@@ -79,6 +80,21 @@ sealed class Val : TruffleObject {
         is VTop -> VTop(head, spine, slot)
         is VMeta -> VMeta(head, spine, slot)
         else -> this
+    }
+
+    fun proj1(): Val = when (this) {
+        is VPair -> left
+        is VTop -> VTop(head, spine + todo, slot)
+        is VMeta -> VMeta(head, spine + todo, slot)
+        is VLocal -> VLocal(head, spine + todo)
+        else -> TODO("impossible")
+    }
+    fun proj2(): Val = when (this) {
+        is VPair -> right
+        is VTop -> VTop(head, spine + todo, slot)
+        is VMeta -> VMeta(head, spine + todo, slot)
+        is VLocal -> VLocal(head, spine + todo)
+        else -> TODO("impossible")
     }
 }
 
@@ -95,45 +111,7 @@ inline class VSpine(val it: Array<Pair<Icit, Val>> = emptyArray()) {
     fun getVals() = it.map { it.second }.toTypedArray()
 }
 
-@CompilerDirectives.ValueType
-@ExportLibrary(InteropLibrary::class)
-object VUnit : Val() {
-    @ExportMessage fun isNull() = true
-    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VUnit"
-    override fun toString(): String = "VUnit"
-}
-
-@CompilerDirectives.ValueType
-@ExportLibrary(InteropLibrary::class)
-object VIrrelevant : Val() {
-    @ExportMessage fun isNull() = true
-    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VIrrelevant"
-    override fun toString(): String = "VIrrelevant"
-}
-
-@CompilerDirectives.ValueType
-@ExportLibrary(InteropLibrary::class)
-data class VNat(val n: Int) : Val() {
-    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VNat($n)"
-}
-
-@CompilerDirectives.ValueType
-@ExportLibrary(InteropLibrary::class)
-class VPi(val name: String, val icit: Icit, val bound: Val, val closure: Closure) : Val() {
-    @ExportMessage fun isExecutable() = true
-    @ExportMessage fun execute(vararg args: Any?): Any? = closure.execute(args)
-}
-
-@CompilerDirectives.ValueType
-@ExportLibrary(InteropLibrary::class)
-class VLam(val name: String, val icit: Icit, val closure: Closure) : Val() {
-    @ExportMessage fun isExecutable() = true
-    @ExportMessage fun execute(vararg args: Any?): Any? = closure.execute(args)
-}
-
-@CompilerDirectives.ValueType
-class VFun(@JvmField val lhs: Val, @JvmField val rhs: Val) : Val()
-
+// neutrals
 @CompilerDirectives.ValueType
 class VTop(val head: Lvl, val spine: VSpine, val slot: TopEntry) : Val()
 
@@ -142,3 +120,48 @@ class VLocal(val head: Lvl, val spine: VSpine = VSpine()) : Val()
 
 @CompilerDirectives.ValueType
 class VMeta(val head: Meta, val spine: VSpine, val slot: MetaEntry) : Val()
+
+// canonical
+@CompilerDirectives.ValueType
+class VPair(val left: Val, val right: Val) : Val()
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+class VSg(val name: String?, val bound: Val, val closure: Closure) : Val() {
+    @ExportMessage fun isExecutable() = true
+    @ExportMessage fun execute(vararg args: Any?): Any? = closure.execute(args)
+}
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+class VPi(val name: String?, val icit: Icit, val bound: Val, val closure: Closure) : Val() {
+    @ExportMessage fun isExecutable() = true
+    @ExportMessage fun execute(vararg args: Any?): Any? = closure.execute(args)
+}
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+class VLam(val name: String?, val icit: Icit, val bound: Val, val closure: Closure) : Val() {
+    @ExportMessage fun isExecutable() = true
+    @ExportMessage fun execute(vararg args: Any?): Any? = closure.execute(args)
+}
+
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+object VUnit : Val() {
+    @ExportMessage fun isNull() = true
+    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VUnit"
+    override fun toString(): String = "VUnit"
+}
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+object VIrrelevant : Val() {
+    @ExportMessage fun isNull() = true
+    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VIrrelevant"
+    override fun toString(): String = "VIrrelevant"
+}
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+data class VNat(val n: Int) : Val() {
+    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VNat($n)"
+}

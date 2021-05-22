@@ -81,9 +81,9 @@ inline fun <A> Ctx.withPos(newLoc: Loc, run: Ctx.() -> A): A {
 
 @Throws(TypeError::class)
 fun Ctx.check(r: PreTerm, a: Val): Term = when {
-    r is RLam && a is VPi -> withPos(r.loc) { TLam(r.n, bind(r.n, a.ty).check(r.body, a.clo.ap(VVar(l)))) }
+    r is RLam && a is VPi -> withPos(r.loc) { TLam(r.arg.name!!, bind(r.arg.name!!, a.ty).check(r.body, a.clo.ap(VVar(l)))) }
     r is RLet -> withPos(r.loc) {
-        val ty = check(r.type, VU)
+        val ty = check(r.type!!, VU)
         val vty by lazy { ty.eval(env) }
         val b = check(r.defn, vty)
         val vb by lazy { b.eval(env) }
@@ -117,11 +117,11 @@ fun Ctx.infer(r: PreTerm): Pair<Term, Val> = when (r) {
     is RU -> TU to VU
     is RPi -> withPos(r.loc) {
         val a = check(r.type, VU)
-        val b = bind(r.n, a.eval(env)).check(r.body, VU)
-        TPi(r.n, a, b) to VU
+        val b = bind(r.bind.name!!, a.eval(env)).check(r.body, VU)
+        TPi(r.bind.name!!, a, b) to VU
     }
     is RLet -> withPos(r.loc) {
-        val a = check(r.type, VU)
+        val a = check(r.type!!, VU)
         val va by lazy { a.eval(env) }
         val t = check(r.defn, va)
         val vt by lazy { t.eval(env) }
@@ -129,7 +129,11 @@ fun Ctx.infer(r: PreTerm): Pair<Term, Val> = when (r) {
         TLet(r.n, a, t, u) to uty
     }
     is RForeign -> TODO("infer(RForeign)")
-    is RStopMeta -> TODO("infer(RStopMeta)")
+    is RPair -> TODO()
+    is RProj1 -> TODO()
+    is RProj2 -> TODO()
+    is RProjF -> TODO()
+    is RSg -> TODO()
 }
 
 class TypeError(message: String, val loc: Loc) : Exception(message) {
@@ -137,7 +141,7 @@ class TypeError(message: String, val loc: Loc) : Exception(message) {
 }
 
 fun nfMain(input: String) {
-    val ctx = Ctx(null, null, Loc.Line(0), Lvl(0))
+    val ctx = Ctx(null, null, Loc.Unavailable, Lvl(0))
         .primitive("Nat", "*", "*")
         .primitive("id", "(A : *) -> A -> A", "\\A x. x")
         .primitive("const", "(A B : *) -> A -> B -> A", "\\A B x y. x")

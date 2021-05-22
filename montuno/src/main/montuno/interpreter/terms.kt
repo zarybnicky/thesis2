@@ -1,17 +1,25 @@
 package montuno.interpreter
 
-import montuno.*
+import montuno.Either
+import montuno.Ix
+import montuno.Lvl
+import montuno.Meta
 import montuno.interpreter.scope.MetaEntry
 import montuno.interpreter.scope.TopEntry
+import montuno.syntax.Icit
 
 object TUnit : Term()
 object TIrrelevant : Term()
 data class TNat(val n: Int) : Term()
 data class TLet(val name: String, val type: Term, val bound: Term, val body: Term) : Term()
 data class TApp(val icit: Icit, val lhs: Term, val rhs: Term) : Term()
-data class TLam(val name: String, val icit: Icit, val body: Term) : Term()
-data class TPi(val name: String, val icit: Icit, val bound: Term, val body: Term) : Term()
-data class TFun(val lhs: Term, val rhs: Term) : Term()
+data class TLam(val name: String?, val icit: Icit, val type: Term, val body: Term) : Term()
+data class TPi(val name: String?, val icit: Icit, val bound: Term, val body: Term) : Term()
+data class TPair(val lhs: Term, val rhs: Term) : Term()
+data class TProjF(val name: String, val body: Term) : Term()
+data class TProj1(val body: Term) : Term()
+data class TProj2(val body: Term) : Term()
+data class TSg(val name: String?, val bound: Term, val body: Term) : Term()
 data class TForeign(val lang: String, val code: String, val type: Term) : Term()
 data class TLocal(val ix: Ix) : Term() { override fun toString() = "TLocal(ix=${ix.it})" }
 data class TTop(val lvl: Lvl, val slot: TopEntry) : Term() { override fun toString() = "TTop(lvl=${lvl.it})" }
@@ -38,11 +46,15 @@ sealed class Term {
         is TTop -> VTop(lvl, VSpine(), slot)
         is TMeta -> VMeta(meta, VSpine(), slot)
         is TApp -> lhs.eval(ctx, env).app(icit, rhs.eval(ctx, env)) // lazy
-        is TLam -> VLam(name, icit, ctx.compiler.buildClosure(body, env.it))
+        is TLam -> VLam(name, icit, type.eval(ctx, env), ctx.compiler.buildClosure(body, env.it))
         is TPi -> VPi(name, icit, bound.eval(ctx, env), ctx.compiler.buildClosure(body, env.it)) // lazy
-        is TFun -> VFun(lhs.eval(ctx, env), rhs.eval(ctx, env)) // lazy
         is TLet -> body.eval(ctx, env + bound.eval(ctx, env))   // lazy
         is TForeign -> TODO("VForeign not implemented")
+        is TPair -> TODO()
+        is TProj1 -> TODO()
+        is TProj2 -> TODO()
+        is TProjF -> TODO()
+        is TSg -> TODO()
     }
 
     fun inline(ctx:MontunoContext, lvl: Lvl, vs: VEnv) : Term = when (this) {
@@ -54,13 +66,17 @@ sealed class Term {
             is Either.Left -> x.it.app(icit, rhs.eval(ctx, vs)).quote(lvl)
             is Either.Right -> TApp(icit, x.it, rhs.inline(ctx, lvl, vs))
         }
-        is TLam -> TLam(name, icit, body.inline(ctx, lvl + 1, vs.skip()))
-        is TFun -> TFun(lhs.inline(ctx, lvl, vs), rhs.inline(ctx, lvl, vs))
+        is TLam -> TLam(name, icit, type.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
         is TPi -> TPi(name, icit, bound.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
         TUnit -> this
         TIrrelevant -> this
         is TForeign -> this
         is TNat -> this
+        is TPair -> TODO()
+        is TProj1 -> TODO()
+        is TProj2 -> TODO()
+        is TProjF -> TODO()
+        is TSg -> TODO()
     }
 
     private fun inlineSp(ctx: MontunoContext, lvl: Lvl, vs: VEnv): Either<Val, Term> = when(this) {

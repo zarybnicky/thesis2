@@ -1,7 +1,7 @@
 package montuno.interpreter.scope
 
 import montuno.ElabError
-import montuno.Icit
+import montuno.syntax.Icit
 import montuno.Lvl
 import montuno.Meta
 import montuno.interpreter.*

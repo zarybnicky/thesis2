@@ -16,7 +16,7 @@ import com.oracle.truffle.api.library.ExportMessage
 import com.oracle.truffle.api.nodes.ExplodeLoop
 import com.oracle.truffle.api.nodes.NodeUtil.concat
 import com.oracle.truffle.api.nodes.RootNode
-import montuno.Icit
+import montuno.syntax.Icit
 import montuno.Lvl
 import montuno.interpreter.*
 import java.util.*
