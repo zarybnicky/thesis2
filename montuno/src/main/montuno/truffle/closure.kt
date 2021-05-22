@@ -16,9 +16,9 @@ import com.oracle.truffle.api.library.ExportMessage
 import com.oracle.truffle.api.nodes.ExplodeLoop
 import com.oracle.truffle.api.nodes.NodeUtil.concat
 import com.oracle.truffle.api.nodes.RootNode
-import montuno.syntax.Icit
 import montuno.Lvl
 import montuno.interpreter.*
+import montuno.syntax.Icit
 import java.util.*
 
 sealed class ClosureRootNode(lang: TruffleLanguage<MontunoContext>, fd: FrameDescriptor) : RootNode(lang, fd) {
@@ -63,7 +63,7 @@ fun callClosure(cl: Closure, args: Array<out Any?>): Any? {
     //arguments.fold(type) { t, it -> (t as Arr).apply { argument.validate(it) }.result }
     val resArgs = concat(cl.papArgs, args)
     return when {
-        args.size < cl.arity -> Closure(resArgs, cl.arity - args.size, cl.maxArity, cl.callTarget)
+        args.size < cl.arity -> Closure(resArgs, cl.type, cl.arity - args.size, cl.maxArity, cl.callTarget)
         args.size == cl.arity -> cl.callTarget.call(resArgs)
         else -> {
             val g = cl.callTarget.call(Arrays.copyOfRange(resArgs, 0, cl.maxArity))
@@ -82,6 +82,7 @@ fun forceClosure(cl: Closure): Any? {
 @ExportLibrary(InteropLibrary::class)
 class Closure (
     @JvmField @CompilerDirectives.CompilationFinal(dimensions = 1) val papArgs: Array<out Any?>,
+    @JvmField val type: Term,
     @JvmField val arity: Int,
     @JvmField val maxArity: Int,
     //private val targetType: Type,

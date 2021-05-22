@@ -43,6 +43,7 @@ open class Types {
 
 sealed class Val : TruffleObject {
     fun app(icit: Icit, r: Val) = when (this) {
+        is VPi -> closure.inst(r)
         is VLam -> closure.inst(r)
         is VTop -> VTop(head, spine + SApp(icit, r), slot)
         is VMeta -> VMeta(head, spine + SApp(icit, r), slot)
@@ -51,17 +52,17 @@ sealed class Val : TruffleObject {
     }
 
     fun force(unfold: Boolean): Val = when {
-        this is VTop && slot.callTarget != null && unfold -> slot.call(spine)
-        this is VMeta && slot.solved && (slot.unfoldable || unfold) -> slot.call(spine)
+        this is VTop && slot.closure != null && unfold -> spine.applyTo(this)
+        this is VMeta && slot.solved && (slot.unfoldable || unfold) -> spine.applyTo(this)
         else -> this
     }
 
     fun quote(lvl: Lvl, unfold: Boolean = false): Term = when (val v = force(unfold)) {
         is VTop ->
-            if (v.slot.callTarget != null) v.slot.call(v.spine).quote(lvl, unfold)
+            if (v.slot.closure != null) v.spine.applyTo(v).quote(lvl, unfold)
             else rewrapSpine(TTop(v.head, v.slot), v.spine, lvl)
         is VMeta ->
-            if (v.slot.solved && (v.slot.unfoldable || unfold)) v.slot.call(v.spine).quote(lvl, unfold)
+            if (v.slot.solved && (v.slot.unfoldable || unfold)) v.spine.applyTo(v).quote(lvl, unfold)
             else rewrapSpine(TMeta(v.head, v.slot), v.spine, lvl)
         is VLam -> TLam(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
         is VPi -> TPi(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
@@ -118,16 +119,12 @@ data class SProjF(val n: String, val i: Int): SpineVal()
 data class SApp(val icit: Icit, val v: Val): SpineVal()
 inline class VSpine(val it: Array<SpineVal> = emptyArray()) {
     operator fun plus(x: SpineVal) = VSpine(it.plus(x))
-    fun applyTo(v: Val): Val {
-        var res = v
-        for (sp in it) res = when (sp) {
-            SProj1 -> v.proj1()
-            SProj2 -> v.proj2()
-            is SProjF -> v.projF(sp.n, sp.i)
-            is SApp -> v.app(sp.icit, sp.v)
-        }
-        return res
-    }
+    fun applyTo(vi: Val): Val = it.fold(vi) { v, sp -> when (sp) {
+        SProj1 -> v.proj1()
+        SProj2 -> v.proj2()
+        is SProjF -> v.projF(sp.n, sp.i)
+        is SApp -> v.app(sp.icit, sp.v)
+    } }
 }
 
 // neutrals

@@ -14,8 +14,6 @@ class LocalContext(val ctx: MontunoContext, val env: LocalEnv) {
     fun eval(t: Term): Val = t.eval(ctx, env.vals)
     fun quote(v: Val, unfold: Boolean, depth: Lvl): Term = v.quote(depth, unfold)
 
-    fun newMeta() = ctx.metas.newMeta(env.lvl, env.boundLevels)
-
     fun pretty(t: Term): String = t.pretty(NameEnv(ctx.ntbl)).toString()
     fun inline(t: Term): Term = t.inline(ctx, Lvl(0), env.vals)
     fun force(v: Val, unfold: Boolean): Val = v.force(unfold)
@@ -34,23 +32,20 @@ class LocalEnv(
     val nameTable: NameTable,
     val vals: VEnv = VEnv(),
     val types: List<Val> = listOf(),
-    val names: List<String?> = listOf(),
-    val boundLevels: IntArray = IntArray(0)
+    val names: List<String?> = listOf()
 ) {
     val lvl: Lvl get() = Lvl(names.size)
     fun bind(loc: Loc, n: String?, inserted: Boolean, ty: Val) = LocalEnv(
         if (n == null) nameTable else nameTable.withName(n, NILocal(loc, lvl, inserted)),
         vals.skip(),
         types + ty,
-        names + n,
-        boundLevels.plus(lvl.it)
+        names + n
     )
     fun define(loc: Loc, n: String, tm: Val, ty: Val) = LocalEnv(
         nameTable.withName(n, NILocal(loc, lvl, false)),
         vals + tm,
         types + ty,
-        names + n,
-        boundLevels
+        names + n
     )
 }
 
@@ -69,17 +64,17 @@ class MontunoContext(val env: TruffleLanguage.Env) {
         ntbl = NameTable()
     }
 
-    fun compileMeta(m: Meta, term: Term, arity: Int) {
+    fun compileMeta(m: Meta, term: Term) {
         val slot = metas[m]
         slot.solved = true
         slot.unfoldable = term.isUnfoldable()
         slot.term = term
         slot.value = makeLocalContext().eval(term)
-        slot.callTarget = compiler.compile(term, arity)
+        slot.closure = compiler.buildClosure(term, slot.type.quote(Lvl(0)), emptyArray())
     }
     fun compileTop(name: String, loc: Loc, defn: Term?, type: Term) {
         ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
-        val ct = if (defn != null) compiler.compile(defn, defn.arity) else null
+        val ct = if (defn != null) compiler.buildClosure(defn, type, emptyArray()) else null
         val ctx = makeLocalContext()
         val typeV = ctx.eval(type)
         val defnV = if (defn != null) ctx.eval(defn) else null

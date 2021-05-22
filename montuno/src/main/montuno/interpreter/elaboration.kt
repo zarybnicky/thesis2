@@ -22,9 +22,9 @@ fun LocalContext.check(t: PreTerm, want: Val): Term {
             val body = inner.check(t, v.closure.inst(VLocal(env.lvl)))
             TLam(v.name, Icit.Impl, v.bound.quote(env.lvl), body)
         }
-        t is RHole -> newMeta()
+        t is RHole -> ctx.metas.freshTerm(env, quote(want, false, env.lvl))
         t is RLet -> {
-            val a = if (t.type == null) newMeta() else check(t.type, VUnit)
+            val a = if (t.type == null) ctx.metas.freshType() else check(t.type, VUnit)
             val va = eval(a)
             val tm = check(t.defn, va)
             val vt = eval(tm)
@@ -51,7 +51,7 @@ fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, Val>): Pair<Term, 
         MetaInsertion.Yes -> {
             var vaf = va.force(false)
             while (vaf is VPi && vaf.icit == Icit.Impl) {
-                val m = newMeta()
+                val m = ctx.metas.freshType()
                 t = TApp(Icit.Impl, t, m)
                 va = vaf.closure.inst(eval(m))
                 vaf = va.force(false)
@@ -63,7 +63,7 @@ fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, Val>): Pair<Term, 
                 if (vaf.name == mi.n) {
                     return t to va
                 }
-                val m = newMeta()
+                val m = ctx.metas.freshType()
                 t = TApp(Icit.Impl, t, m)
                 va = vaf.closure.inst(eval(m))
                 vaf = va.force(false)
@@ -90,7 +90,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
     return when (r) {
         is RVar -> insertMetas(mi, inferVar(r.n))
         is RLet -> {
-            val a = if (r.type == null) newMeta() else check(r.type, VUnit)
+            val a = if (r.type == null) ctx.metas.freshType() else check(r.type, VUnit)
             val gva = eval(a)
             val t = check(r.defn, gva)
             val gvt = eval(t)
@@ -116,11 +116,11 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
         is RLam -> {
             val n = r.bind.name
             val icit = r.arg.icit ?: throw ElabError(r.loc, "named lambda")
-            val a = newMeta()
+            val a = ctx.metas.freshType()
             val va = eval(a)
             val (t, vb) = bind(r.loc, n, false, va).infer(MetaInsertion.Yes, r.body)
             val b = quote(vb, false, env.lvl + 1)
-            insertMetas(mi, TLam(n, icit, a, t) to VPi(n, icit, va, ctx.compiler.buildClosure(b, emptyArray())))
+            insertMetas(mi, TLam(n, icit, a, t) to VPi(n, icit, va, ctx.compiler.buildClosure(b, b, emptyArray())))
         }
         is RSg -> {
             val n = r.bind.name
@@ -132,7 +132,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
             val (t, va) = infer(mi, r.lhs)
             val (u, vb) = infer(mi, r.rhs)
             val b = quote(vb, false, env.lvl)
-            TPair(t, u) to VSg(null, va, ctx.compiler.buildClosure(b, emptyArray()))
+            TPair(t, u) to VSg(null, va, ctx.compiler.buildClosure(b, b, emptyArray()))
         }
         is RProj1 -> {
             val (t, va) = infer(mi, r.body)
@@ -170,8 +170,8 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
             TForeign(r.lang, r.eval, a) to eval(a)
         }
         is RHole -> {
-            val m1 = newMeta()
-            val m2 = newMeta()
+            val m1 = ctx.metas.freshType()
+            val m2 = ctx.metas.freshTerm(env, m1)
             m1 to eval(m2)
         }
     }

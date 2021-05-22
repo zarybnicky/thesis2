@@ -1,6 +1,5 @@
 package montuno.truffle
 
-import com.oracle.truffle.api.CallTarget
 import com.oracle.truffle.api.TruffleLanguage
 import com.oracle.truffle.api.dsl.ReportPolymorphism
 import com.oracle.truffle.api.dsl.TypeSystemReference
@@ -11,13 +10,14 @@ import com.oracle.truffle.api.nodes.Node
 import com.oracle.truffle.api.nodes.NodeInfo
 import com.oracle.truffle.api.nodes.UnexpectedResultException
 import com.oracle.truffle.api.source.SourceSection
-import montuno.syntax.Icit
 import montuno.Ix
 import montuno.interpreter.Types
 import montuno.interpreter.Val
 import montuno.interpreter.scope.MetaEntry
 import montuno.panic
+import montuno.syntax.Icit
 import montuno.syntax.Loc
+import montuno.todo
 
 @ReportPolymorphism
 @GenerateWrapper
@@ -46,12 +46,13 @@ open class CConstant(val v: Val, loc: Loc?) : Code(loc) {
 open class CDerefMeta(val slot: MetaEntry, loc: Loc?) : Code(loc) {
     override fun execute(frame: VirtualFrame): Any? {
         if (!slot.solved) panic("Unsolved meta in compiled code", null)
-        return replace(CInvoke(slot.callTarget!!)).execute(frame)
+        return replace(CInvoke(slot.closure!!)).execute(frame)
     }
 }
-open class CInvoke(val callTarget: CallTarget) : Code(null) {
+open class CInvoke(val closure: Closure) : Code(null) {
     private var dispatch: Dispatch = DispatchNodeGen.create()
-    override fun execute(frame: VirtualFrame): Any? = dispatch.executeDispatch(callTarget, buildArgs(frame.materialize()))
+    override fun execute(frame: VirtualFrame): Any? = todo
+        // dispatch.executeDispatch(closure.callTarget, buildArgs(frame.materialize()))
 }
 open class CReadLocal(val slot: FrameSlot, loc: Loc?) : Code(loc) {
     override fun execute(frame: VirtualFrame): Any = frame.getObject(slot)
@@ -77,6 +78,6 @@ open class CPi(val n: String, val icit: Icit, @field:Child var type: Code, val r
 open class CApp(val icit: Icit, @field:Child var lhs: Code, @field:Child var rhs: Code, val lang: TruffleLanguage<*>, loc: Loc?) : Code(loc) {
     override fun hasTag(tag: Class<out Tag>?) = tag == StandardTags.CallTag::class.java || super.hasTag(tag)
     @Child private var dispatch: Dispatch = DispatchNodeGen.create()
-    override fun execute(frame: VirtualFrame): Any? =
-        dispatch.executeDispatch(lhs.executeClosure(frame).callTarget, arrayOf(rhs.execute(frame)))
+    override fun execute(frame: VirtualFrame): Any? = todo
+        // dispatch.executeDispatch(lhs.executeClosure(frame).callTarget, arrayOf(rhs.execute(frame)))
 }

@@ -25,7 +25,7 @@ fun contract(lvlRen: Pair<Lvl, Renaming>, v: Val): Pair<Pair<Lvl, Renaming>, Val
     val mid = ren.it.size - spine.it.size
     val renOverlap = ren.it.copyOfRange(mid, ren.it.size).map { it.first.it }.toTypedArray()
     val spineLocal = spine.it
-        .map { (_, vSp) -> if (vSp is VLocal) vSp.head.it else -1 }.toTypedArray()
+        .map { sp -> if (sp is SApp && sp.v is VLocal) sp.v.head.it else -1 }.toTypedArray()
     if (renOverlap contentEquals spineLocal) {
         return (lvl - renOverlap.size to Renaming(ren.it.copyOfRange(0, mid))) to v.replaceSpine(VSpine())
     }
@@ -49,7 +49,12 @@ fun Val.quoteSolution(topLvl: Lvl, names: List<String?>, occurs: Meta, renL: Pai
     return res.lams(topLvl, names, ren)
 }
 fun Term.renameSp(state: ScopeCheckState, lvl: Lvl, ren: Renaming, spine: VSpine): Term {
-    return spine.it.fold(this) { l, it -> TApp(it.first, l, it.second.rename(state, lvl, ren)) }
+    return spine.it.reversed().fold(this) { l, it -> when (it) {
+        SProj1 -> TProj1(l)
+        SProj2 -> TProj2(l)
+        is SProjF -> TProjF(it.n, l, it.i)
+        is SApp -> TApp(it.icit, l, it.v.rename(state, lvl, ren))
+    } }
 }
 fun Val.rename(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when (val v = force(false)) {
     VUnit -> TUnit
@@ -87,7 +92,8 @@ fun VSpine.check(mode: Rigidity): Pair<Lvl, Renaming> {
     val s = it.size
     val x = mutableListOf<Pair<Lvl, Lvl>>()
     for ((i, v) in it.reversed().withIndex()) {
-        val vsp = v.second.force(false)
+        if (v !is SApp) continue
+        val vsp = v.v.force(false)
         if (vsp !is VLocal) throw FlexRigidError(mode,"not local")
         x.add(vsp.head to Lvl(s - i - 1))
     }
@@ -96,8 +102,8 @@ fun VSpine.check(mode: Rigidity): Pair<Lvl, Renaming> {
 fun VSpine.strip(topLvl: Lvl, lvl: Lvl): Boolean {
     //TODO: maybe in reverse?
     var l = lvl.it
-    for ((_, v) in it.reversed()) {
-        if (v !is VLocal || v.head.it != l - 1) return false
+    for (sp in it.reversed()) {
+        if (sp !is SApp || sp.v !is VLocal || sp.v.head.it != l - 1) return false
         l--
     }
     return l == topLvl.it
@@ -118,6 +124,11 @@ fun Val.checkSolution(occurs: Meta, shift: Int, topLvl: Lvl, lvl: Lvl, ren: Rena
         }
     }
 }
+fun VSpine.rename(occurs: Meta, shift: Int, topLvl: Lvl, lvl: Lvl, ren: Renaming) {
+    for (sp in it) if (sp is SApp) {
+        sp.v.rename(occurs, shift, topLvl, lvl, ren)
+    }
+}
 fun Val.rename(occurs: Meta, shift: Int, topLvl: Lvl, lvl: Lvl, ren: Renaming) {
     val local = VLocal(lvl)
     when (val v = force(false)) {
@@ -128,14 +139,14 @@ fun Val.rename(occurs: Meta, shift: Int, topLvl: Lvl, lvl: Lvl, ren: Renaming) {
             v.closure.inst(local).rename(occurs, shift, topLvl, lvl + 1, ren + (lvl to lvl - shift))
         }
         is VLam -> v.closure.inst(local).rename(occurs, shift, topLvl, lvl + 1, ren + (lvl to lvl - shift))
-        is VTop -> v.spine.it.forEach { it.second.rename(occurs, shift, topLvl, lvl, ren) }
+        is VTop -> v.spine.rename(occurs, shift, topLvl, lvl, ren)
         is VMeta -> {
             if (v.head == occurs) throw UnifyError("SEOccurs")
-            v.spine.it.forEach { it.second.rename(occurs, shift, topLvl, lvl, ren) }
+            v.spine.rename(occurs, shift, topLvl, lvl, ren)
         }
         is VLocal -> {
             if (ren.apply(v.head) == null) throw UnifyError("SEScope")
-            v.spine.it.forEach { it.second.rename(occurs, shift, topLvl, lvl, ren) }
+            v.spine.rename(occurs, shift, topLvl, lvl, ren)
         }
     }
 }
@@ -156,18 +167,24 @@ const val unfoldLimit = 2
 
 @Throws(FlexRigidError::class)
 fun LocalContext.unifySp(lvl: Lvl, unfold: Int, names: List<String?>, r: Rigidity, a: VSpine, b: VSpine) {
-    if (a.it.size != b.it.size) throw FlexRigidError(r, "spine length mismatch")
-    for ((aa, bb) in a.it.zip(b.it)) {
-        if (aa.first != bb.first) throw FlexRigidError(r, "icity mismatch")
-        unify(lvl, unfold, names, r, aa.second, bb.second)
+    if (a.it.size != b.it.size) throw FlexRigidError(r, "spines differ")
+    for ((aa, bb) in a.it.zip(b.it)) when {
+        aa == SProj1 && bb == SProj1 -> {}
+        aa == SProj2 && bb == SProj2 -> {}
+        aa is SProjF && bb is SProjF -> if (aa.i != bb.i) throw FlexRigidError(r, "spines differ")
+        aa is SApp && bb is SApp -> unify(lvl, unfold, names, r, aa.v, bb.v)
+        else -> throw FlexRigidError(r, "spines differ")
     }
 }
 
-fun LocalContext.unifySp(lvl: Lvl, names: List<String?>, va: VSpine, vb: VSpine) {
-    if (va.it.size != vb.it.size) throw UnifyError("spines differ")
-    for (i in va.it.indices) {
-        if (va.it[i].first != vb.it[i].first) throw UnifyError("spines differ")
-        gUnify(lvl, names, va.it[i].second, vb.it[i].second)
+fun LocalContext.unifySp(lvl: Lvl, names: List<String?>, a: VSpine, b: VSpine) {
+    if (a.it.size != b.it.size) throw UnifyError("spines differ")
+    for ((aa, bb) in a.it.zip(b.it)) when {
+        aa == SProj1 && bb == SProj1 -> {}
+        aa == SProj2 && bb == SProj2 -> {}
+        aa is SProjF && bb is SProjF -> if (aa.i != bb.i) throw UnifyError("spines differ")
+        aa is SApp && bb is SApp -> gUnify(lvl, names, aa.v, bb.v)
+        else -> throw UnifyError("spines differ")
     }
 }
 
@@ -265,5 +282,5 @@ fun LocalContext.solve(mode: Rigidity, lvl: Lvl, names: List<String?>, occurs: M
         if (err.rigidity == Rigidity.Rigid) throw err
         if (v.checkSolution(occurs, this.env.lvl, renC)) return
     }
-    ctx.compileMeta(occurs, rhs, rhs.arity)
+    ctx.compileMeta(occurs, rhs)
 }

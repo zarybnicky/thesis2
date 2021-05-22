@@ -1,10 +1,9 @@
 package montuno.interpreter.scope
 
 import montuno.ElabError
-import montuno.syntax.Icit
-import montuno.Lvl
 import montuno.Meta
 import montuno.interpreter.*
+import montuno.syntax.Icit
 
 data class MetaContext(val ctx: MontunoContext) {
     val it: MutableList<MutableList<MetaEntry>> = mutableListOf()
@@ -16,15 +15,24 @@ data class MetaContext(val ctx: MontunoContext) {
     }
 
     fun newMetaBlock() = it.add(mutableListOf())
-    fun newMeta(depth: Lvl, boundLevels: IntArray): Term {
-        val i = it.size - 1
-        val meta = Meta(i, it[i].size)
-        this[meta] = MetaEntry(ctx.loc)
-        var ret: Term = TMeta(meta, this[meta])
-        for (l in boundLevels) {
-            ret = TApp(Icit.Expl, ret, TLocal(Lvl(l).toIx(depth)))
+    fun freshType(): Term {
+        val meta = (it.size - 1).let { i -> Meta(i, it[i].size) }
+        this[meta] = MetaEntry(ctx.loc, VUnit)
+        return TMeta(meta, this[meta])
+    }
+    private fun closeType(env: LocalEnv, a: Term): Term {
+        var x = a
+        for (i in env.vals.it.indices) {
+            x = if (env.vals.it[i] == null) TPi(env.names[i], Icit.Expl, env.types[i].quote(env.lvl), x)
+            else TLet(env.names[i]!!, env.types[i].quote(env.lvl), env.vals.it[i]!!.quote(env.lvl), x)
         }
-        return ret
+        return x
+    }
+    fun freshTerm(env: LocalEnv, a: Term): Term {
+        val meta = (it.size - 1).let { i -> Meta(i, it[i].size) }
+        val type: Val = closeType(env, a).eval(ctx, env.vals)
+        this[meta] = MetaEntry(ctx.loc, type)
+        return TMeta(meta, this[meta])
     }
     fun simplifyMetaBlock() {
         if (it.size == 0) return

@@ -51,8 +51,8 @@ sealed class Term {
         is TTop -> VTop(lvl, VSpine(), slot)
         is TMeta -> VMeta(meta, VSpine(), slot)
         is TApp -> lhs.eval(ctx, env).app(icit, rhs.eval(ctx, env)) // lazy
-        is TLam -> VLam(name, icit, type.eval(ctx, env), ctx.compiler.buildClosure(body, env.it))
-        is TPi -> VPi(name, icit, bound.eval(ctx, env), ctx.compiler.buildClosure(body, env.it)) // lazy
+        is TLam -> VLam(name, icit, type.eval(ctx, env), ctx.compiler.buildClosure(body, body, env.it))
+        is TPi -> VPi(name, icit, bound.eval(ctx, env), ctx.compiler.buildClosure(body, body, env.it)) // lazy
         is TLet -> body.eval(ctx, env + bound.eval(ctx, env))   // lazy
         is TForeign -> TODO("VForeign not implemented")
         is TPair -> TODO()
