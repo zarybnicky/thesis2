@@ -70,11 +70,11 @@ class MontunoContext(val env: TruffleLanguage.Env) {
         slot.unfoldable = term.isUnfoldable()
         slot.term = term
         slot.value = makeLocalContext().eval(term)
-        slot.closure = compiler.buildClosure(term, slot.type.quote(Lvl(0)), emptyArray())
+        slot.closure = compiler.buildClosure(term, slot.type.quote(Lvl(0)), VEnv())
     }
     fun compileTop(name: String, loc: Loc, defn: Term?, type: Term) {
         ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
-        val ct = if (defn != null) compiler.buildClosure(defn, type, emptyArray()) else null
+        val ct = if (defn != null) compiler.buildClosure(defn, type, VEnv()) else null
         val ctx = makeLocalContext()
         val typeV = ctx.eval(type)
         val defnV = if (defn != null) ctx.eval(defn) else null

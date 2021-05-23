@@ -52,17 +52,17 @@ sealed class Val : TruffleObject {
     }
 
     fun force(unfold: Boolean): Val = when {
-        this is VTop && slot.closure != null && unfold -> spine.applyTo(this)
-        this is VMeta && slot.solved && (slot.unfoldable || unfold) -> spine.applyTo(this)
+        this is VTop && slot.closure != null && unfold -> spine.applyTo(slot.defnV!!)
+        this is VMeta && slot.solved && (slot.unfoldable || unfold) -> spine.applyTo(slot.value!!)
         else -> this
     }
 
     fun quote(lvl: Lvl, unfold: Boolean = false): Term = when (val v = force(unfold)) {
         is VTop ->
-            if (v.slot.closure != null) v.spine.applyTo(v).quote(lvl, unfold)
+            if (v.slot.closure != null) v.spine.applyTo(v.slot.defnV!!).quote(lvl, unfold)
             else rewrapSpine(TTop(v.head, v.slot), v.spine, lvl)
         is VMeta ->
-            if (v.slot.solved && (v.slot.unfoldable || unfold)) v.spine.applyTo(v).quote(lvl, unfold)
+            if (v.slot.solved && (v.slot.unfoldable || unfold)) v.spine.applyTo(v.slot.value!!).quote(lvl, unfold)
             else rewrapSpine(TMeta(v.head, v.slot), v.spine, lvl)
         is VLam -> TLam(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
         is VPi -> TPi(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))

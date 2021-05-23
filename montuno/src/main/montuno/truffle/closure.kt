@@ -21,31 +21,44 @@ import montuno.interpreter.*
 import montuno.syntax.Icit
 import java.util.*
 
-sealed class ClosureRootNode(lang: TruffleLanguage<MontunoContext>, fd: FrameDescriptor) : RootNode(lang, fd) {
+interface Closure {
+    fun execute(vararg args: Any?): Any?
+    fun inst(v: Val): Val
+}
+
+data class PureClosure(val ctx: MontunoContext, val env: VEnv, val t: Term) : Closure {
+    override fun execute(vararg args: Any?): Any? {
+        assert(args.isNotEmpty())
+        var v = inst(args[0] as Val)
+        for (i in 1 until args.size) {
+            v = v.app(Icit.Expl, args[i] as Val)
+        }
+        return v
+    }
+    override fun inst(v: Val): Val = t.eval(ctx, env + v)
+}
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+class TruffleClosure (
+    @JvmField @CompilerDirectives.CompilationFinal(dimensions = 1) val papArgs: Array<out Any?>,
+    @JvmField val type: Term,
+    @JvmField val arity: Int,
+    @JvmField val maxArity: Int,
+    @JvmField val callTarget: CallTarget
+) : TruffleObject, Closure {
+    //val type get() = targetType.after(papArgs.size)
     init {
-        callTarget = Truffle.getRuntime().createCallTarget(this)
+        //assert(arity + papArgs.size == (callTarget.rootNode as ClosureRootNode).arity)
+        assert(arity <= maxArity - papArgs.size)
     }
-}
-class PureRootNode(val tm: Term, val ctx: MontunoContext, lang: TruffleLanguage<MontunoContext>, fd: FrameDescriptor) : ClosureRootNode(lang, fd) {
-    override fun execute(frame: VirtualFrame): Any {
-        val args = frame.arguments
-        println("$tm , ${frame.arguments.size}")
-        var res = tm.eval(ctx, VEnv(frame.arguments as Array<Val?>))
-        for (arg in args) {println("$tm, $arg")
-            res = res.app(Icit.Expl, arg as Val)
-        }
-        return res
-    }
-}
-class TruffleRootNode(@field:Children val nodes: Array<Code>, lang: TruffleLanguage<MontunoContext>, fd: FrameDescriptor) : RootNode(lang, fd) {
-    @ExplodeLoop
-    override fun execute(frame: VirtualFrame): Any? {
-        var res: Any? = VUnit
-        for (e in nodes) {
-            res = e.execute(frame)
-        }
-        return res
-    }
+
+    @ExportMessage fun isExecutable() = true
+
+    @ExportMessage
+    override fun execute(vararg args: Any?): Any? = callClosure(this, args)
+    override fun inst(v: Val) = callClosure(this, arrayOf(v)) as Val
+    fun force() = forceClosure(this)
 }
 
 fun buildArgs(frame: MaterializedFrame): Array<Any?> {
@@ -57,46 +70,52 @@ fun buildArgs(frame: MaterializedFrame): Array<Any?> {
 }
 
 @ExplodeLoop
-@Throws(ArityException::class, UnsupportedTypeException::class)
-fun callClosure(cl: Closure, args: Array<out Any?>): Any? {
-    if (args.size > cl.maxArity) throw ArityException.create(cl.maxArity, args.size)
-    //arguments.fold(type) { t, it -> (t as Arr).apply { argument.validate(it) }.result }
-    val resArgs = concat(cl.papArgs, args)
-    return when {
-        args.size < cl.arity -> Closure(resArgs, cl.type, cl.arity - args.size, cl.maxArity, cl.callTarget)
-        args.size == cl.arity -> cl.callTarget.call(resArgs)
-        else -> {
-            val g = cl.callTarget.call(Arrays.copyOfRange(resArgs, 0, cl.maxArity))
-            (g as Closure).execute(Arrays.copyOfRange(resArgs, cl.maxArity, resArgs.size))
-        }
-    }
-}
-@ExplodeLoop
-fun forceClosure(cl: Closure): Any? {
+fun forceClosure(cl: TruffleClosure): Any? {
     val baseLvl = cl.maxArity - cl.arity
     val nbeArgs: Array<Val> = Array(cl.arity) { i -> VLocal(Lvl(baseLvl + i)) }
     return cl.callTarget.call(concat(cl.papArgs, nbeArgs))
 }
 
-@CompilerDirectives.ValueType
-@ExportLibrary(InteropLibrary::class)
-class Closure (
-    @JvmField @CompilerDirectives.CompilationFinal(dimensions = 1) val papArgs: Array<out Any?>,
-    @JvmField val type: Term,
-    @JvmField val arity: Int,
-    @JvmField val maxArity: Int,
-    //private val targetType: Type,
-    @JvmField val callTarget: CallTarget
-) : TruffleObject {
-    //val type get() = targetType.after(papArgs.size)
-    init {
-        //assert(arity + papArgs.size == (callTarget.rootNode as ClosureRootNode).arity)
-        assert(arity <= maxArity - papArgs.size)
+@ExplodeLoop
+@Throws(ArityException::class, UnsupportedTypeException::class)
+fun callClosure(cl: TruffleClosure, args: Array<out Any?>): Any? {
+    //if (args.size > cl.maxArity) throw ArityException.create(cl.maxArity, args.size)
+    //arguments.fold(type) { t, it -> (t as Arr).apply { argument.validate(it) }.result }
+    val resArgs = concat(cl.papArgs, args)
+    return when {
+        args.size < cl.arity -> TruffleClosure(resArgs, cl.type, cl.arity - args.size, cl.maxArity, cl.callTarget)
+        args.size == cl.arity -> cl.callTarget.call(*resArgs)
+        else -> {
+            val g = cl.callTarget.call(*Arrays.copyOfRange(resArgs, 0, cl.maxArity))
+            val sp = VSpine(Arrays.copyOfRange(resArgs, cl.maxArity, resArgs.size).map { SApp(Icit.Expl, it as Val) }.toTypedArray())
+            return sp.applyTo(g as Val)
+        }
     }
+}
 
-    @ExportMessage fun isExecutable() = true
-
-    @ExportMessage fun execute(vararg args: Any?): Any? = callClosure(this, args)
-    fun inst(v: Val) = callClosure(this, arrayOf(v)) as Val
-    fun force() = forceClosure(this)
+class PureRootNode(val tm: Term, val ctx: MontunoContext, lang: TruffleLanguage<MontunoContext>, fd: FrameDescriptor) : RootNode(lang, fd) {
+    init {
+        callTarget = Truffle.getRuntime().createCallTarget(this)
+    }
+    override fun execute(frame: VirtualFrame): Any {
+        val args = frame.arguments
+        var res = tm.eval(ctx, VEnv(frame.arguments.map { it as Val? }.toTypedArray()))
+        for (arg in args) {
+            res = res.app(Icit.Expl, arg as Val)
+        }
+        return res
+    }
+}
+class TruffleRootNode(@field:Children val nodes: Array<Code>, lang: TruffleLanguage<MontunoContext>, fd: FrameDescriptor) : RootNode(lang, fd) {
+    init {
+        callTarget = Truffle.getRuntime().createCallTarget(this)
+    }
+    @ExplodeLoop
+    override fun execute(frame: VirtualFrame): Any? {
+        var res: Any? = VUnit
+        for (e in nodes) {
+            res = e.execute(frame)
+        }
+        return res
+    }
 }

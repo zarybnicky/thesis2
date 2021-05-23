@@ -13,7 +13,7 @@ fun Term.pretty(ns: NameEnv, p: Boolean = false): Doc<Nothing> = when (this) {
     is TTop -> slot.name.text()
     is TLocal -> ns[ix].text()
     TIrrelevant -> "Irr".text()
-    is TUnit -> "*".text()
+    is TUnit -> "Unit".text()
     is TNat -> n.toString().text()
     is TForeign -> "[$lang|$code|".text() + type.pretty(ns, false) + "]".text()
     is TLet -> {

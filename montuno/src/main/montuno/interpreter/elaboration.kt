@@ -13,9 +13,9 @@ fun LocalContext.check(t: PreTerm, want: Val): Term {
     val v = want.force(true)
     return when {
         t is RLam && v is VPi && t.arg.match(v) -> {
-            val inner = bind(t.loc, t.arg.name, false, v.bound)
+            val inner = bind(t.loc, t.bind.name, false, v.bound)
             val body = inner.check(t.body, v.closure.inst(VLocal(env.lvl)))
-            TLam(t.arg.name, v.icit, v.bound.quote(env.lvl), body)
+            TLam(t.bind.name, v.icit, v.bound.quote(env.lvl), body)
         }
         v is VPi && v.icit == Icit.Impl -> {
             val inner = bind(t.loc, v.name, true, v.bound)
@@ -120,7 +120,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
             val va = eval(a)
             val (t, vb) = bind(r.loc, n, false, va).infer(MetaInsertion.Yes, r.body)
             val b = quote(vb, false, env.lvl + 1)
-            insertMetas(mi, TLam(n, icit, a, t) to VPi(n, icit, va, ctx.compiler.buildClosure(b, b, emptyArray())))
+            insertMetas(mi, TLam(n, icit, a, t) to VPi(n, icit, va, ctx.compiler.buildClosure(b, b, VEnv())))
         }
         is RSg -> {
             val n = r.bind.name
@@ -132,7 +132,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
             val (t, va) = infer(mi, r.lhs)
             val (u, vb) = infer(mi, r.rhs)
             val b = quote(vb, false, env.lvl)
-            TPair(t, u) to VSg(null, va, ctx.compiler.buildClosure(b, b, emptyArray()))
+            TPair(t, u) to VSg(null, va, ctx.compiler.buildClosure(b, b, VEnv()))
         }
         is RProj1 -> {
             val (t, va) = infer(mi, r.body)

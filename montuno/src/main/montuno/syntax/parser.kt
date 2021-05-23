@@ -122,6 +122,7 @@ fun MontunoParser.LambdaContext.toAst(): PreTerm = when (this) {
     is MontunoParser.LetContext -> RLet(range(), IDENT().text, null, defn.toAst(), body.toAst())
     is MontunoParser.PiContext -> spine.foldRight(body.toAst()) { l, r -> l.toAst()(r) }
     is MontunoParser.FunContext -> RPi(range(), Unbound, Icit.Expl, sigma().toAst(), body.toAst())
+    is MontunoParser.LamTermContext -> sigma().toAst()
     else -> throw UnsupportedOperationException(javaClass.canonicalName)
 }
 

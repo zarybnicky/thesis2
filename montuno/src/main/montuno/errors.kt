@@ -6,7 +6,7 @@ import montuno.syntax.Loc
 
 class UnifyError(val reason: String) : RuntimeException(reason)
 class RigidError(val reason: String) : Exception(reason)
-class FlexRigidError(val rigidity: Rigidity, val reason: String = "") : Exception(reason)
+class FlexRigidError(val rigidity: Rigidity, val reason: String) : Exception(reason)
 class ElabError(val loc: Loc?, val reason: String) : RuntimeException(reason)
 
 internal class Panic(message: String? = null) : RuntimeException(message) {
@@ -21,5 +21,5 @@ fun panic(msg: String, base: Throwable?): Nothing {
 }
 val todo: Nothing get() {
     CompilerDirectives.transferToInterpreter()
-    throw TODO()
+    throw TODO("TODO")
 }

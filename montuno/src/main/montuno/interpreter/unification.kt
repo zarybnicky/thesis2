@@ -67,7 +67,7 @@ fun Val.rename(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when (va
     is VLocal -> {
         val x = ren.apply(v.head)
         if (x == null) {
-            val err = FlexRigidError(Rigidity.Flex)
+            val err = FlexRigidError(Rigidity.Flex, "Non-local variable")
             if (state.errRef == null) throw err else state.errRef.err = err
             TIrrelevant
         }
@@ -75,12 +75,12 @@ fun Val.rename(state: ScopeCheckState, lvl: Lvl, ren: Renaming): Term = when (va
     }
     is VMeta -> when {
         v.head == state.occurs -> {
-            val err = FlexRigidError(Rigidity.Flex)
+            val err = FlexRigidError(Rigidity.Flex, "Occurs check failed")
             if (state.errRef == null) throw err else state.errRef.err = err
             TIrrelevant
         }
         v.slot.solved ->
-            if (state.occurs.i == v.head.i) throw FlexRigidError(Rigidity.Flex)
+            if (state.occurs.i == v.head.i) throw FlexRigidError(Rigidity.Flex, "occurs check failed")
             else TMeta(v.head, v.slot).renameSp(state, lvl, ren, v.spine)
         else -> TMeta(v.head, v.slot).renameSp(state, lvl, ren, v.spine)
     }
@@ -264,7 +264,7 @@ fun LocalContext.gUnify(lvl: Lvl, names: List<String?>, a: Val, b: Val) {
         v is VTop && w is VTop && v.head == w.head -> unifySp(lvl, names, v.spine, w.spine)
         v is VLocal && w is VLocal && v.head == w.head -> unifySp(lvl, names, v.spine, w.spine)
 
-        else -> throw UnifyError("failed to unify in glued mode")
+        else -> throw UnifyError("failed to unify $v and $w in glued mode")
     }
 }
 
