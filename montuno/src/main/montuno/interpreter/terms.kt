@@ -9,7 +9,6 @@ import montuno.interpreter.scope.TopEntry
 import montuno.syntax.Icit
 
 object TUnit : Term()
-object TIrrelevant : Term()
 data class TNat(val n: Int) : Term()
 data class TLet(val name: String, val type: Term, val bound: Term, val body: Term) : Term()
 data class TApp(val icit: Icit, val lhs: Term, val rhs: Term) : Term()
@@ -23,7 +22,7 @@ data class TSg(val name: String?, val bound: Term, val body: Term) : Term()
 // data class TForeign(val lang: String, val code: String, val type: Term) : Term()
 data class TLocal(val ix: Ix) : Term() { override fun toString() = "TLocal(ix=${ix.it})" }
 data class TTop(val lvl: Lvl, val slot: TopEntry) : Term() { override fun toString() = "TTop(lvl=${lvl.it})" }
-data class TMeta(val meta: Meta, val slot: MetaEntry) : Term() { override fun toString() = "TMeta(${meta.i}, ${meta.j})" }
+data class TMeta(val meta: Meta, val slot: MetaEntry, val locals: Array<Boolean>) : Term() { override fun toString() = "TMeta(${meta.i}, ${meta.j})" }
 
 fun rewrapSpine(term: Term, spine: VSpine, lvl: Lvl, unfold: Boolean): Term {
     var x = term
@@ -40,7 +39,7 @@ sealed class Term {
     fun eval(ctx: MontunoContext, env: VEnv): Val = when (this) {
         is TLocal -> env[ix]
         is TTop -> VTop(lvl, VSpine(), slot)
-        is TMeta -> VMeta(meta, VSpine(), slot).let { if (slot.inserted) it.appLocals(env) else it }
+        is TMeta -> VMeta(meta, VSpine(), slot).appLocals(env, locals)
         is TLet -> body.eval(ctx, env + VThunk { bound.eval(ctx, env) })
         is TPi -> VPi(name, icit, VThunk { bound.eval(ctx, env) }, ctx.compiler.buildClosure(body, env))
         is TSg -> VSg(name, VThunk { bound.eval(ctx, env) }, ctx.compiler.buildClosure(body, env))
@@ -52,7 +51,6 @@ sealed class Term {
         is TPair -> VPair(VThunk { lhs.eval(ctx, env) }, VThunk { rhs.eval(ctx, env) })
         is TUnit -> VUnit
         is TNat -> VNat(n)
-        is TIrrelevant -> VIrrelevant
     }
 
     fun inline(ctx:MontunoContext, lvl: Lvl, vs: VEnv) : Term = when (this) {
@@ -67,7 +65,6 @@ sealed class Term {
         is TLam -> TLam(name, icit, type.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
         is TPi -> TPi(name, icit, bound.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
         TUnit -> this
-        TIrrelevant -> this
         is TNat -> this
         is TPair -> TPair(lhs.inline(ctx, lvl, vs), rhs.inline(ctx, lvl, vs))
         is TProj1 -> TProj1(body.inline(ctx, lvl, vs))

@@ -34,6 +34,11 @@ class LocalEnv(
     val names: List<String?> = listOf()
 ) {
     val lvl: Lvl get() = Lvl(names.size)
+    val locals: Array<Boolean> get() {
+        val res = mutableListOf<Boolean>()
+        for (i in types.indices) res.add(vals.it[i] == null)
+        return res.toTypedArray()
+    }
     fun bind(loc: Loc, n: String?, inserted: Boolean, ty: Val) = LocalEnv(
         if (n == null) nameTable else nameTable.withName(n, NILocal(loc, lvl, inserted)),
         vals.skip(),
@@ -72,6 +77,11 @@ class MontunoContext(val env: TruffleLanguage.Env) {
     fun compileTop(name: String, loc: Loc, defn: Term?, type: Term) {
         ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
         top.it.add(TopEntry(name, loc, defn, defn?.eval(this, VEnv()), type, type.eval(this, VEnv())))
+    }
+    fun getBuiltin(name: String): Pair<Term, Val> {
+        val ni = ntbl[name]
+        if (ni.isEmpty()) registerBuiltin(Loc.Unavailable, name)
+        return makeLocalContext().inferVar(name)
     }
     fun registerBuiltin(loc: Loc, name: String) {
         val (body, type) = compiler.getBuiltin(name)

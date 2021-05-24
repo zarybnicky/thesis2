@@ -32,7 +32,7 @@ class Launcher : AbstractLanguageLauncher() {
     private var initialCommand: String? = null
 
     override fun getDefaultLanguages(): Array<String> = arrayOf("montuno", "montuno-pure") // "js","r","ruby"};
-    override fun getLanguageId() = "montuno-pure" // default engine
+    override fun getLanguageId() = "montuno" // default engine
 
     override fun launch(contextBuilder: Context.Builder) {
         contextBuilder.arguments(languageId, programArgs)

@@ -13,7 +13,7 @@ data class TopEntry(
     val type: Term,
     val typeV: Val
 )
-class MetaEntry(val loc: Loc, val meta: Meta, val inserted: Boolean, val type: Val) {
+class MetaEntry(val loc: Loc, val meta: Meta, val type: Val) {
     var term: Term? = null
     var value: Val? = null
     var solved: Boolean = false

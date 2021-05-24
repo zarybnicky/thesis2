@@ -57,9 +57,9 @@ fun Val.rename(occurs: Meta, state: ConvState, ren: Renaming): Term {
         }
         is VMeta -> when {
             v.head == occurs -> throw UnifyError("Occurs check failed")
-            !v.slot.solved -> TMeta(v.head, v.slot).renameSp(occurs, ConvState.Flex, ren, v.spine)
+            !v.slot.solved -> TMeta(v.head, v.slot, emptyArray()).renameSp(occurs, ConvState.Flex, ren, v.spine)
             v.slot.solved && state == ConvState.Rigid -> try {
-                TMeta(v.head, v.slot).renameSp(occurs, ConvState.Flex, ren, v.spine)
+                TMeta(v.head, v.slot, emptyArray()).renameSp(occurs, ConvState.Flex, ren, v.spine)
             } catch (e: UnifyError) {
                 v.slot.value!!.rename(occurs, ConvState.Full, ren)
             }
@@ -71,7 +71,6 @@ fun Val.rename(occurs: Meta, state: ConvState, ren: Renaming): Term {
         is VSg -> TSg(v.name, v.bound.rename(occurs, state, ren), v.closure.inst(VLocal(ren.codomain)).rename(occurs, state, ren.lift()))
         is VPair -> TPair(v.left.rename(occurs, state, ren), v.right.rename(occurs, state, ren))
         VUnit -> TUnit
-        VIrrelevant -> TIrrelevant
         is VNat -> TNat(v.n)
         is VThunk -> v.value.rename(occurs, state, ren)
     }

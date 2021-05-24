@@ -82,17 +82,18 @@ class ProgramRootNode(l: TruffleLanguage<*>, val ctx: MontunoContext, private va
     override fun isCloningAllowed() = true
     @ExplodeLoop
     override fun execute(frame: VirtualFrame): Any {
-        var res: Any = VUnit
+        val results = mutableListOf<Any>()
         for (e in pre) {
             try {
                 val x = checkTopLevel(ctx, e)
-                if (x != null) res = x
+                if (x != null) results.add(x)
             } catch (e: RuntimeException) {
                 println(e)
                 throw e
             }
         }
-        return res
+        for (res in results.dropLast(1)) println(res)
+        return if (results.isEmpty()) VUnit else results.last()
     }
 }
 

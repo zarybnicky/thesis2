@@ -30,7 +30,7 @@ interface Closure {
 data class ConstClosure(override val arity: Int, val value: Val) : TruffleObject, Closure {
     @ExportMessage fun isExecutable() = true
     @ExportMessage override fun execute(vararg args: Any?): Val = when {
-        args.size < arity -> VLam(null, Icit.Expl, VIrrelevant, ConstClosure(arity - args.size, value))
+        args.size < arity -> VLam(null, Icit.Expl, VUnit, ConstClosure(arity - args.size, value))
         args.size == arity -> value
         else -> (arity until args.size - 1).fold(value) { l, i -> l.app(Icit.Expl, args[i] as Val) }
     }
@@ -45,11 +45,7 @@ data class PureClosure(val ctx: MontunoContext, val env: VEnv, val body: Term) :
         if (args.isEmpty()) {
             return body.eval(ctx, env)
         }
-        var v = body.eval(ctx, env + (args[0] as Val))
-        for (i in 1 until args.size) {
-            v = v.app(Icit.Expl, args[i] as Val)
-        }
-        return v
+        return body.eval(ctx, VEnv(concat(env.it, args.map { it as Val }.toTypedArray())))
     }
 }
 
@@ -64,20 +60,19 @@ class TruffleClosure (
     @JvmField val maxArity: Int,
     @JvmField val callTarget: CallTarget
 ) : TruffleObject, Closure {
-    override val arity: Int = heads.size
+    override val arity: Int = heads.size + 1
     @ExportMessage fun isExecutable() = true
     @Throws(ArityException::class, UnsupportedTypeException::class)
     @ExportMessage override fun execute(vararg args: Any?): Val = when {
-        args.isEmpty() -> TODO("should not happen")
+        args.isEmpty() -> TODO("impossible")
         args.size < arity -> {
             val newArgs = concat(papArgs, args)
-            val newHeads = heads.drop(args.size).toTypedArray()
-            val head = newHeads[0]
-            val env = VEnv(newArgs.dropLast(1).map { it as Val? }.toTypedArray())
-            val closure = TruffleClosure(ctx, newArgs, newHeads, maxArity, callTarget)
+            val head = heads[args.size - 1]
+            val remaining = heads.copyOfRange(args.size, heads.size)
+            val closure = TruffleClosure(ctx, newArgs, remaining, maxArity, callTarget)
             when {
-                head.isPi -> VPi(head.name, head.icit, head.bound.eval(ctx, env), closure)
-                else -> VLam(head.name, head.icit, head.bound.eval(ctx, env), closure)
+                head.isPi -> VPi(head.name, head.icit, head.bound.eval(ctx, VEnv(newArgs)), closure)
+                else -> VLam(head.name, head.icit, head.bound.eval(ctx, VEnv(newArgs)), closure)
             }
         }
         args.size == arity -> callTarget.call(*concat(papArgs, args)) as Val

@@ -11,7 +11,6 @@ import com.oracle.truffle.api.nodes.Node
 import com.oracle.truffle.api.nodes.NodeInfo
 import com.oracle.truffle.api.nodes.UnexpectedResultException
 import com.oracle.truffle.api.source.SourceSection
-import montuno.Ix
 import montuno.interpreter.*
 import montuno.interpreter.scope.MetaEntry
 import montuno.syntax.Icit
@@ -43,7 +42,7 @@ open class CConstant(val v: Val, loc: Loc?) : Code(loc) {
 }
 open class CDerefMeta(val slot: MetaEntry, loc: Loc?) : Code(loc) {
     override fun execute(frame: VirtualFrame): Val = when {
-        slot.solved -> VMeta(slot.meta, VSpine(), slot)
+        !slot.solved -> VMeta(slot.meta, VSpine(), slot)
         else -> {
             replace(CConstant(slot.value!!, loc))
             slot.value!!
@@ -59,9 +58,9 @@ open class CWriteLocal(val slot: FrameSlot, @field:Child var value: Code, @field
         return body.execute(frame)
     }
 }
-open class CArg(val ix: Ix, val fs: FrameSlot, loc: Loc?) : Code(loc) {
+open class CArg(val i: Int, val fs: FrameSlot, loc: Loc?) : Code(loc) {
     override fun execute(frame: VirtualFrame): Any? {
-        frame.setObject(fs, frame.arguments[frame.arguments.size - ix.it - 1])
+        frame.setObject(fs, frame.arguments[i])
         return null
     }
 }

@@ -18,7 +18,6 @@ import montuno.truffle.Closure
 
 @TypeSystem(
     VUnit::class,
-    VIrrelevant::class,
     VLam::class,
     VPi::class,
     VMeta::class,
@@ -37,8 +36,6 @@ open class Types {
 
         @TypeCheck(VUnit::class)
         @JvmStatic fun isVUnit(value: Any): Boolean = value === VUnit
-        @TypeCheck(VIrrelevant::class)
-        @JvmStatic fun isVIrrelevant(value: Any): Boolean = value === VIrrelevant
     }
 }
 
@@ -56,7 +53,7 @@ sealed class Val : TruffleObject {
         is VMeta -> VMeta(head, spine + SApp(icit, r), slot)
         is VLocal -> VLocal(head, spine + SApp(icit, r))
         is VThunk -> value.app(icit, r)
-        else -> TODO("impossible")
+        else -> TODO("impossible $this")
     }
 
     fun forceUnfold(): Val = when {
@@ -68,13 +65,13 @@ sealed class Val : TruffleObject {
 
     fun forceMeta(): Val = when {
         this is VMeta && slot.solved && slot.unfoldable -> spine.applyTo(slot.value!!).forceMeta()
-        this is VThunk -> value.forceUnfold()
+        this is VThunk -> value.forceMeta()
         else -> this
     }
 
     fun quote(lvl: Lvl, unfold: Boolean): Term = when (val v = if (unfold) forceUnfold() else forceMeta()) {
         is VTop -> rewrapSpine(TTop(v.head, v.slot), v.spine, lvl, unfold)
-        is VMeta -> rewrapSpine(TMeta(v.head, v.slot), v.spine, lvl, unfold)
+        is VMeta -> rewrapSpine(TMeta(v.head, v.slot, emptyArray()), v.spine, lvl, unfold)
         is VLocal -> rewrapSpine(TLocal(v.head.toIx(lvl)), v.spine, lvl, unfold)
         is VLam -> TLam(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
         is VPi -> TPi(v.name, v.icit, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
@@ -82,16 +79,7 @@ sealed class Val : TruffleObject {
         is VPair -> TPair(v.left.quote(lvl, unfold), v.right.quote(lvl, unfold))
         is VNat -> TNat(v.n)
         is VUnit -> TUnit
-        is VIrrelevant -> TIrrelevant
         is VThunk -> v.value.quote(lvl, unfold)
-    }
-
-    fun replaceSpine(spine: VSpine): Val = when (this) {
-        is VLocal -> VLocal(head, spine)
-        is VTop -> VTop(head, spine, slot)
-        is VMeta -> VMeta(head, spine, slot)
-        is VThunk -> value.replaceSpine(spine)
-        else -> this
     }
 
     fun proj1(): Val = when (this) {
@@ -119,14 +107,20 @@ sealed class Val : TruffleObject {
         else -> TODO("impossible")
     }
 
-    fun appLocals(env: VEnv): Val = env.it.reversed().fold(this) { l, r -> if (r != null) l.app(Icit.Expl, r) else l }
+    fun appLocals(env: VEnv, locals: Array<Boolean>): Val {
+        var res = this
+        for (i in locals.indices) {
+            if (locals[locals.size - i - 1]) res = res.app(Icit.Expl, env[Ix(i)])
+        }
+        return res
+    }
 }
 
-inline class VEnv(val it: Array<Val?> = emptyArray()) {
+inline class VEnv(val it: Array<Any?> = emptyArray()) {
     operator fun plus(v: Val) = VEnv(it + v)
     fun skip() = VEnv(it + null)
-    operator fun get(lvl: Lvl) = it[lvl.it] ?: VLocal(lvl, VSpine())
-    operator fun get(ix: Ix) = ix.toLvl(it.size).let { lvl -> it[lvl.it] ?: VLocal(lvl, VSpine()) }
+    operator fun get(lvl: Lvl): Val = it[lvl.it] as Val? ?: VLocal(lvl, VSpine())
+    operator fun get(ix: Ix): Val = ix.toLvl(it.size).let { lvl -> it[lvl.it] as Val? ?: VLocal(lvl, VSpine()) }
 }
 
 // lazy ref to Val
@@ -209,13 +203,7 @@ object VUnit : Val() {
     @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VUnit"
     override fun toString(): String = "VUnit"
 }
-@CompilerDirectives.ValueType
-@ExportLibrary(InteropLibrary::class)
-object VIrrelevant : Val() {
-    @ExportMessage fun isNull() = true
-    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VIrrelevant"
-    override fun toString(): String = "VIrrelevant"
-}
+
 @CompilerDirectives.ValueType
 @ExportLibrary(InteropLibrary::class)
 data class VNat(val n: Int) : Val() {

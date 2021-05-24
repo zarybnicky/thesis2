@@ -22,9 +22,9 @@ fun LocalContext.check(t: PreTerm, want: Val): Term {
             val body = inner.check(t, v.closure.inst(VLocal(env.lvl)))
             TLam(v.name, Icit.Impl, v.bound.quote(env.lvl, false), body)
         }
-        t is RHole -> ctx.metas.freshTerm(env, want.quote(env.lvl, false))
+        t is RHole -> ctx.metas.freshMeta(env, want.quote(env.lvl, false))
         t is RLet -> {
-            val a = if (t.type == null) ctx.metas.freshType() else check(t.type, VUnit)
+            val a = if (t.type == null) ctx.metas.freshType(env) else check(t.type, VUnit)
             val va = eval(a)
             val tm = check(t.defn, va)
             val vt = eval(tm)
@@ -51,7 +51,7 @@ fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, Val>): Pair<Term, 
         MetaInsertion.Yes -> {
             var vaf = va.forceMeta()
             while (vaf is VPi && vaf.icit == Icit.Impl) {
-                val m = ctx.metas.freshType()
+                val m = ctx.metas.freshType(env)
                 t = TApp(Icit.Impl, t, m)
                 va = vaf.closure.inst(eval(m))
                 vaf = va.forceMeta()
@@ -63,7 +63,7 @@ fun LocalContext.insertMetas(mi: MetaInsertion, c: Pair<Term, Val>): Pair<Term, 
                 if (vaf.name == mi.n) {
                     return t to va
                 }
-                val m = ctx.metas.freshType()
+                val m = ctx.metas.freshType(env)
                 t = TApp(Icit.Impl, t, m)
                 va = vaf.closure.inst(eval(m))
                 vaf = va.forceMeta()
@@ -91,7 +91,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
     return when (r) {
         is RVar -> insertMetas(mi, inferVar(r.n))
         is RLet -> {
-            val a = if (r.type == null) ctx.metas.freshType() else check(r.type, VUnit)
+            val a = if (r.type == null) ctx.metas.freshType(env) else check(r.type, VUnit)
             val gva = eval(a)
             val t = check(r.defn, gva)
             val gvt = eval(t)
@@ -116,7 +116,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
         is RLam -> {
             val n = r.bind.name
             val icit = r.arg.icit ?: throw ElabError(r.loc, "named lambda")
-            val a = ctx.metas.freshType()
+            val a = ctx.metas.freshType(env)
             val va = eval(a)
             val (t, vb) = bind(r.loc, n, false, va).infer(MetaInsertion.Yes, r.body)
             val b = quote(vb, false, env.lvl + 1)
@@ -164,10 +164,10 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
         }
 
         is RU -> TUnit to VUnit
-        is RNat -> TNat(r.n) to inferVar("Nat").first.eval(ctx, env.vals)
+        is RNat -> TNat(r.n) to ctx.getBuiltin("Nat").first.eval(ctx, env.vals)
         is RHole -> {
-            val m1 = ctx.metas.freshType()
-            val m2 = ctx.metas.freshTerm(env, m1)
+            val m1 = ctx.metas.freshType(env)
+            val m2 = ctx.metas.freshMeta(env, m1)
             m1 to eval(m2)
         }
     }
@@ -188,7 +188,7 @@ fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
             Pragma.PARSE -> e.tm.toString()
             Pragma.RESET -> { top.reset(); null }
             Pragma.SYMBOLS -> top.top.getMembers().it
-            Pragma.BUILTIN -> { getIds(e.tm!!).forEach { it -> top.registerBuiltin(e.loc, it) }; null }
+            Pragma.BUILTIN -> { getIds(e.tm!!).forEach { top.registerBuiltin(e.loc, it) }; null }
             Pragma.PRINT -> {
                 for (i in top.top.it.indices) {
                     for ((j, meta) in top.metas.it[i].withIndex()) {
@@ -206,20 +206,20 @@ fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
             Pragma.RAW -> { println(ctx.infer(MetaInsertion.No, e.tm!!)); null }
             Pragma.NOTHING -> ctx.pretty(ctx.infer(MetaInsertion.No, e.tm!!).first)
             Pragma.TYPE -> {
-                val (_, ty) = ctx.infer(MetaInsertion.Yes, e.tm!!)
-                ctx.pretty(ty.forceMeta().quote(Lvl(0), true)).let { println(it); it }
+                val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
+                ctx.pretty(ty.forceMeta().quote(Lvl(0), false))
             }
             Pragma.NORMAL_TYPE -> {
-                val (_, ty) = ctx.infer(MetaInsertion.Yes, e.tm!!)
-                ctx.pretty(ty.forceUnfold().quote(Lvl(0), true)).let { println(it); it }
+                val (_, ty) = ctx.infer(MetaInsertion.No, e.tm!!)
+                ctx.pretty(ty.forceUnfold().quote(Lvl(0), true))
             }
             Pragma.ELABORATE -> {
-                val (tm, _) = ctx.infer(MetaInsertion.Yes, e.tm!!)
-                ctx.pretty(tm.eval(top, VEnv()).forceMeta().quote(Lvl(0), false)).let { println(it); it }
+                val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)
+                ctx.pretty(tm.eval(top, VEnv()).forceMeta().quote(Lvl(0), false))
             }
             Pragma.NORMALIZE -> {
-                val (tm, _) = ctx.infer(MetaInsertion.Yes, e.tm!!)
-                ctx.pretty(tm.eval(top, VEnv()).forceUnfold().quote(Lvl(0), true)).let { println(it); it }
+                val (tm, _) = ctx.infer(MetaInsertion.No, e.tm!!)
+                ctx.pretty(tm.eval(top, VEnv()).forceUnfold().quote(Lvl(0), true))
             }
         }
         is RDecl -> {
