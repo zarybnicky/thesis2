@@ -71,7 +71,7 @@ class TruffleCompiler(ctx: MontunoContext) : Compiler(ctx) {
             val nat = getBuiltin("Nat").first
             val cl = TruffleClosure(ctx, emptyArray(), emptyArray(), 1, builtinRoots["succ"]!!)
             val body = VLam("x", Icit.Expl, nat, cl)
-            body to VLam(null, Icit.Expl, nat, ConstClosure(1, nat))
+            body to VPi(null, Icit.Expl, nat, ConstClosure(1, nat))
         }
         else -> super.getBuiltin(name)
     }

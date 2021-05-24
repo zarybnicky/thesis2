@@ -15,7 +15,7 @@ fun fromSpine(init: Lvl, spine: VSpine): Renaming {
         is SApp -> {
             val v = sp.v.forceUnfold()
             if (v !is VLocal || ren.containsKey(v.head)) throw UnifyError("pattern condition failed")
-            ren[dom] = v.head
+            ren[v.head] = dom
             dom += 1
         }
         else -> throw UnifyError("pattern condition failed")
@@ -83,7 +83,7 @@ fun LocalContext.solve(lvl: Lvl, state: ConvState, meta: MetaEntry, sp: VSpine, 
     val ren = fromSpine(lvl, sp)
     val rhs = v.rename(meta.meta, state, ren)
     val solution = rhs.lams(ren.domain, type).eval(ctx, VEnv())
-    ctx.compileMeta(meta.meta, solution)
+    ctx.registerMeta(meta.meta, solution)
 }
 
 fun LocalContext.unifySp(lvl: Lvl, state: ConvState, a: VSpine, b: VSpine) {

@@ -1,7 +1,0 @@
-Pair : * → * → * = λ A B. (Pair : *)(pair : A → B → Pair) → Pair
-pair : {A B} → A → B → Pair A B = λ a b Pair pair. pair a b
-proj1 : {A B} → Pair A B → A = λ p. p _ (λ x y. x)
-proj2 : {A B} → Pair A B → B = λ p. p _ (λ x y. y)
-Top : * = (Top : *)(tt : Top) → Top
-tt : Top = λ Top tt. tt
-Bot : * = (Bot : *) → Bot

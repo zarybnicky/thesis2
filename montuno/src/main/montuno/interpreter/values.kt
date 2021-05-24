@@ -110,7 +110,9 @@ sealed class Val : TruffleObject {
     fun appLocals(env: VEnv, locals: Array<Boolean>): Val {
         var res = this
         for (i in locals.indices) {
-            if (locals[locals.size - i - 1]) res = res.app(Icit.Expl, env[Ix(i)])
+            if (locals[locals.size - i - 1]) {
+                res = res.app(Icit.Expl, env[Ix(i)])
+            }
         }
         return res
     }
@@ -120,7 +122,10 @@ inline class VEnv(val it: Array<Any?> = emptyArray()) {
     operator fun plus(v: Val) = VEnv(it + v)
     fun skip() = VEnv(it + null)
     operator fun get(lvl: Lvl): Val = it[lvl.it] as Val? ?: VLocal(lvl, VSpine())
-    operator fun get(ix: Ix): Val = ix.toLvl(it.size).let { lvl -> it[lvl.it] as Val? ?: VLocal(lvl, VSpine()) }
+    operator fun get(ix: Ix): Val {
+        val lvl = ix.toLvl(it.size)
+        return it[lvl.it] as Val? ?: VLocal(lvl, VSpine())
+    }
 }
 
 // lazy ref to Val

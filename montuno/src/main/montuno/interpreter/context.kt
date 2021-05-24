@@ -67,14 +67,14 @@ class MontunoContext(val env: TruffleLanguage.Env) {
         loc = Loc.Unavailable
         ntbl = NameTable()
     }
-    fun compileMeta(m: Meta, v: Val) {
+    fun registerMeta(m: Meta, v: Val) {
         val slot = metas[m]
         slot.solved = true
         slot.term = v.quote(Lvl(0), false)
         slot.unfoldable = slot.term!!.isUnfoldable()
         slot.value = v
     }
-    fun compileTop(name: String, loc: Loc, defn: Term?, type: Term) {
+    fun registerTop(name: String, loc: Loc, defn: Term?, type: Term) {
         ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
         top.it.add(TopEntry(name, loc, defn, defn?.eval(this, VEnv()), type, type.eval(this, VEnv())))
     }

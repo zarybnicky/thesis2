@@ -83,18 +83,4 @@ abstract - primarily for evaluation, not too suitable for elab
 - REPL command completion, partial command recognition
 - Compile the language specification
 
-** rewrite unification
-- fix metas + insertion, closeType/closeLocals
-- ConvState instead of glued/non-glued modes, see Kovacs
-- forceFUE, remove unfold in quote??
-
-** fix evaluation
-- calling a Top needs to include whole env
 - evaluate Pure with and without Lazy!
-
-** Fix Code
-@Specialization in App per value type
-
-** Builtins
-- At least Nat
-- fix - w/o unfolding is a neutral, w/unfolding evaluates the fix-point

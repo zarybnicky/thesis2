@@ -1,5 +1,5 @@
 id : {A}->A->A = \x.x
-idStress : {A}->A->A = id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id
+idStress : {A}->A->A = id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id
 {-# ELABORATE idStress #-}
 {-# NORMALIZE idStress #-}
 {-# TYPE idStress {Unit} #-}

@@ -226,7 +226,7 @@ fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
             var a = ctx.check(e.ty, VUnit)
             top.metas.simplifyMetaBlock()
             a = ctx.inline(a)
-            top.compileTop(e.n, e.loc, null, a)
+            top.registerTop(e.n, e.loc, null, a)
             return null
         }
         is RDefn -> {
@@ -241,7 +241,7 @@ fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
             top.metas.simplifyMetaBlock()
             a = ctx.inline(a)
             t = ctx.inline(t)
-            top.compileTop(e.n, e.loc, t, a)
+            top.registerTop(e.n, e.loc, t, a)
             return null
         }
     }

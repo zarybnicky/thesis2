@@ -16,17 +16,11 @@ inline class NameTable(val it: HashMap<String, MutableList<NameInfo>> = hashMapO
         l.add(ni)
     }
     fun withName(n: String, ni: NameInfo): NameTable {
+        val l = it[n]?.toMutableList() ?: mutableListOf()
+        l.add(ni)
         val y = HashMap(it)
-        val l = y.getOrPut(n, { mutableListOf() })
-        l.add(ni)
+        y[n] = l
         return NameTable(y)
-    }
-    inline fun <A> withName(n: String, ni: NameInfo, f: () -> A): A {
-        val l = it.getOrPut(n, { mutableListOf() })
-        l.add(ni)
-        val r = f.invoke()
-        l.remove(ni)
-        return r
     }
     operator fun get(n: String): List<NameInfo> = it.getOrDefault(n, listOf())
 }
