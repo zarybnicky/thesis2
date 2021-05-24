@@ -18,7 +18,7 @@ data class RProjF(override val loc: Loc, val body: PreTerm, val field: String) :
 data class RProj1(override val loc: Loc, val body: PreTerm) : PreTerm()
 data class RProj2(override val loc: Loc, val body: PreTerm) : PreTerm()
 
-data class RForeign(override val loc: Loc, val lang: String, val eval: String, val type: PreTerm) : PreTerm()
+//data class RForeign(override val loc: Loc, val lang: String, val eval: String, val type: PreTerm) : PreTerm()
 
 data class RU   (override val loc: Loc) : PreTerm()
 data class RHole(override val loc: Loc) : PreTerm()

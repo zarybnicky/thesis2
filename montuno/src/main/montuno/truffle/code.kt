@@ -1,9 +1,10 @@
 package montuno.truffle
 
-import com.oracle.truffle.api.TruffleLanguage
+import com.oracle.truffle.api.CallTarget
 import com.oracle.truffle.api.dsl.ReportPolymorphism
 import com.oracle.truffle.api.dsl.TypeSystemReference
 import com.oracle.truffle.api.frame.FrameSlot
+import com.oracle.truffle.api.frame.MaterializedFrame
 import com.oracle.truffle.api.frame.VirtualFrame
 import com.oracle.truffle.api.instrumentation.*
 import com.oracle.truffle.api.nodes.Node
@@ -11,13 +12,10 @@ import com.oracle.truffle.api.nodes.NodeInfo
 import com.oracle.truffle.api.nodes.UnexpectedResultException
 import com.oracle.truffle.api.source.SourceSection
 import montuno.Ix
-import montuno.interpreter.Types
-import montuno.interpreter.Val
+import montuno.interpreter.*
 import montuno.interpreter.scope.MetaEntry
-import montuno.panic
 import montuno.syntax.Icit
 import montuno.syntax.Loc
-import montuno.todo
 
 @ReportPolymorphism
 @GenerateWrapper
@@ -44,15 +42,13 @@ open class CConstant(val v: Val, loc: Loc?) : Code(loc) {
     override fun executeVal(frame: VirtualFrame): Val = v
 }
 open class CDerefMeta(val slot: MetaEntry, loc: Loc?) : Code(loc) {
-    override fun execute(frame: VirtualFrame): Any? {
-        if (!slot.solved) panic("Unsolved meta in compiled code", null)
-        return replace(CInvoke(slot.closure!!)).execute(frame)
+    override fun execute(frame: VirtualFrame): Val = when {
+        slot.solved -> VMeta(slot.meta, VSpine(), slot)
+        else -> {
+            replace(CConstant(slot.value!!, loc))
+            slot.value!!
+        }
     }
-}
-open class CInvoke(val closure: Closure) : Code(null) {
-    private var dispatch: Dispatch = DispatchNodeGen.create()
-    override fun execute(frame: VirtualFrame): Any? = todo
-        // dispatch.executeDispatch(closure.callTarget, buildArgs(frame.materialize()))
 }
 open class CReadLocal(val slot: FrameSlot, loc: Loc?) : Code(loc) {
     override fun execute(frame: VirtualFrame): Any = frame.getObject(slot)
@@ -69,15 +65,43 @@ open class CArg(val ix: Ix, val fs: FrameSlot, loc: Loc?) : Code(loc) {
         return null
     }
 }
-open class CLam(val n: String, val icit: Icit, val root: Closure, loc: Loc?) : Code(loc) {
-    override fun execute(frame: VirtualFrame): Any? = root.execute(*buildArgs(frame.materialize()))
+open class CClosure(
+    val n: String?,
+    val icit: Icit,
+    @field:Child var type: Code,
+    val isPi: Boolean,
+    val ctx: MontunoContext,
+    val heads: Array<ClosureHead>,
+    val callTarget: CallTarget,
+    loc: Loc?
+) : Code(loc) {
+    override fun execute(frame: VirtualFrame): Val {
+        val env = buildArgs(frame.materialize())
+        val cl = TruffleClosure(ctx, env, heads, heads.size, callTarget)
+        return if (isPi) VPi(n, icit, type.executeVal(frame), cl) else VLam(n, icit, type.executeVal(frame), cl)
+    }
 }
-open class CPi(val n: String, val icit: Icit, @field:Child var type: Code, val root: Closure, loc: Loc?) : Code(loc) {
-    override fun execute(frame: VirtualFrame): Any? = root.execute(*buildArgs(frame.materialize()))
-}
-open class CApp(val icit: Icit, @field:Child var lhs: Code, @field:Child var rhs: Code, val lang: TruffleLanguage<*>, loc: Loc?) : Code(loc) {
+open class CApp(val icit: Icit, @field:Child var lhs: Code, @field:Child var rhs: Code, loc: Loc?) : Code(loc) {
     override fun hasTag(tag: Class<out Tag>?) = tag == StandardTags.CallTag::class.java || super.hasTag(tag)
-    @Child private var dispatch: Dispatch = DispatchNodeGen.create()
-    override fun execute(frame: VirtualFrame): Any? = todo
-        // dispatch.executeDispatch(lhs.executeClosure(frame).callTarget, arrayOf(rhs.execute(frame)))
+    override fun execute(frame: VirtualFrame): Any? = lhs.executeVal(frame).app(icit, rhs.executeVal(frame))
+}
+open class CPair(@field:Child var lhs: Code, @field:Child var rhs: Code, loc: Loc?) : Code(loc) {
+    override fun execute(frame: VirtualFrame): Any? = VPair(lhs.executeVal(frame), rhs.executeVal(frame))
+}
+open class CProj1(@field:Child var body: Code, loc: Loc?) : Code(loc) {
+    override fun execute(frame: VirtualFrame): Any? = body.executeVal(frame).proj1()
+}
+open class CProj2(@field:Child var body: Code, loc: Loc?) : Code(loc) {
+    override fun execute(frame: VirtualFrame): Any? = body.executeVal(frame).proj2()
+}
+open class CProjF(@field:Child var body: Code, val name: String, val i: Int, loc: Loc?) : Code(loc) {
+    override fun execute(frame: VirtualFrame): Any? = body.executeVal(frame).projF(name, i)
+}
+
+fun buildArgs(frame: MaterializedFrame): Array<Any?> {
+    val ret = arrayOfNulls<Any?>(frame.frameDescriptor.size)
+    for (fs in frame.frameDescriptor.slots) {
+        ret[fs.identifier as Int] = frame.getObject(fs)
+    }
+    return ret
 }

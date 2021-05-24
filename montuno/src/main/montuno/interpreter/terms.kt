@@ -20,46 +20,39 @@ data class TProjF(val name: String, val body: Term, val i: Int) : Term()
 data class TProj1(val body: Term) : Term()
 data class TProj2(val body: Term) : Term()
 data class TSg(val name: String?, val bound: Term, val body: Term) : Term()
-data class TForeign(val lang: String, val code: String, val type: Term) : Term()
+// data class TForeign(val lang: String, val code: String, val type: Term) : Term()
 data class TLocal(val ix: Ix) : Term() { override fun toString() = "TLocal(ix=${ix.it})" }
 data class TTop(val lvl: Lvl, val slot: TopEntry) : Term() { override fun toString() = "TTop(lvl=${lvl.it})" }
 data class TMeta(val meta: Meta, val slot: MetaEntry) : Term() { override fun toString() = "TMeta(${meta.i}, ${meta.j})" }
 
-fun rewrapSpine(term: Term, spine: VSpine, lvl: Lvl): Term {
+fun rewrapSpine(term: Term, spine: VSpine, lvl: Lvl, unfold: Boolean): Term {
     var x = term
     for (sp in spine.it.reversedArray()) x = when (sp) {
         SProj1 -> TProj1(x)
         SProj2 -> TProj2(x)
         is SProjF -> TProjF(sp.n, x, sp.i)
-        is SApp -> TApp(sp.icit, x, sp.v.quote(lvl))
+        is SApp -> TApp(sp.icit, x, sp.v.quote(lvl, unfold))
     }
     return x
 }
 
 sealed class Term {
-    val arity: Int get() = when (this) {
-        is TLam -> 1 + body.arity
-        is TPi -> 1 + body.arity
-        else -> 0
-    }
-
     fun eval(ctx: MontunoContext, env: VEnv): Val = when (this) {
-        is TUnit -> VUnit
-        is TNat -> VNat(n)
-        is TIrrelevant -> VIrrelevant
         is TLocal -> env[ix]
         is TTop -> VTop(lvl, VSpine(), slot)
-        is TMeta -> VMeta(meta, VSpine(), slot)
-        is TApp -> lhs.eval(ctx, env).app(icit, rhs.eval(ctx, env)) // lazy
-        is TLam -> VLam(name, icit, type.eval(ctx, env), ctx.compiler.buildClosure(body, body, env))
-        is TPi -> VPi(name, icit, bound.eval(ctx, env), ctx.compiler.buildClosure(body, body, env)) // lazy
-        is TLet -> body.eval(ctx, env + bound.eval(ctx, env))   // lazy
-        is TForeign -> TODO("VForeign not implemented")
-        is TPair -> VPair(lhs.eval(ctx, env), rhs.eval(ctx, env))
+        is TMeta -> VMeta(meta, VSpine(), slot).let { if (slot.inserted) it.appLocals(env) else it }
+        is TLet -> body.eval(ctx, env + VThunk { bound.eval(ctx, env) })
+        is TPi -> VPi(name, icit, VThunk { bound.eval(ctx, env) }, ctx.compiler.buildClosure(body, env))
+        is TSg -> VSg(name, VThunk { bound.eval(ctx, env) }, ctx.compiler.buildClosure(body, env))
+        is TLam -> VLam(name, icit, VThunk { type.eval(ctx, env) }, ctx.compiler.buildClosure(body, env))
+        is TApp -> lhs.eval(ctx, env).app(icit, VThunk { rhs.eval(ctx, env) })
         is TProj1 -> body.eval(ctx, env).proj1()
         is TProj2 -> body.eval(ctx, env).proj2()
         is TProjF -> body.eval(ctx, env).projF(name, i)
-        is TSg -> VSg(name, bound.eval(ctx, env), ctx.compiler.buildClosure(body, body, env))
+        is TPair -> VPair(VThunk { lhs.eval(ctx, env) }, VThunk { rhs.eval(ctx, env) })
+        is TUnit -> VUnit
+        is TNat -> VNat(n)
+        is TIrrelevant -> VIrrelevant
     }
 
     fun inline(ctx:MontunoContext, lvl: Lvl, vs: VEnv) : Term = when (this) {
@@ -68,20 +61,19 @@ sealed class Term {
         is TMeta -> if (slot.solved && slot.unfoldable) slot.term!! else this
         is TLet -> TLet(name, type.inline(ctx, lvl, vs), bound.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
         is TApp -> when (val x = lhs.inlineSp(ctx, lvl, vs)) {
-            is Either.Left -> x.it.app(icit, rhs.eval(ctx, vs)).quote(lvl)
+            is Either.Left -> x.it.app(icit, rhs.eval(ctx, vs)).quote(lvl, false)
             is Either.Right -> TApp(icit, x.it, rhs.inline(ctx, lvl, vs))
         }
         is TLam -> TLam(name, icit, type.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
         is TPi -> TPi(name, icit, bound.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
         TUnit -> this
         TIrrelevant -> this
-        is TForeign -> this
         is TNat -> this
-        is TPair -> TODO()
-        is TProj1 -> TODO()
-        is TProj2 -> TODO()
-        is TProjF -> TODO()
-        is TSg -> TODO()
+        is TPair -> TPair(lhs.inline(ctx, lvl, vs), rhs.inline(ctx, lvl, vs))
+        is TProj1 -> TProj1(body.inline(ctx, lvl, vs))
+        is TProj2 -> TProj2(body.inline(ctx, lvl, vs))
+        is TProjF -> TProjF(name, body.inline(ctx, lvl, vs), i)
+        is TSg -> TSg(name, bound.inline(ctx, lvl, vs), body.inline(ctx, lvl + 1, vs.skip()))
     }
 
     private fun inlineSp(ctx: MontunoContext, lvl: Lvl, vs: VEnv): Either<Val, Term> = when(this) {
@@ -101,6 +93,7 @@ sealed class Term {
         is TMeta -> true
         is TTop -> true
         is TUnit -> true
+        is TNat -> true
         is TLam -> body.isUnfoldable()
         else -> false
     }

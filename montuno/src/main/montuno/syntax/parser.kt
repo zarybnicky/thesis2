@@ -26,6 +26,7 @@ enum class Pragma {
     RESET,
     PRINT,
     SYMBOLS,
+    BUILTIN,
 }
 
 sealed class ArgInfo(override val loc: Loc) : WithLoc {
@@ -177,7 +178,7 @@ fun MontunoParser.AtomContext.toAst(): PreTerm = when (this) {
     is MontunoParser.HoleContext -> RHole(range())
     is MontunoParser.StarContext -> RU(range())
     is MontunoParser.NatContext -> RNat(range(), NAT().text.toInt())
-    is MontunoParser.ForeignContext -> RForeign(range(), IDENT().text, FOREIGN().text, term().toAst())
+//    is MontunoParser.ForeignContext -> RForeign(range(), IDENT().text, FOREIGN().text, term().toAst())
     else -> throw UnsupportedOperationException(javaClass.canonicalName)
 }
 

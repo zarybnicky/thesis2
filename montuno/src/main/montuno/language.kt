@@ -84,8 +84,13 @@ class ProgramRootNode(l: TruffleLanguage<*>, val ctx: MontunoContext, private va
     override fun execute(frame: VirtualFrame): Any {
         var res: Any = VUnit
         for (e in pre) {
-            val x = checkTopLevel(ctx, e)
-            if (x != null) res = x
+            try {
+                val x = checkTopLevel(ctx, e)
+                if (x != null) res = x
+            } catch (e: RuntimeException) {
+                println(e)
+                throw e
+            }
         }
         return res
     }

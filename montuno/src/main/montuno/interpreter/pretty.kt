@@ -15,7 +15,7 @@ fun Term.pretty(ns: NameEnv, p: Boolean = false): Doc<Nothing> = when (this) {
     TIrrelevant -> "Irr".text()
     is TUnit -> "Unit".text()
     is TNat -> n.toString().text()
-    is TForeign -> "[$lang|$code|".text() + type.pretty(ns, false) + "]".text()
+//    is TForeign -> "[$lang|$code|".text() + type.pretty(ns, false) + "]".text()
     is TLet -> {
         val d = listOf(
             ":".text() spaced type.pretty(ns, false),

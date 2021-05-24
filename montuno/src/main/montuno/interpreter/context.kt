@@ -16,7 +16,6 @@ class LocalContext(val ctx: MontunoContext, val env: LocalEnv) {
 
     fun pretty(t: Term): String = t.pretty(NameEnv(ctx.ntbl)).toString()
     fun inline(t: Term): Term = t.inline(ctx, Lvl(0), env.vals)
-    fun force(v: Val, unfold: Boolean): Val = v.force(unfold)
 
     fun markOccurs(occurs: IntArray, blockIx: Int, t: Term): Unit = when {
         t is TMeta && t.meta.i == blockIx -> occurs[t.meta.j] += 1
@@ -63,21 +62,20 @@ class MontunoContext(val env: TruffleLanguage.Env) {
         loc = Loc.Unavailable
         ntbl = NameTable()
     }
-
-    fun compileMeta(m: Meta, term: Term) {
+    fun compileMeta(m: Meta, v: Val) {
         val slot = metas[m]
         slot.solved = true
-        slot.unfoldable = term.isUnfoldable()
-        slot.term = term
-        slot.value = makeLocalContext().eval(term)
-        slot.closure = compiler.buildClosure(term, slot.type.quote(Lvl(0)), VEnv())
+        slot.term = v.quote(Lvl(0), false)
+        slot.unfoldable = slot.term!!.isUnfoldable()
+        slot.value = v
     }
     fun compileTop(name: String, loc: Loc, defn: Term?, type: Term) {
         ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
-        val ct = if (defn != null) compiler.buildClosure(defn, type, VEnv()) else null
-        val ctx = makeLocalContext()
-        val typeV = ctx.eval(type)
-        val defnV = if (defn != null) ctx.eval(defn) else null
-        top.it.add(TopEntry(name, loc, ct, defn, defnV, type, typeV))
+        top.it.add(TopEntry(name, loc, defn, defn?.eval(this, VEnv()), type, type.eval(this, VEnv())))
+    }
+    fun registerBuiltin(loc: Loc, name: String) {
+        val (body, type) = compiler.getBuiltin(name)
+        ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
+        top.it.add(TopEntry(name, loc,null, body, type.quote(Lvl(0), false), type))
     }
 }

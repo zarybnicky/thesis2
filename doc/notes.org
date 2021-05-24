@@ -1,0 +1,100 @@
+* Writing
+presents the result of my research into dependent types and lambda calculus, sourced from 
+impl relies on elab-zoo from Kovacs
+Truffle impl sources from Cadenza, and takes certain concepts from Enso
+performance analysis based on Gross, Idris 2 development
+
+abstract - primarily for evaluation, not too suitable for elab
+
+- λ-calculus
+  - binders, Π binds a value as well
+  - ChangeDir == "conversion rule", conversion checking + unification
+  - domain/range, operand/operator, clarify terminology
+
+- elaboration
+  - inlining, unfolding
+
+- originally separate architectures, now sharing elaboration with non-Truffle impl
+  - rewritten the non-Truffle impl to use Truffle concepts as well, 
+  - Enso came out, many optimizations
+  - Enso optimized for runtime, computationally-intensive applications
+  - had Term generation inline
+  - now separated out a "compilation" stage with pluggable stages. Term is "executable code", can be optimized λ-merging, ...
+  - still needs to duplicate evaluation logic inside, especially App
+  - CONTEXTS: local, top, meta, builtin
+
+- Closures
+  - all closures are now compiled
+  - top definitions + meta solutions have closures as well, instantiated with current environment
+  - each closure has an arity equal to the number of currently relevant binders
+  - eval-apply, closure invocation decides whether to PAP (requires type-processing), invoke, or over-apply
+  - each instantiation inside elaboration code maps to a single closure, as elaboration + normalization works with single-argument λs
+  - forcing a spine is the exception
+  - storing the environment inside an array would be simpler but, in theory, using the Frame should allow Truffle to optimize better
+  - EXAMPLES of code and of FLOW!!!
+
+- Typed metas
+  - previously, untyped metas were sufficient, now to produce arities, we need typed meta-variables
+  - rewriting of unification
+
+- polyglot: not a Foreign construct, unfortunately, but
+  - BUT show a eval(Unit) -> eval(id).execute(unit)
+  - using both engines
+
+- evaluation
+  - numbers, snippets of workload code
+    - SIMPLIFY benchmarks, remove STLC interpreter or what not
+  - list possible optimizations
+    - abstract machines are often used (lazy G-machine, Epigram)
+    - type erasure
+    - unboxed values for Truffle
+    - λ-merging - requires elaboration changes
+    - static code flow analysis (will we apply, or pap?), as well
+    - low-level optimizations
+    - renaming and including only free variables - but! indices/levels mean that we can refer to arbitrary values in the general case
+  - mention rewrite again (previous version had even worse performance)
+  - JIT not suitable for elaboration, many small expressions
+  - JIT very suitable for evaluation, so even it JIT did not perform well during NbE and typing, Enso uses Truffle for its evaluation speed
+  - More sharing (CSE) would obviate the need for a JIT even more
+  - re-adding lazy evaluation would speed up computations like const 1 (fib 100)
+  - COMPARE:
+    - agda, idris, coq, montuno (whole program runtime, JIT averaged over 100 invocations, others are non-JIT)
+    - constant factors: empty program runtime
+    - montuno with both "compilers", compare Nat built-ins
+  - MENTION:
+    - OOP for name resolution: static references to Metas, can be replaced using a la IOVars
+    - Lazy evaluation is impractical, but possible (see FastR)
+    - NbE is impractical for Truffle implementation (function invocation overhead) compared to GHC and similar abstract machines
+    - what's the fast and slow path in Truffle with NbE???
+    - overhead of lazy evaluation on small terms vs eager evaluation of large terms!
+    - TESTING is only possible via the POLYGLOT interface - originally, only for demo purposes, but necessary!
+- discussion
+  - normalization-bench, Scala results
+  - LIMITATIONS of my solution
+  - Cadenza follow-up unsuccessful, it did not use NbE
+
+* Tasks
+** README
+- nix installation + nix develop + gradle + repl
+- explain the need for make repl
+- Include DEMO REPL session - a video using ASCIInema (id, :print, const, const {Unit} const Unit, const id)
+- Document CLI commands
+- Add remaining CLI commands
+- REPL command completion, partial command recognition
+- Compile the language specification
+
+** rewrite unification
+- fix metas + insertion, closeType/closeLocals
+- ConvState instead of glued/non-glued modes, see Kovacs
+- forceFUE, remove unfold in quote??
+
+** fix evaluation
+- calling a Top needs to include whole env
+- evaluate Pure with and without Lazy!
+
+** Fix Code
+@Specialization in App per value type
+
+** Builtins
+- At least Nat
+- fix - w/o unfolding is a neutral, w/unfolding evaluates the fix-point

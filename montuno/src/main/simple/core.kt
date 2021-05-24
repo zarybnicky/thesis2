@@ -128,7 +128,6 @@ fun Ctx.infer(r: PreTerm): Pair<Term, Val> = when (r) {
         val (u, uty) = define(r.n, vt, va).infer(r.body)
         TLet(r.n, a, t, u) to uty
     }
-    is RForeign -> TODO("infer(RForeign)")
     is RPair -> TODO()
     is RProj1 -> TODO()
     is RProj2 -> TODO()

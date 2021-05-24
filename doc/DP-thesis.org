@@ -107,49 +107,6 @@ coq? - https://github.com/coq/coq/blob/master/dev/doc/profiling.txt)
 
 Graal's default memory profiler
 
-**** Instrumentation
-Truffle is not only aimed at language developers but also at developers of
-language tools. We will specifically need this I would not mention this otherwise, but we will need to
-implement an instrument to add a REPL to the language. These tools are not
-specific to a single language, but most of them work for any language
-cite:seaton14_debugging. The ~Instrument~ API is based on events, an instrument
-declares which nodes it wants to receive events from based on source MIME or on
-tags (an annotation for debugging tools, can be custom), a /probe/ is inserted on
-these places (a program location that emits events) using a /WrapperNode/ that
-replaces a node and contains both this probe and the original, and this probe
-emits /events/ that mark when execution has entered of left a node.
-
-**** Cadenza
-- FrameBuilder - specialized MaterializedFrame
-
-Generating function application looks like:
-- TLam - creates Root, ClosureBody, captures to arr, arg/envPreamble
-- Lam - creates Closure, BuilderFrame from all captures in frame
-- Closure - is a ValueType, contains ClosureRootNode
-- ClosureRootNode - creates a new VirtualFrame with subset of frame.arguments
-
-**** Benefits of Truffle/Approach
-Truffle is not primarily aimed at statically-typed languages or functional
-languages. Its most easily accessible benefits lie in speculative optimization
-of dynamically typed code and inline caches, where generic object-oriented code
-can be specialized to a specific value type. Statically-typed languages have a
-lot more information regarding the values that will flow through a function, and
-e.g. GHC has a specific /specialization/ compiler pass.
-
-However, there is a lot of overlap between the static optimizations done by
-e.g. GHC and runtime optimizations done by Graal. An example would be
-unfolding/inlining, where the compiler needs to make a single decision of
-whether to replace a call to a function with its definition -- a decision that
-depends on the size of the definition, whether they are in the same module, and
-other heuristics cite:jones02_inliner. A Truffle interpreter would be able to
-postpone the decision until execution time, when the definition could be inlined
-if the call happened enough times.
-
-Its execution model is a tree of nodes where each node has a single operation
-~execute~ with multiple specializations. The elaboration/evaluation algorithm from
-the previous chapter, however, has several interleaved algorithms (infer, check,
-evaluate, quote) that we first need to graft on to the Truffle execution model.
-
 * Introduction
 #+COMMENT: Motivation: why this project? Why should anyone care?
 
@@ -284,46 +241,6 @@ of possible follow-up work (Chapter ref:evaluation).
   :CUSTOM_ID: evaluation
   :END:
 #+INCLUDE: "04-evaluation.org::#evaluation" :only-contents t
-
-* Optimizations: Making MontunoTruffle fast
-   :PROPERTIES:
-   :CUSTOM_ID: optimizations
-   :END:
-#+INCLUDE: "05-optimization.org::#optimizations" :only-contents t
-
-* Discussion
-** Results
-(A few pages)
-
-One-to-one evaluation and discussion of directly comparable subjects, confidence
-intervals, likely causes of improvements/regressions, iterations to
-steady-state.
-
-** Discussion
-Size of codebase
-
-Effort required
-
-Effect produced
-
-Is this road viable?
-
-** Next work
-(A few pages, subsections/mini-headers)
-
-FFI, tooling
-
-RPython, K Framework - exploration
-
-SPMD on Truffle, Array languages
-
-More type extensions OR totality (as a proof assistent)
-
-Finite types, universes, no type in type, HoTT, CoC
-
-Is this useful at all? What's the benefit for the world? (in evaluation)
-
-next work: LF, techniques, extensions, real language
 
 * Conclusion
 We tried X to do Y. It went well and we fulfilled the assignment.

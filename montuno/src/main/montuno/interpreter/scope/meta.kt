@@ -17,21 +17,21 @@ data class MetaContext(val ctx: MontunoContext) {
     fun newMetaBlock() = it.add(mutableListOf())
     fun freshType(): Term {
         val meta = (it.size - 1).let { i -> Meta(i, it[i].size) }
-        this[meta] = MetaEntry(ctx.loc, VUnit)
+        this[meta] = MetaEntry(ctx.loc, meta, true, VUnit)
         return TMeta(meta, this[meta])
     }
     private fun closeType(env: LocalEnv, a: Term): Term {
         var x = a
         for (i in env.vals.it.indices) {
-            x = if (env.vals.it[i] == null) TPi(env.names[i], Icit.Expl, env.types[i].quote(env.lvl), x)
-            else TLet(env.names[i]!!, env.types[i].quote(env.lvl), env.vals.it[i]!!.quote(env.lvl), x)
+            x = if (env.vals.it[i] == null) TPi(env.names[i], Icit.Expl, env.types[i].quote(env.lvl, false), x)
+            else TLet(env.names[i]!!, env.types[i].quote(env.lvl, false), env.vals.it[i]!!.quote(env.lvl, false), x)
         }
         return x
     }
     fun freshTerm(env: LocalEnv, a: Term): Term {
-        val meta = (it.size - 1).let { i -> Meta(i, it[i].size) }
+        val meta = Meta(it.size - 1, it[it.size - 1].size)
         val type: Val = closeType(env, a).eval(ctx, env.vals)
-        this[meta] = MetaEntry(ctx.loc, type)
+        this[meta] = MetaEntry(ctx.loc, meta, true, type)
         return TMeta(meta, this[meta])
     }
     fun simplifyMetaBlock() {

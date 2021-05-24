@@ -21,13 +21,6 @@ data class Meta(val i: Int, val j: Int) : Comparable<Meta> {
     override fun toString(): String = "Meta($i, $j)"
 }
 
-enum class Rigidity { Rigid, Flex }
-
-fun Rigidity.meld(that: Rigidity) = when (Rigidity.Flex) {
-    this -> Rigidity.Flex
-    else -> that
-}
-
 sealed class MetaInsertion {
     data class UntilName(val n: String) : MetaInsertion()
     object Yes : MetaInsertion()

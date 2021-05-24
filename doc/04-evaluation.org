@@ -10,7 +10,7 @@
 
 #+latex: \setcounter{chapter}{4}
 
-* Evaluation: a suite of benchmarks
+* Evaluation
   :PROPERTIES:
   :CUSTOM_ID: evaluation
   :END:
@@ -207,6 +207,238 @@ we will also measure the peak memory usage using the system tool ~time -v~.
 \missingfigure{A single large bar graph, grouped by language, four tasks in a group}
 
 [...]
+
+* Optimizations: Making MontunoTruffle fast
+   :PROPERTIES:
+   :CUSTOM_ID: optimizations
+   :END:
+** Possible performance problem sources
+Reiterate JGross
+
+how to find out whether X is relevant to us or not? How to prove the effect of JIT?
+
+Show asymptotes - binders, terms, sizes
+
+Show the graphs - large values, many iterations (warmup), sharing
+
+** Possible optimizations
+Show before and afters for each optimization
+
+What does Enso do, optimization phases?
+
+What can we do?
+
+Hash consing = sharing structurally equal values in the environment. See below from Kmett:
+https://gist.github.com/ekmett/6c64c3815f9949d067d8f9779e2347ef
+
+Inlining, let-floating
+
+Avoid thunk chaining: box(box(box(() => x))
+
+Frame slot clearing - simplifies Graal's role, as Graal tracks dataflow, and
+this shortens an object's lifetime
+
+Static optimization  - changing the structure of the interpreter so that it
+would be faster even without JIT
+
+Dynamic optimization - using more Truffle-specific features, so that Graal can
+more efficiently optimize the code: CompilerDirectives, BranchProfiles,
+TruffleBoundaries, inline caches, ControlFlowExceptions
+
+"Immutable, except to simplify" + assumptions
+Maximize evaluation sharing - globals, cache, ?
+
+- cite:blaguszewski10_llvm - potential optimizations, LLVM impl, closures
+- cite:gross14_coq_experience - Coq experience, a few reasons, comparison
+- cite:gross21_performance - a lot of reasons in Coq
+- cite:eisenberg20_stitch - CSE
+
+Ruby uses threads, can we? Automatic parallelism
+- cite:reid98_resumable_holes - concurrency & parallelism in GHC evaluation
+- cite:hughes82_supercombinators - CAFs? Lazy evaluation?
+
+Think about the fast vs slow path!
+
+- cite:zheng17_deoptimization - reasons for deoptimization
+
+OSM in DynSem:
+- DynSem also had to consider concept mapping: a program graph starts with generic node operations that immediately specialize to language-specific operations during their first execution
+- HashMaps are efficient, but bring downsides. The Graal compiler cannot see inside the HashMap methods, and so cannot analyze data flow in them and use it to optimize them.
+- DynSem also had to deal with runtime specification of environment manipulation as this is also supplied by the language specification. Also split between local short-lived values inside frames, and long-lived heap variables.
+- Relevant to us is their use of the Object Storage Model, which they use to model variable scoping which is the processed into fixed-shape stack frames (separate from the Truffle Frames, this is a meta-interpreter). OSM's use case is ideal for when all objects of a certain type have a fixed shape. This is ideal for us, as tuples and named records have, by definition, a fixed shape (unlike Ruby etc. we do not support dynamic object reshaping, obviously).
+- They did it separately from the Virtual/MaterializedFrame functionality to avoid the overhead of MaterializedFrames that Graal cannot optimize away.
+- Truffle/Graal discourage the use of custom collections, and instead push developers towards Frames (which support by-name lookups) and Objects (same).
+
+To enhance compilation specialization/inlining:
+- Visualizations of call graphs - whether or not node children are stable calls
+- Most DynSem calls are not stable calls, they are dispatched on runtime based on arguments - something that Graal does not see as stable (CompilationFinal)
+- Two types of rules: mono- and polymorphic. based on whether they are called with different types of values at runtime. Poly- are not inlined
+- DynSem found two types: dynamic dispatch (meta-interpreter depended on runtime info), and structural dispatch (based on the program AST and not on values). This is similar to our EvalNode, QuoteNode and similar, which depend on the type of the value
+- Overloaded rules--rules with the same input shape--are merged into a single FusedRule node and iterated over with @ExplodeLoop.
+- For mono/polymorphic rules, they use an assumption that a rule is monomorphic, specialize the rule, and recompile if it becomes polymorphic.
+- Inlining nodes - polymorphic rules reduced to a set of monomorphic rules - a rule from the registry is cloned in an uninitialized state in a monomorphic call site and "inlined" (in a CompilationFinal field)
+- They use a central registry of CallTargets that contain rules that they can clone and adopt locally if necessary to specialize--we can do the same!
+- Disadvantages: there is more to compile and inline by Graal, instead of a CallTarget, they use a child. Likely to take longer to stabilize, but faster in the end.
+
+** Tools
+The results of Montuno need to be further evaluated. Graal and Truffle provide
+
+*** Ideal Graph Visualizer
+A graphical program that serves to visualize the process of Truffle graph optimization. When configured correctly, the IGV will receive the results of all partial evaluations.
+
+*** CPU Sampler
+#+COMMENT: https://github.com/oracle/graal/blob/master/truffle/docs/Profiling.md
+
+Running the language launcher with the options ~--cpusampler --cpusampler.Delay=MILLISECONDS~ will start the CPU sampler. This tool serves to profile the guest language (as opposed to the regular JDK Async Profiler which will profile the entire process.
+
+~--cpusampler.Delay~ helps to not include warm-up time in the results.
+
+Using additional options (~--cpusampler --cpusampler.SampleInternal --cpusampler.Mode=roots --cpusampler.Output=json~) and postprocessing the generated JSON with an additional script we can create a so-called flamegraph with the results of the sampling.
+
+#+COMMENT: https://github.com/eregon/FlameGraph/blob/graalvm/stackcollapse-graalvm.rb
+
+*** Renaissance
+cite:prokopec19_renaissance
+
+- a set of benchmarks and measurement tools
+- measures: synchronized, object.wait, object.notify, atomic ops, park
+  operations, average cpu usage, cache misses, objects allocated, arrays
+  allocated, method calls, dynamic method calls
+- needs us to package it in a special way, but useful to compare between truffle
+  optimization versions
+- https://github.com/Gwandalff/krun-dsl-benchmarks is an alternative that has
+  examples with Truffle, measures only s/op
+** Glued evaluation
+An optimization technique that attempts to avoid even more computation.
+
+Parallel operation on two types of values, glued and local. Glued are lazily evaluated to a fully unfolded form; local are eagerly computed to a head-normal form but not fully unfolded, to prevent size explosions. This results in better performance in a large class of programs, although it is not an asymptotic improvement, as we have a small eagerly evaluated term for quoting, and a large lazily evaluated for conversion checking.
+
+This is another case of specialization: we have two operations to perform on the same class of values, but each operation has its own requirements; in this case, on the size of the terms as in quoting we want a small folded value but require the full term for conversion checking.
+
+cite:kaposi19_gluing
+
+https://eutypes.cs.ru.nl/eutypes_pmwiki/uploads/Meetings/Kovacs_slides.pdf
+
+** Splitting
+type specializations/dict passing
+
+** Function dispatch
+lambda merging
+
+eta expansion
+
+** Caching and sharing
+Sharing computation and common values
+
+Multiple references to the same object
+
+let-floating
+
+inlinable functions
+
+** Specializations
+
+**** Truffle recommended optimizations
+The optimization workflow recommended by the Truffle developers is as follows:
+1. Run with a profiler to sample the application and identify responsible compilation units. Use a sampling delay (--cpusampler.Delay=MILLISECONDS) to only profile after warmup. See the Profiling guide.
+2. Understand what is being compiled and look for deoptimizations. Methods that are listed to run mostly in the interpreter likely have a problem with deoptimization.
+3. Simplify the code as much as possible where it still shows the performance problem.
+4. Enable performance warnings and list boundary calls.
+5. Dump the Graal graph of the responsible compilation unit and look at the phase After TruffleTier.
+   1. Look at the Graal graphs at the phases After TruffleTier and After PartialEscape and check if it is what you would expect. If there are nodes there that you do not want to be there, think about how to guard against including them. If there are more complex nodes there than you want, think about how to add specialisations that generate simpler code. If there are nodes you think should be there in a benchmark that are not, think about how to make values dynamic so they are not optimized away.
+6. Search for Invoke nodes in the Graal IR. Invoke nodes that are not representing guest language calls should be specialized away. This may not be always possible, e.g., if the method does I/O.
+7. Search for control flow splits (red lines) and investigate whether they result from control flow caused by the guest application or are just artifacts from the language implementation. The latter should be avoided if possible.
+8. Search for indirections in linear code (Load and LoadIndexed) and try to minimize the code. The less code that is on the hot-path the better.
+
+---
+Add more info on splitting!!
+
+- ~--engine.TraceCompilation~ prints a line for each method compilation
+- ~--engine.TraceCompilationDetail~ prints a line for compilation queuing, start, and finish
+- ~--engine.TraceCompilationAST~ prints the entire compiled AST
+- ~--engine.TraceInlining~ prints inlining decision details
+- ~--engine.TraceSplitting~ prints splitting decisions
+- ~--engine.TraceTransferToInterpreter~ prints a stack trace for each explicit invalidation
+- ~--engine.TracePerformanceWarnings=(call|instanceof|store|all)~
+  - ~call~ prints when PE cannot inline a call
+  - ~instanceof~ prints when PE cannot resolve virtual ~instanceof~ to a specific type
+  - ~store~ prints when PE store location argument is not compilation final
+- ~--engine.CompilationStatistics~ prints total compilation statistics
+- ~--engine.CompilationStatisticDetails~ prints compilation histograms for each node
+- ~--engine.TraceMethodExpansion=truffleTier~ prints a tree of all expanded Java methods
+- ~--engine.TraceNodeExpansion=truffleTier~ prints a tree of all expanded Nodes
+- ~--engine.MethodExpansionStatistics=truffleTier~ prints total Graal nodes produced by a method
+- ~--engine.NodeExpansionStatistics=truffleTier~ also includes Graal specializations
+- ~--engine.InstrumentBoundaries~ prints info about boundaries encountered (should be minimized)
+- ~--engine.InstrumentBranches~ prints info about branch profiles
+- ~--engine.SpecializationStatistics~ prints details about specializations performed
+- ~--vm.XX:+TraceDeoptimization~ prints all deoptimizations
+- ~--vm.XX:+TraceDeoptimizationDetails~ prints all deoptimizations with details
+
+It is also possible to control what is being compiled, add details to IGV graphs dumped, and print the exact assembly produced: see https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md.
+
+**** How to debug specializations
+*Specialization histogram:* If compiled with ~-Atruffle.dsl.GenerateSpecializationStatistics=true~ and executed with ~--engine.SpecializationHistogram~, Truffle DSL will compile the nodes in a special way and show a table of the specializations performed during the execution of a program.
+
+Example shown at
+https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationHistogram.md,
+maybe include the table?
+
+*Slow path only:* If compiled with ~-Atruffle.dsl.GenerateSlowPathOnly=true~, Truffle will only execute the last, most generic specialization, and will ignore all fast path specializations.
+
+
+* Discussion
+*Truffle is not primarily aimed at statically-typed languages or functional
+languages. Its most easily accessible benefits lie in speculative optimization
+of dynamically typed code and inline caches, where generic object-oriented code
+can be specialized to a specific value type. Statically-typed languages have a
+lot more information regarding the values that will flow through a function, and
+e.g. GHC has a specific /specialization/ compiler pass.
+
+However, there is a lot of overlap between the static optimizations done by
+e.g. GHC and runtime optimizations done by Graal. An example would be
+unfolding/inlining, where the compiler needs to make a single decision of
+whether to replace a call to a function with its definition -- a decision that
+depends on the size of the definition, whether they are in the same module, and
+other heuristics cite:jones02_inliner. A Truffle interpreter would be able to
+postpone the decision until execution time, when the definition could be inlined
+if the call happened enough times.
+
+* Results
+
+
+   (A few pages)
+
+One-to-one evaluation and discussion of directly comparable subjects, confidence
+intervals, likely causes of improvements/regressions, iterations to
+steady-state.
+
+** Discussion
+Size of codebase
+
+Effort required
+
+Effect produced
+
+Is this road viable?
+
+** Next work
+(A few pages, subsections/mini-headers)
+
+FFI, tooling
+
+RPython, K Framework - exploration
+
+SPMD on Truffle, Array languages
+
+More type extensions OR totality (as a proof assistent)
+
+Finite types, universes, no type in type, HoTT, CoC
+
+Is this useful at all? What's the benefit for the world? (in evaluation)
+
+next work: LF, techniques, extensions, real language
+
 
 * Bibliography                                                :ignoreheading:
 bibliographystyle:abbrv
