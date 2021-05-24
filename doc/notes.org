@@ -15,13 +15,18 @@ abstract - primarily for evaluation, not too suitable for elab
   - inlining, unfolding
 
 - originally separate architectures, now sharing elaboration with non-Truffle impl
-  - rewritten the non-Truffle impl to use Truffle concepts as well, 
+  - rewritten the non-Truffle impl to use Truffle concepts as well,
   - Enso came out, many optimizations
   - Enso optimized for runtime, computationally-intensive applications
   - had Term generation inline
   - now separated out a "compilation" stage with pluggable stages. Term is "executable code", can be optimized λ-merging, ...
   - still needs to duplicate evaluation logic inside, especially App
   - CONTEXTS: local, top, meta, builtin
+
+- problem: working blindly, testable only using the polyglot interface, as
+  compilation is not accessible without a Language, and a Language is not
+  accessible without a Polyglot context.
+- thus, unit tests only for 
 
 - Closures
   - all closures are now compiled

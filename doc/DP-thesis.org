@@ -47,13 +47,6 @@ maximum: 30,000
 \iftwoside\cleardoublepage\fi
 \setlength{\parskip}{0.5\bigskipamount}
 #+END_EXPORT
-* (Recommended thesis structure)                                   :noexport:
-1. "Úvod do knížečky", jedna strana, bez podkapitol
-2. "Co bylo třeba vystudovat?" - "Je tato informace potřebná k pochopení toho, co jsem udělal?"
-3. "Nové myšlenky" - rozhodl jsem, vymyslel, rozvrhl, odvodil, vylepšil, navrhl, ...
-4. "Implementace a vyhodnocení" - udělal jsem, posbíral data, výsledky
-5. "Závěr" - žádné nové poznatky, možnosti pokračování, "naladit oponenta"
-
 * (Casual outline)                                                 :noexport:
 *Story:*
 - Let's build a fast Agda!
@@ -80,13 +73,6 @@ maximum: 30,000
 
 - Citations: Werthinger et al. [45] have developed [...]
 
-eqref:eq:1
-#+begin_export latex
-\begin{equation}\label{eq:1}
- ≡ Π_{x:A}B(x)
-\end{equation}
-#+end_export
-
 * Bleh                                                             :noexport:
 - cite:altenkirch08_pisigma, cite:altenkirch10_pisigma - "I had discovered the ΠΣ paper when finishing my thesis: too late, unfortunately"
 - cite:eisenberg20_stitch is an interesting tutorial of a dependent interpreter of dependent languages
@@ -110,113 +96,101 @@ Graal's default memory profiler
 * Introduction
 #+COMMENT: Motivation: why this project? Why should anyone care?
 
-Proof assistants like Coq, F*, Agda or Idris, or other languages with dependent
-types like Cayenne or Epigram, allow programmers to write provably
-correct-by-construction code in a manner similar to a dialog with the compiler
-cite:norell08_agda_tutorial. They also face serious performance issues when
-applied to problems or systems on a large-enough scale
-cite:gross14_coq_experience
-cite:gross21_performance. Their performance grows exponentially with the number
-of lines of code in the worst case cite:nawaz19_survey_provers, which is a
-significant barrier to their use. While many of the performance issues are
-fundamentally algorithmic, a better runtime system would improve the
-rest. However, custom runtime systems or more capable optimizing compilers are
+Dependently-typed languages allow programmers to write correct-by-construction
+code, and they can be used as theorem provers, or proof assistants. Programs
+written in such languages can encode more properties than those written without
+dependent types, and they are considered to be one approach to formal software
+verification cite:norell08_agda_tutorial: a well-known example is the
+computational proof of the four-color theorem in the theorem prover Coq in 2005
+cite:gonthier08_fourcolor.
+
+However, dependently-typed languages rely on their compilers or interpreters to
+verify, or prove, all invariants (properties) encoded in a program, which
+involves significant computational effort. When applied to problems or systems
+on a large-enough scale, type-checking performance becomes the primary obstacle
+to their use cite:gross14_coq_experience,gross21_performance. While many of the
+performance issues are fundamentally algorithmic cite:nawaz19_survey_provers, a
+better runtime system would improve the rest.
+
+In recent years, there have been several investigations into the performance of
+dependently-typed languages: Jason Gross's work on improving the performance of
+Coq cite:gross14_coq_experience,gross21_performance; the work of András Kovács
+on performant Haskell-based interpreters cite:kovacs_norm,kovacs20_implicit;
+Edwin Brady's work on the Idris 2 runtime system based on Chez Scheme
+cite:brady21_idris. Kovacs, in particular, manages to outperform both Coq and
+Agda by a large margin in the SmallTT project cite:smalltt.
+
+However, custom runtime systems or capable optimizing compilers are
 time-consuming to build and maintain. This thesis seeks to answer the question
 of whether just-in-time compilation can help to improve the performance of such
-systems.
-
-Moving from custom runtime systems to general language platforms like e.g., the
-Java Virtual Machine (JVM) or RPython cite:bolz14_meta, has improved the
-performance of several dynamic languages: project like TruffleRuby, FastR, or
-PyPy. It has allowed these languages to re-use the optimization machinery
+systems. Moving from custom runtime systems to general language platforms like
+e.g., the Java Virtual Machine (JVM) or RPython cite:bolz14_meta, has improved
+the performance of several dynamic languages: projects like TruffleRuby, FastR,
+or PyPy. It has allowed these languages to re-use the optimization machinery
 provided by these platforms, improve their performance, and simplify their
 runtime systems.
 
-#+COMMENT: Problem definition: What exactly are you solving? What is the core and what is a bonus? What parameters should a proper solution to the problem have?
+The platform to be evaluated is GraalVM and the Truffle language implementation
+framework, which reuse and improve upon the JIT capabilities of the Java Virtual
+Machine. Truffle has been used to implement an improved runtime system for a
+number of general-purpose languages, the most prominent of which are TruffleRuby
+and FastR. In both cases, replacing a custom runtime system with a JIT-based one
+resulted in significant performance improvements[fn:7][fn:8].
 
-As there are no standard benchmarks for dependently typed languages, we design a
-small, dependently-typed core language to see if using specific just-in-time
-(JIT) compilation techniques produces asymptotic runtime improvements in the
-performance of β-normalization and βη-conversion checking, which are among the
-main computational tasks in the elaboration process and is also the part that
-can most likely benefit from JIT compilation. The explicit non-goals of this
-thesis are language completeness and interoperability, as neither are required
-to evaluate runtime performance.
+In the final stages of this thesis, I have encountered a single project that
+attempts to apply JIT compilation to dependent types, there were no other before
+this one to the best of my knowledge. This project is Enso cite:enso, a visual
+programming language with multi-language polyglot capabilities, that uses
+dependent types at its core. I have been able to incorporate and evaluate some
+of its improvements into the practical parts of this thesis, despite the time
+constraints, as it would otherwise serve as one of my primary sources.
 
-#+COMMENT: Existing solutions: be fair in identifying their strengths and weaknesses. Cite important works from the field of your topic. Try to define well what is the state of the art.
+Other than Enso, closest to this project is Cadenza cite:kmett_2019 by Edward
+Kmett, who also suggested the topic of this thesis. Cadenza is an implementation
+of the simply-typed lambda calculus on the Truffle framework. While it is
+unfinished and did not show as promising performance compared to other
+simply-typed lambda calculus implementations as its author hoped, this thesis
+applies similar ideas to the dependently-typed lambda calculus, where the
+presence of compile-time computation should lead to larger gains.
 
-State-of-the-art proof assistants like Coq, Agda, Idris, or others is what we
-can compare our results with. There are also numerous actively developed
-research projects in this area; Lean is a notable one that I found too late in
-my thesis to incorporate its ideas. However, the primary evaluation will be
-against the most well established proof assistants.
+In this thesis, I will evaluate the effect of JIT compilation on the runtime
+performance of the type-checking (elaboration) of a dependently-typed language
+based on the typed λ-calculus. In particular, the goal is to investigate the
+performance of β-normalization and βη-conversion checking. Those are among the
+main computational tasks in the elaboration process and they are also the tasks
+can most likely benefit from JIT compilation. The obtained results will be
+compared between JIT and non-JIT implementations, but also against
+state-of-the-art proof assistants: Coq, Agda, Idris.
 
-inline:Reformulate As for the languages that use Truffle, the language implementation framework
-that allows interpreters to use the JIT optimization capabilities of GraalVM, an
-alternative implementation of the Java Virtual Machine: there are numerous
-general-purpose functional languages, the most prominent of which are
-TruffleRuby and FastR. Both were reimplemented on the Truffle platform,
-resulting in significant performance improvements[fn:7][fn:8]. We will
-investigate the optimization techniques they used, and reuse those that are
-applicable to our language.
+As there are no standard benchmarks for dependently-typed languages, the first
+task is to design a small, dependently-typed core language, followed by an
+implementation of an interpreter for this language. Proof assistants use
+languages based on the typed λ-calculus at their core, so it is a sufficient
+basis for the goals of this thesis.
 
-There is also a number of functional languages on the Java Virtual Platform that
-do not use the Truffle platform, like Clojure, Scala or Kotlin, as well as
-purely functional languages like Eta or Frege. All of these languages compile
-directly to JVM byte code: we may compare our performance against their
-implementation, but we would not be able to use their optimization
-techniques. To the best of my knowledge, neither meta-tracing nor partial
-evaluation have been applied to the dependently-typed lambda calculus.
-
-The closest project to this one is Cadenza cite:kmett_2019, which served as the
-main inspiration for this thesis. Cadenza is an implementation of the
-simply-typed lambda calculus on the Truffle framework. While it is unfinished
-and did not show as promising performance compared to other simply-typed lambda
-calculus implementations as its author hoped, this project applies similar ideas
-to the dependently-typed lambda calculus, where the presence of type-level
-computation should lead to larger gains.
-
-#+COMMENT: Our solution: Make a quick outline of your approach, pitch your solution
-
-inline:Rephrase In this thesis, I will use the Truffle framework to evaluate how
-well are the optimizations provided by the just-in-time compiler GraalVM
-suitable to the domain of dependently-typed languages. GraalVM helps to turn
-slow interpreter code into efficient machine code by means of /partial evaluation/
-cite:wurthinger13_graal. During partial evaluation, specifically the second
-Futamura projection cite:latifi19_futamura, an interpreter is specialized
-together with the source code of a program, yielding executable code. Parts of
-the interpreter could be specialized, some optimized, and some could be left off
-entirely. Depending on the quality of the specializer, this may result in
-performance gains of several orders of magnitude.
-
-Truffle makes this available to language creators, they only need to create an
-interpreter for their language. It also allows such interpreters to take
-advantage of GraalVM's /polyglot/ capabilities, and directly interoperate with
-other JVM-based languages, their code and values
-cite:sipek19_polyglot. Development tooling can also be derived for Truffle
-languages quite easily cite:stolpe19_environment. Regardless of whether Truffle
-can improve their performance, both of these features would benefit
-dependently-typed or experimental languages.
-
-#+COMMENT: Contributions: Sell your solution. Pinpoint your achievements. Be fair and objective.
-
-While this project was originally intended just as a λΠ calculus compiler and an
-efficient runtime, it has ended up much larger due to a badly specified
-assignment. I also needed to study type theory and type checking and elaboration
-algorithms that I have used in this thesis, and which form a large part of
-chapters ref:lambda and ref:interpreter.
+Truffle makes it possible to incrementally add JIT compilation to an existing
+interpreter, using /partial evaluation/ to turn slow interpreter code into
+efficient machine code cite:wurthinger13_graal. During partial evaluation, an
+interpreter is specialized together with the source code of a program, yielding
+executable code: parts of the interpreter could be specialized, some optimized,
+and some could be left off entirely, which often results in performance gains of
+several orders of magnitude. Having a language interpreter based on Truffle also
+brings other benefits: seamless interoperability with Java or JVM-based
+languages cite:sipek19_polyglot, or automatically derived language tooling
+cite:stolpe19_environment. Regardless of the outcome of the performance
+evaluation, using Truffle would benefit dependently-typed or experimental
+languages.
 
 Starting from basic λ-calculus theory and building up to the systems of the
-lambda cube, we specify the syntax and semantics of a small language that I
-refer to as Montuno (Chapter ref:lambda). We go through the principles of
-λ-calculus evaluation, type checking and elaboration, implement an interpreter
-for Montuno in a functional style (Chapter ref:interpreter).  In the second part
-of the thesis, we evaluate the capabilities offered by Truffle and the
-peculiarities of Truffle languages, and implement an interpreter for Montuno
-using the Truffle framework (Chapter ref:jit-interpreter), and apply various JIT
-optimizations to it (Chapter ref:optimizations). After designing and using a set
-of benchmarks to evaluate the language's performance, we close with a large list
-of possible follow-up work (Chapter ref:evaluation).
+λ-cube, we specify the syntax and semantics of a small language
+(Chapter ref:lambda). Continuing with the principles of λ-calculus evaluation,
+type-checking and elaboration, we implement an interpreter for Montuno in a
+functional style (Chapter ref:interpreter). In the second part of the thesis, we
+evaluate the capabilities offered by Truffle and the peculiarities of Truffle
+languages, and implement a Truffle interpreter for Montuno (Chapter
+ref:jit-interpreter). After designing a set of benchmarks to evaluate the
+language's performance and discussing then results, we close with a large list of
+possible follow-up work (Chapter ref:evaluation).
 
 * Language specification: λ⋆-calculus with extensions
   :PROPERTIES:
