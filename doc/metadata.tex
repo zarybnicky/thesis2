@@ -19,32 +19,77 @@
   faculty.en={Faculty of Information Technology},
   department.cs={Ústav inteligentních systémů},
   department.en={Department of Intelligent Systems},
-  keywords.cs={Truffle, Virtuální stroj JVM, just-in-time kompilace, tvorba
-  překladačů, závislé typy, lambda kalkul},
+  keywords.cs={Truffle, Virtuální stroj JVM, just-in-time překlad, tvorba překladačů, závislé typy, lambda kalkul},
   keywords.en={Truffle, Java Virtual Machine, just-in-time compilation, compiler construction, dependent types, lambda calculus},
-  abstract.cs={
-    [...česky]
-  },
   abstract.en={
    A number of programming languages have managed to greatly improve their
-   performance by replacing their custom runtime system with Just-in-time (JIT)
-   optimizing compilers like GraalVM or RPython. This thesis evaluates whether
-   such a transition would also benefit dependently-typed programming languages
-   by implementing a minimal language based on the $\lambda\star\text{-calculus}$ using
-   the Truffle language implementation framework on the GraalVM platform, a
-   partial evaluation-based JIT compiler based on the Java Virtual Machine.
+   performance by replacing their custom runtime system with general platforms
+   that use just-in-time optimizing compilers like GraalVM or RPython. This
+   thesis evaluates whether such a transition would also benefit
+   dependently-typed programming languages or theorem provers.
 
-   This thesis introduces the type theoretic notion of dependent types,
-   specifies a minimal dependently-typed language, and implements two
-   interpreters for this language: a simple AST-based interpreter, and a
-   Truffle-based interpreter. A number of optimization techniques that use the
-   capabilities of a JIT compiler are then applied to the Truffle-based
-   interpreter. The performance of these interpreters is then evaluated on a
-   number of normalization and elaboration tasks designed to be comparable with
-   other system, and the performance is then compared with a number of
-   state-of-the-art dependent languages and proof assistants.
+   This thesis introduces the type-theoretic notion of dependent types and the
+   algorithms involved in working with them, specifies a minimal
+   dependently-typed language on the $\lambda\Pi\text{-calculus}$, and presents
+   the implementation two interpreters for this language: a simple interpreter
+   written in Kotlin, and a second interpreter, also written in Kotlin, that
+   uses the Truffle language implementation framework on the GraalVM platform,
+   which is a partial evaluation-based just-in-time compiler based on the Java
+   Virtual Machine. The performance of these two interpreters is then compared
+   on a number of normalization and elaboration tasks.
 
    [...specific numbers]
+  }, abstract.cs={
+
+   Řada programovacích jazyků byla schopna zvýšit svoji rychlost nahrazením
+   běhových systémů, stavěných pouze pro potřeby jazyka, obecnými platformami,
+   které pro optimalizaci používají just-in-time překlad, jako jsou GraalVM nebo
+   RPython. Tato práce vyhodnocuje, zda je použití takovýchto platforem vhodné i
+   pro jazyky se závislymi typy nebo důkazovými systémy.
+
+   Tato práce představuje koncepty $\lambda\text{-kalkulu}$ a teorie typů
+   potřebné pro úvod do závislých typů a algoritmy, které jsou potřeba pro práci
+   s nimi, specifikuje malý závisle-typovaný jazyk založený na
+   $\lambda\Pi\text{-kalkulu}$, a prezentuje dva interpretery tohoto jazyka:
+   jednoduchý interpreter ve funkcionálním stylu psaný v jazyce Kotlin, a druhý
+   interpreter, taktéž psaný v jazyce Kotlin, který používá platformu GraalVM a
+   Truffle, knihovnu pro vytváření programovacích jazyků. GraalVM je platforma
+   založená na virtuálním stroji Javy (JVM), která přidává just-in-time
+   překladač založený na částečném vyhodnocení (\textit{partial evaluation}). Na
+   závěr práce vyhodnocuje běhové charakteristiky těchto interpreterů na různých
+   zátěžových testech.
+
+   [...vyhodnocení]
+  },
+  extendedabstract={
+  Systémy, které používají závislé typy, umožňují programátorům vytvářet
+  programy, které jsou zaručeně správné vzhledem k vlastnostem, které mají
+  uložené v typech. Tyto systémy je také možné použít pro logické nebo
+  matematické důkazy, nebo pro dokazování správnosti celých systémů.  Poslední
+  roky přinesly mnoho pokroků v teorii typů, na níž jsou tyto systémy založené,
+  jako např. kvantitativní nebo homotopické typy. Vysoké nároky na důkazové schopnosti
+  systémů s sebou ale prináší problémy s výkonem, konkrétně rychlostí kontroly
+  typů (\textit{type-checking}, \textit{elaboration}). V této práci zhodnocuji
+  vhodnost just-in-time překladu pro takové systémy, což je jeden z obecných
+  přístupů pro optimalizaci rychlosti systémů.
+
+  V první části vysvětluji principy typovaného $\lambda\text{-kalkulu}$, na němž
+  jsou systémy se závislými typy založené, základy teorie typů a konkrétní
+  specifikace několika rozšíření, které poté používám pro specifikaci malého
+  jazyka.
+
+  V druhé sekci pokračuji představením algoritmů, které jsou potřeba pro práci
+  se závislými typy: \textit{normalization-by-evaluation} a
+  \textit{bidirectional typing}. Tyto implementuji a používám pro vytvoření
+  funkčního interpreteru tohoto jazyka.
+
+  Třetí sekce představuje detaily platformy GraalVM a knihovny Truffle, které
+  poté používám pro implementaci druhého interpreteru, který využívá
+  just-in-time překladu.
+
+  V závěru práce vyhodnocuji [...]
+
+  Vyhodnocení, přínos práce
   },
   declaration={
     I hereby declare that this Master's thesis was created as an original work
@@ -62,8 +107,5 @@
 
     I would also like to thank my family and friends who supported me when I needed
     it the most throughout my studies.
-  },
-  extendedabstract={
-    [...česky]
   }
 }

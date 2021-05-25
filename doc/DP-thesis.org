@@ -47,32 +47,6 @@ maximum: 30,000
 \iftwoside\cleardoublepage\fi
 \setlength{\parskip}{0.5\bigskipamount}
 #+END_EXPORT
-* (Casual outline)                                                 :noexport:
-*Story:*
-- Let's build a fast Agda!
-- Why Agda, what's at its core?
-- Oh, dependent types? What's that good for, how does it work?
-- Why are all of these languages functional?
-- Lambda calculus and everything - that's a lot of formalisms...
-- How to build it? Fast λs, that's a start, then build it up.
-- So, does it work? What can I use it for, does it fulfill the design goals?
-- Why is it so slow? Asymptotics...
-- So, Truffle should make it fast, what specifically? What's the inspiration?
-- How do we start, what needs to be changed?
-- Wow, that's a lot of concepts, slow down, explain!
-- So, does this changed work function at all? What about polyglots? What UIs?
-- What can we make improve, was this just the start?
-- Did we fulfill our goals, is this useful at all?
-- If this is somebody's starting point, what will they need to know?
-
-*Original goal:*
-- efficient βη-normalization runtime
-- Show the asymptotics on Peano, Church numbers
-
-*Side outcome:* compilation of all the relevant concepts.
-
-- Citations: Werthinger et al. [45] have developed [...]
-
 * Bleh                                                             :noexport:
 - cite:altenkirch08_pisigma, cite:altenkirch10_pisigma - "I had discovered the ΠΣ paper when finishing my thesis: too late, unfortunately"
 - cite:eisenberg20_stitch is an interesting tutorial of a dependent interpreter of dependent languages
@@ -217,11 +191,46 @@ possible follow-up work (Chapter ref:evaluation).
 #+INCLUDE: "04-evaluation.org::#evaluation" :only-contents t
 
 * Conclusion
-We tried X to do Y. It went well and we fulfilled the assignment.
+---    This thesis introduces the type-theoretic notion of dependent types,
+   specifies a minimal dependently-typed language, and implements two
+   interpreters for this language: a simple AST-based interpreter, and a
+   Truffle-based interpreter. A number of optimization techniques that use the
+   capabilities of a JIT compiler are then applied to the Truffle-based
+   interpreter. The performance of these interpreters is then evaluated on a
+   number of normalization and elaboration tasks designed to be comparable with
+   other system, and the performance is then compared with a number of
+   state-of-the-art dependent languages and proof assistants.
 
-As a side effect, I produced a reference book for functional/dependent language implementation.
+The first part of this thesis presents the concepts necessary for understanding
+and specifying type systems based on the systems of the λ-cube. I have used
+these concepts to specify a small, dependently-typed language. The second part
+contains an overview of state-of-the-art algorithms involved in creating an
+interpreter for a dependently-typed language, and presents my implementation of
+such an interpreter in Kotlin.
 
-Original goal was X, it grew to encompass Y, Z as well.
+In the third part of the thesis, I have presented GraalVM, the Truffle language
+implementation framework, and the optimization possibilities they provide. I
+have implemented a second interpreter for the language using the Truffle
+framework, also written in Kotlin. The fourth part contains the compilation of a
+small set of benchmarks for investigating the elaboration performance of
+dependently-typed languages, and uses them to evaluate the effect of JIT
+compilation on the performance of the interpreters, and to coarsely compare
+their performance with the performance of state-of-the-art languages.
+
+The results are, however, unsatisfactory. The benefits brought by JIT
+compilation are outweighed by the overhead of the implementation on the JVM
+platform. Its performance is lacking, compared to platforms like GHC Haskell, or
+Chez Scheme that are used in other dependently-typed languages. I believe
+further investigation would manage to eliminate most causes of inefficiency, but
+compared to the initial expectations, such conclusions disprove the premise of
+my thesis [...].
+
+todo:Závěr
+
+Overall, despite the negative conclusion, I believe this thesis has fulfilled
+its goals [...]
+
+
 * (bibliography, start of appendix)                           :ignoreheading:
 
 #+BEGIN_EXPORT latex

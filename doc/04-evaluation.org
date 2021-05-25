@@ -43,9 +43,7 @@ prover, meaning that the programmer will use a meta-language of various decision
 procedures (tactics) instead of writing proofs manually. It uses the Calculus of
 Inductive Constructions at its core that extends the Calculus of Constructions
 (λΠω-calculus) introduced in Chapter ref:lambda. Its performance has been the
-subject of research cite:gross14_coq_experience,gross21_performance, and we will
-use some of the conclusions reached in later, when discussing optimizations in
-Chapter ref:optimizations.
+subject of research cite:gross14_coq_experience,gross21_performance.
 
 **** Agda
 Agda is a dependently-typed programming language that can also be used as a

@@ -474,17 +474,16 @@ stores it in a closure.
 #+caption: A closure value with a \texttt{MaterializedFrame}
 #+attr_latex: :position [htb]
 #+begin_src kotlin
-@CompilerDirectives.ValueType
-data class Closure(
-  val callTarget: RootCallTarget,
-  val frame: MaterializedFrame,
-)
-class ClosureNode(val root: FunctionRootNode) : Node {
-  fun executeClosure(frame: VirtualFrame): Closure = Closure(
-    Truffle.getRuntime().createCallTarget(root),
-    frame.materialize()
+  @CompilerDirectives.ValueType
+  data class Closure(
+    val callTarget: CallTarget,
+    val frame: MaterializedFrame,
   )
-}
+  class ClosureNode(val ct: CallTarget) : Node {
+    fun executeClosure(frame: VirtualFrame) {
+      return Closure(ct, frame.materialize())
+    }
+  }
 #+end_src
 
 **** Caching
@@ -665,11 +664,6 @@ remove duplicate code that would otherwise be spread over multiple
 #+latex: \footnotetext{Source: \url{https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/TruffleLibraries/}}
 
 ** Mapping concepts to Truffle
-We can now move on to the implementation of the second interpreter itself. Many
-of the features presented will mostly be used only in Chapter ref:optimizations,
-as this chapter only aims to create a Truffle interpreter that works, as even
-Truffle documentation recommends to "First, make it work, then make it fast".
-
 **** Where to use Truffle?
 Truffle uses JIT compilation, and optimizes repeatedly executed parts of a
 program. Many parts of the previously implemented interpreter are only one-off
@@ -700,8 +694,9 @@ cite:purescript).
 In the last phases of this thesis, the project Enso cite:enso was
 released, that also aims to implement a dependently-typed language using
 Truffle. While time constraints did not allow me to improve on their approach, I
-have attempted to incorporate and evaluate several of their innovations,
-especially in Chapter ref:optimizations.
+have attempted to incorporate and evaluate several of their innovations.
+
+-- in particular, the compiler-based approach, which is more flexible
 
 *** Approach
 Out of the many changes that are required, the largest is the encoding of
@@ -809,19 +804,19 @@ class Pair(val left: Any, val right: Any) : TruffleObject
 #+end_src
 
 **** Closures
-There are many possible representations of a closure in the Truffle
-framework. We will explore some later in Chapter ref:optimizations, but for now,
-one simple representation is a simple wrapping a ~Term~ in a ~RootNode~ and storing
-it alongside the current scope.
+There are many possible representations of a closure in the Truffle framework.
+
+-- one simple representation is a simple wrapping a ~Term~ in a ~RootNode~ and
+storing it alongside the current scope.
 
 A ~CallTarget~ can only be called with an array of objects, so this is what a
 ~Closure~ stores. The ~CallTarget~ points to a ~ClosureRootNode~, which first copies
 the array of arguments it was given into the local scope, and executes the
 body. Variable names in the local scope (~fd.findFrameSlot(i)~) are equal to the
 de Bruijn levels that are used in values. This can all be seen in Listing
-ref:truffle-closure.
+ref:truffle-closure-sketch.
 
-#+label:truffle-closure
+#+label:truffle-closure-sketch
 #+caption: A sketch of the closure implementation
 #+attr_latex: :position [htb]
 #+begin_src kotlin

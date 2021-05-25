@@ -88,11 +88,9 @@ abstract - primarily for evaluation, not too suitable for elab
 
 - úklid kódu, export na GH, link na GH do textu, PDF a kód a video na CD
 
-- Compile the language specification
+- Compile syntax & semantics
 - fill in program/data flow in Truffle
 - fix program/data flow in Pure
-- zdroje obrázků - Truffle prezentace
-- parse tree pic
 
 - Force compilation, get graphs, include in text/motivational pic
 

@@ -466,7 +466,6 @@ VLam("x", Expl,
 #+end_figure
 
 ** Normalization
-*** Approach                                                  :ignoreheading:
 Normalization is a series of βδζι-reductions, as defined in Chapter
 ref:lambda. While there are systems that implement normalization as an exact
 series of reduction rules, it is an inefficient approach that is not common in
@@ -817,7 +816,6 @@ to be included in text.
    :PROPERTIES:
    :CUSTOM_ID: elaboration
    :END:
-*** Approach                                                  :ignoreheading:
 The second part of the internals of the compiler is type elaboration.
 Elaboration is the transformation of a partially-specified, well-formed program
 submitted by a user into a fully-specified, well-typed internal representation
