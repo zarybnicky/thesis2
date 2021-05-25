@@ -685,8 +685,8 @@ cite:purescript).
 
 In the last phases of writing this thesis, I have encountered the project Enso
 cite:enso that was released April 13th, a month before my thesis deadline. It is
-a visual programming language that used dependent types at its core. In
-particular, compared with my previous approach, it strictly delineates between
+a visual programming language that uses dependent types at its core. In
+particular, compared to my previous approach, it strictly delineates between
 elaboration, compilation, and evaluation, introducing a special /compiler/
 component. This allows them to apply optimizations in the spirit of a compiled
 language, gradually performing optimization /passes/, and refining the code that
@@ -764,19 +764,19 @@ back up into a ~Term~ using ~quote~.
 
 Elaboration and evaluation both access the ~MontunoContext~ object to resolve
 top-level variables and meta-variables into the corresponding \texttt{Term}s.
-The REPL cannot access the context directly, which it needs to produce lists of
-bound variables, and process REPL commands, but any interaction between the host
-code of the ~Launcher~ and the internals of the language need to happen via the
-polyglot interface. This means that any REPL commands that need to access the
-language context now need to be implemented as language pragmas: e.g., to reset
-the language state, we now need the pragma ~{-# RESET #-}~, which is then also
-accessible in user-provided code as well.
+The REPL needs to obtain lists of bound variables to produce suggestions and
+process other REPL commands from the context as well, but all interaction
+between the host code of the ~Launcher~ and the internals of the language need to
+happen via the polyglot interface. This means that any REPL commands that need
+to access the language context now need to be implemented as language pragmas:
+e.g., to reset the language state, we now need the pragma ~{-# RESET #-}~, which
+is then also accessible in user-provided code as well.
 
 The data flow in Figure ref:dataflow-truffle, if compared with the previous data
-flow diagram, only adds the node /Code/, and the operation /Close/, which represents
-the construction of a closure that /closes/ over the current environment.
-Otherwise, other parts of the system can stay the same, at least on first
-glance.
+flow diagram, only adds the data representation /Code/, and the operation /Close/,
+which represents the construction of a closure that /closes/ over the current
+environment.  Otherwise, other parts of the system can stay the same, at least
+on first glance.
 
 #+LABEL:dataflow-truffle
 #+CAPTION: Data flow overview. Cyan is elaboration, red normalization-by-evaluation
@@ -795,12 +795,12 @@ glance.
 \node[block,right=1.5cm of s](p){Pre-term};
 \node[block,right=1.5cm of p](t){Term};
 \node[block,right=1.5cm of t](v){Value};
-\node[block,above=1.5cm of v](c){Code};
+\node[block,above=1cm of v](c){Code};
 
 \draw[line] (s) to node[midway,above]{Parse} (p);
 \draw[elabl] (p) to node[elabn,midway,above]{Infer} node[elabn,midway,below]{Check} (t);
 \draw[evall] (t) to[bend left=10] node[evaln,midway,above]{Eval} (v);
-\draw[evall] (t) to[bend left=10] node[evaln,midway,left]{Close} (c);
+\draw[evall] (t) to[bend left=10] node[evaln,midway,above left]{Close} (c);
 \draw[evall] (c) to[bend left=10] node[evaln,midway,right]{Eval} (v);
 \draw[evall] (v) to[bend left=10] node[evaln,midway,below]{Quote} (t);
 \draw[line] (t) to[bend left=20] node[midway,below]{Pretty-print} (s);
@@ -811,7 +811,7 @@ glance.
 *** Implementation notes
 While I have sketched the changes that would be required when creating a new
 Truffle interpreter based on the previous, non-Truffle one, the actual
-implementation process was slightly different. Instead of creating a wholly
+implementation process was slightly different. Instead of creating a entirely
 separate interpreter that would share some library code, as with my first
 attempts at creating a Truffle interpreter for Montuno, the effort to
 incorporate the improvements of Enso resulted in the two codebases merging.
@@ -819,83 +819,10 @@ incorporate the improvements of Enso resulted in the two codebases merging.
 Unlike my previous implementations, the non-Truffle and Truffle versions share
 the entire elaboration component. The only difference is in a single pluggable
 component, a ~Compiler~. This is an interface with a single method, ~buildClosure~,
-that instantiates the original ~VClosure~ value in the non-Truffle version, and in
-the Truffle version it transforms the body of a closure into a Truffle graph.
-
-This was also partly motivated by the experience of working on the original
-Truffle codebase: while it is possible to pause the execution of a Truffle
-program, and inspect it inside a debugger, it is impossible to access the
-language context from outside the language code. This made any attempts at
-incremental development using unit tests impossible, as I was only able to test
-the complete process by providing input from the outside.
-
-While this also means that the polyglot interface of the language is
-well-tested, it discouraged me from trying to adapt the existing Truffle
-codebase when attempting to integrate the concepts from Enso. The adaptation did
-not actually require many changes: the largest changes were in \texttt{Value}s,
-annotating them with Truffle directives, and replacing the closure
-implementation.
-
-The end result is actually more suited for experimentation than the previous
-attempt. Switching between backends is possible by simply issuing a command in
-the REPL interface, as demonstrated in Listing ref:repl-engine. Extending the
-compiler backend with different or better optimizations passes, in the manner of
-Montuno, would be possible by simply extending the ~Compiler~ interface. Any
-algorithmic improvements to the elaboration process would then be shared between
-all implementations.
-
-#+label:repl-engine
-#+caption:Switching compilation engines in REPL
-#+attr_latex: :position [htb]
-#+begin_src text
-  $> montuno --truffle
-  Mt> :engine
-  montuno-truffle
-  Mt> id : {A} -> A -> A = \x.x
-  Mt> :normalize id id
-  λ x. x
-  Mt> :engine montuno-pure
-  Mt> id : {A} -> A -> A = \x.x
-  Mt> :normalize id id
-  λ x. x
-#+end_src
+that produces the original ~VClosure~ value in the non-Truffle version, and in the
+Truffle version it transforms the body of a closure into a Truffle graph.
 
 *** Values
-#+label:syntax-recap2
-#+caption:Terms and values in Montuno (revisited)
-#+attr_latex: :options [htb]
-#+begin_figure latex
-\[\begin{array}{rclclcl}
-term & ≔ & v     & | & constant & & \\
-     & | & a b   & | & a \{b\}  &   & \\
-     & | & a→b   & | & (a:A)→b  & | & \{a:A\}→b \\
-     & | & a × b & | & (l:A)×b  & | & a.l \\
-     & | & \text{let} x=v \text{in} e && && \\
-     & | & \_ &&&& \\
-value& ≔ & constant & | & neutral && \\
-     & | & λx:A.b & | & Πx:A.b && \\
-     & | & (a₁,⋯,aₙ) &&&& \\
-     & | & \_ &&&& \\
-neutral & ≔ & var & | & neutral a₁ ...aₙ & | & neutral.lₙ\\
-\end{array}\]
-#+end_figure
-
-Not including constants, there are only two main value types, as per Figure
-ref:syntax-recap2: a Π-type (equivalent to a λ-abstraction), and a Σ-type. A
-Π-type maps onto a closure and will be discussed momentarily. A Σ-type can be
-expressed as a pair, or a linked list of nested pairs, to use the simplest
-representation. Then, there are neutral terms, unresolved variables that
-accumulate a spine of unapplied operands and projections: these will be
-expressed as a head containing a variable reference, and a spine with an array
-of spine values.
-
-Each of these values needs to be a separate ~ValueType~ class, and an entry in the
-Truffle type system. A snippet in Listing ref:truffle-typesystem shows the
-~TypeSystem~ and two simple value types. Other than the above-mentioned types of
-values, there is a number of literal types, and a type ~Thunk~. We need to have
-this type explicitly mentioned here, to implement lazy evaluation in Truffle
-later.
-
 #+label:truffle-typesystem
 #+caption:A \texttt{TypeSystem} and two simple \texttt{ValueType}s from the Truffle interpreter
 #+attr_latex: :position [htb]
@@ -918,199 +845,115 @@ object VUnit : TruffleObject
 class VPair(val left: Any, val right: Any) : TruffleObject
 #+end_src
 
+Not including constants, we have only two main value types: a Π-type (equivalent
+to a λ-abstraction), and a Σ-type. A Π-type maps onto a closure and will be
+discussed momentarily. A Σ-type can be expressed as a pair, or a linked list of
+nested pairs, to use the simplest representation. Then there are neutral terms,
+unresolved variables that accumulate a spine of unapplied operands and
+projections: these are expressed as a head containing a variable reference,
+and a spine with an array of spine values.
+
+Each of these values needs to be a separate ~ValueType~ class, and an entry in the
+Truffle type system. A snippet in Listing ref:truffle-typesystem shows the
+~TypeSystem~ and two simple value types. Other than the above-mentioned types of
+values, there is a number of literal types, and a type ~VThunk~. This type needs
+to be explicitly mentioned here, so that we can implement lazy evaluation in
+Truffle; its interface is exactly the same as a Kotlin ~lazy~, but a ~VThunk~
+inherits from the class ~TruffleObject~ so that it can be used inside compiled
+code.
+
 *** Closures
+#+label:truffle-closure-sketch
+#+caption: Sketch of the closure implementation
+#+attr_latex: :position [htb]
+#+begin_src kotlin
+  @CompilerDirectives.ValueType
+  @ExportLibrary(InteropLibrary::class)
+  data class TruffleClosure(
+      val env: VEnv, val callTarget: CallTarget
+  ) : TruffleObject {
+    override val arity: Int = 1
+    @ExportMessage fun isExecutable() = true
+    @ExportMessage override fun execute(vararg args: Any?): Val {
+      return callTarget.call(*concat(env, args))
+    }
+  }
+#+end_src
+
 A closure needs to store the function to execute, which was a ~Term~ in the
 non-Truffle implementation, together with the execution environment. The Truffle
-version replaces the ~Term~ with a ~CallTarget~ that points to a Truffle graph.
-A ~CallTarget~ can only be called with an array of objects, so this is what a
-~Closure~ stores. The ~CallTarget~ points to a ~ClosureRootNode~, which first copies
-the array of arguments it was given into the local scope, and executes the
-body. Variable names in the local scope (~fd.findFrameSlot(i)~) are equal to the
-de Bruijn levels that are used in values. This can all be seen in Listing
-ref:truffle-closure-sketch.
+version replaces the ~Term~ with a ~CallTarget~ that points to a Truffle graph.  A
+~CallTarget~ can only be called with an array of objects, so this is what a
+~Closure~ stores in the place of an environment. The ~CallTarget~ points to a
+~ClosureRootNode~, which first copies the array of arguments it was given into the
+local scope, and then executes the body. Reports from the Cadenza project
+cite:kmett_2019 show that this is more efficient than simply accessing the
+environment as an array, as the virtual frame can be optimized by Truffle. The
+closure object itself can be seen in Listing
+ref:truffle-closure-sketch. Notably, it also uses the ~InteropLibrary~ mentioned
+in the previous chapter, meaning that it can also be invoked from outside of the
+interpreter internals.
 
-The fact that this is the implementation of a closure also means that all ~VPi~ or
-~VLam~ values now contain a closure that was processed by the previously mentioned
-~Compiler~ component. While my original intent was to compile only top-level
-definitions (globally defined functions or constants) and meta-variables, as
-both solving a meta-variable and elaborating a top-level definition produce a
-value, /not/ processing closures of all Π- and λ-terms would require more changes
-to the elaboration process.
+Changing the definition of a closure also means that all ~VPi~ or ~VLam~ values now
+contain a closure that was processed by the previously mentioned ~Compiler~
+component. My original intent was to compile only top-level definitions
+(globally defined functions or constants) and meta-variables, but the processes
+of meta-variable solving and elaborating a top-level definition both produce a
+value, so it is simpler to produce closures globally, across all the entire
+interpreter.
 
-One 
+A ~Term~ is processed by the ~Compiler~ into a ~Code~ object, which is then wrapped
+into the ~ClosureRootNode~, and converted into a ~CallTarget~. The compilation
+process produces the Truffle graph as another tree structure, only this one will
+be interpreted by Truffle and not our algorithms. A snippet of the compilation
+code can be seen in Listing ref:truffle-compiler. It converts the ~Term~ type into
+a version of the ~eval~ function: a Π-type produces a closure, therefore we need
+to start a new compilation process with its body. a local variable reads from
+the ~Frame~, therefore we find the ~FrameSlot~ that corresponds to the de Bruijn
+index, and compile it into a /read/ operation. Finally, a unit term is compiled
+into a constant expression.
 
-Each instantiation inside elaboration code maps to a single closure, as
-elaboration + normalization works with single-argument λs
-
-
-  - each closure has an arity equal to the number of currently relevant binders
-  - eval-apply, closure invocation decides whether to PAP (requires type-processing), invoke, or over-apply
-  - forcing a spine is the exception
-  - storing the environment inside an array would be simpler but, in theory, using the Frame should allow Truffle to optimize better
-  - EXAMPLES of code and of FLOW!!!
-  - VPi(n, Closure(tm))
-  - VPi(VPi(n, Closure([n'], tm)) -> inst -> reconstruct the inner Pi
-  - Top entry contains a Value - a fresh context, the Term is only for pretty()
-  - combined spine application
-
--- one simple representation is a simple wrapping a ~Term~ in a ~RootNode~ and
-storing it alongside the current scope.
-
-#+label:truffle-closure-sketch
-#+caption: A sketch of the closure implementation
+#+label:truffle-compiler
+#+caption: Snippet from the \texttt{Compiler}
 #+attr_latex: :position [htb]
 #+begin_src kotlin
-@ValueType
-class Closure(val env: Array<Any>, val tgt: CallTarget): TruffleObject {
-  fun call(arg: Object) = tgt.call(env.plus(arg))
-}
-@ValueType
-class Thunk(val env: Array<Any>, val tgt: CallTarget): TruffleObject {
-  fun force() = tgt.call(env)
-}
-class ClosureRootNode(@NodeChild val body: Node): Node {
-  @Override
-  @ExplodeLoop
-  fun executeGeneric(f: VirtualFrame): Any {
-    val args = f.getArguments()
-    val size = args.size
-    val fd = f.getFrameDescriptor()
-    for (int i = 0; i < size; i++) {
-      f.setObject(fd.findFrameSlot(i), args[i])
+  class TruffleCompiler(val ctx: MontunoContext) : Compiler() {
+    override fun buildClosure(t: Term, env: VEnv): Closure {
+      val fd = FrameDescriptor()
+      val code = compileTerm(bodyTerm, Lvl(env.size + 1))
+      val root = TruffleRootNode(code, ctx.top.lang, fd)
+      return TruffleClosure(ctx, env, root.callTarget)
     }
-    return body.execute(f)
+    private fun compileTerm(
+      t: Term, depth: Lvl, fd: FrameDescriptor
+    ): Code = when (t) {
+      is TPi -> CClosure(t.name, t.type,
+                         compileTerm(t.bound, depth, fd),
+                         compileClosure(body, depth + 1))
+      is TApp -> CApp(compileTerm(t.l, depth, fd),
+                      compileTerm(t.r, depth, fd))
+      is TLocal -> CReadLocal(fd.findFrameSlot(t.ix.toLvl(depth).it))
+      is TMeta -> CDerefMeta(t.slot)
+      TUnit -> CConstant(VUnit)
+    } //...
   }
-}
-#+end_src
-
-*** Normalization
-Terms are the nodes of the program graph through which the above-defined
-values flow. Each term is either fully evaluated, or produces one layer of a value.
-
-The \texttt{Term}s share a common super-class and each defines the correct
-number of ~NodeChildren~ and the relevant ~execute~ method. The super-class ~Term~
-also defines a number of other methods, one for each value type in the
-~TypeSystem.~ These methods serve to specify the expected return type of a node
-using the type assertions generated by the ~TypeSystem~, e.g.,
-~TypesGen.asUnit()~. This is necessary, because the ~execute~ method of all nodes
-returns the generic type ~Any~, and cannot be further constrained.
-
-#+label:truffle-term
-#+caption:The super-class \texttt{Term}, and a local variable node
-#+attr_latex: :position [htb]
-#+begin_src kotlin
-  abstract class Term : Node() {
-    abstract fun execute(f: VirtualFrame): Any
-    fun executeGeneric(f: VirtualFrame): Any = execute(f)
-    fun executeUnit(f: VirtualFrame): Unit
-      = TypesGen.asUnit(executeGeneric(f))
-    // ...
-  }
-  data class TLocal(val n: Ix) : Term() {
-    fun executeGeneric(f: VirtualFrame) {
-      val fd = f.getFrameDescriptor()
-      return f.getObject(fd.findFrameSlot(fd.getSize() - n - 1))
-    }
-  }
-#+end_src
-
-**** Variables
-Listing ref:truffle-term demonstrates a ~Term~, together with a local variable
-node ~TLocal~. We will still use de Bruijn indices for terms and de Bruijn levels
-for values and still receive all the benefits they provide, as mentioned in the
-previous chapter, but this time any variable references will point to a ~Frame~,
-and not to an array of values.
-
-**** λ-abstractions
-The terms ~TLam~ and ~TPi~ create a single-argument closure value, shown in Listing
-ref:truffle-lam. This closure is created by converting the local scope into an
-array of objects (not shown), and including the ~CallTarget~ that refers to the
-body of the function. The opposite process, applying a λ-abstraction to an
-argument requires a ~DispatchNode~. The ~TApp~ node first evaluates the values that
-make up the function and its argument, and hands them over to a ~DispatchNode~
-that will perform the call.
-
-#+label:truffle-lam
-#+caption:Demonstration of a λ-abstraction and application in Truffle
-#+begin_src kotlin
-data class TLam(@NodeChild val root: ClosureRootNode) : Term {
-  val target = Truffle.getRuntime().createCallTarget(root)
-  fun executeClosure(f: VirtualFrame)
-    = Closure(frameToEnv(f.materialize()), target)
-}
-class TApp(@NodeChild val fn: Term, @NodeChild val arg: Term) : Term {
-  val dispatchNode = DispatchNode()
-  fun executeGeneric(f: VirtualFrame) = dispatchNode.executeDispatch(
-    fn.executeClosure(f), arg.executeAny(f)
-  )
-}
-#+end_src
-
-**** Let-in
-Other constructs follow this pattern. For example, a ~let-in~ expression first evaluates
-the value it binds to a variable, assigns it to the ~Frame~ using a ~FrameSlot~ that
-was already computed during the process of elaboration, and then executes the
-term that contains its body, demonstrated in Listing ref:truffle-let.
-
-#+label:truffle-let
-#+caption:\texttt{Let-in} expression in the Truffle interpreter
-#+begin_src kotlin
-class TLet(
-  val fs: FrameSlot,
-  @NodeChild val value: Term,
-  @NodeChild val body: Term
-) : Term() {
-  fun executeGeneric(f: VirtualFrame) {
-    f.setObject(fs, value.executeAny(f))
-    body.execute(f)
-  }
-}
-
-#+end_src
-
-**** Built-ins
-Built-in constants and types need to be implemented as special nodes. The
-resolution of a built-in name to its corresponding node happens during
-elaboration. Each built-in term has its arity, the number of expected arguments.
-The elaboration process wraps this node with the correct number of
-λ-abstractions, and resolves the arguments they will produce to an array of
-arguments. These are passed to a ~BuiltinRootNode~ that uses them directly, unlike
-the ~ClosureRootNode~, that first copies them to the local scope
-
-This is shown on the example of a ~Succ~ node in Listing ref:truffle-succ. This
-node has the arity 1, it expects a single argument, which can be either an
-already evaluated integer or a ~Thunk~ that will produce an integer, which is
-then /forced/, and coerced to a integer using a function generated by the
-~TypeSystem~.
-
-#+label:truffle-succ
-#+caption:A \texttt{Succ} node, an example implementation of a built-in term
-#+begin_src kotlin
-class Succ : BuiltinTerm(1) {
-  @Specialization
-  fun doInt(n: Int) = n + 1
-  @Specialization
-  fun doThunk(t: Thunk) = TypesGen.asVNat(t.force()) + 1
-}
 #+end_src
 
 *** Elaboration
-Given the previously mentioned implementation approach, changing the elaboration
-would not be necessary at all. However, in the course of building the second
-version, I had attempted to perform type-directed optimization, meaning that to
-optimize a term well, I needed its type. In the course of performing this
-change, I had changed the meta-context from untyped to typed, meaning that each
-meta-variable now has a type that the solution needs to conform to. This means
-that all binders in terms and values can now store the type of their argument,
-which allows the optimization process to use this information.
+Given the previously mentioned approach, changing the elaboration would not be
+necessary at all. However, in the course of building the second version, I had
+attempted to perform type-directed optimization, meaning that to optimize a term
+well, I needed its type. In the course of performing this change, I had changed
+the meta-context from untyped to typed, meaning that each meta-variable now has
+a type that the solution needs to conform to. This means that all binders in
+terms and values can now store the type of their argument, which allows the
+optimization process to use this information.
 
-The actual implementation of meta-variables in compiled code is shown in Figure ref:truffle-metas
-
-
-Meta-variables are stored in the top-level language context, and meta-variable
-references use a special node that either looks up the value of a solved
-meta-variable or forces its evaluation, returning control from a Truffle context
-back to the external elaboration process.
+The actual implementation of meta-variables, as used by the compiler is shown in
+Figure ref:truffle-metas. The Truffle graph node stores a reference to the
+meta-variable. If it has been solved between the time of the compilation and
+execution, this node is replaced with the value of the solution. If it has not,
+then this node produces a neutral value with an empty spine.
 
 #+label:truffle-metas
 #+caption:Meta-variable reference node in Truffle
@@ -1127,11 +970,122 @@ open class CDerefMeta(val slot: MetaEntry) : Code() {
 }
 #+end_src
 
-- CONTEXTS: local, top, meta, builtin
+*** Normalization
+Given the approach taken, there are no actual changes to the normalization
+algorithm, only the references to closures in Π- and λ-terms have been changed
+to be an opaque interface, which offers only a single operation ~instantiate~.
+The non-Truffle implementation needed to slightly change as well to conform to
+this interface. The interface and the non-Truffle implementation of a closure
+are demonstrated in Listing ref:truffle-metas.
 
-- polyglot: not a Foreign construct, unfortunately, but
-  - BUT show a eval(Unit) -> eval(id).execute(unit)
-  - using both engines
+#+label:truffle-metas
+#+caption:Non-Truffle closure implementation
+#+attr_latex: :position [htb]
+#+begin_src kotlin
+  interface Closure {
+    fun inst(v: Val): Val
+  }
+  @CompilerDirectives.ValueType
+  @ExportLibrary(InteropLibrary::class)
+  data class PureClosure(val env: VEnv, val body: Term) : Closure {
+    override val arity: Int = 1
+    @ExportMessage fun isExecutable() = true
+    @ExportMessage override fun execute(vararg args: Any?): Val
+      = body.eval(concat(env, args))
+  }
+#+end_src
+
+*** Built-ins
+Built-in constants and types need to be implemented as special nodes. The
+resolution of a built-in name to its corresponding node happens during
+compilation. Each built-in term has its arity, the number of expected arguments.
+The compiler produces the correct number of closures (~VLam~) nodes around the
+built-in node invocation that corresponds to the arity of the operation. These
+are passed to a ~BuiltinRootNode~ that uses them directly, unlike the
+~ClosureRootNode~, that first copies them to the local scope
+
+This is shown on the example of a ~Succ~ node in Listing ref:truffle-succ. This
+node has the arity 1, it expects a single argument, which can be either an
+already evaluated integer or a ~Thunk~ that will produce an integer, which is then
+/forced/, and coerced to a integer using a function generated by the ~TypeSystem~.
+
+#+label:truffle-succ
+#+caption:Example of a built-in node, a \texttt{Succ} node
+#+attr_latex: :position [htb]
+#+begin_src kotlin
+class Succ : BuiltinTerm(1) {
+  @Specialization
+  fun doInt(n: Int) = n + 1
+  @Specialization
+  fun doThunk(t: Thunk) = TypesGen.asVNat(t.force()) + 1
+}
+#+end_src
+
+*** Driver
+The previously-mentioned decision to share elaboration code was also partly
+motivated by the experience of working on the original Truffle code base: while
+it is possible to pause the execution of a Truffle program, and inspect it
+inside a debugger, it is impossible to access the language context from outside
+the language code. This made any attempts at incremental development using unit
+tests impossible, as I was only able to test the complete process by providing
+input from the outside.
+
+While this also means that the polyglot interface of the language is
+well-tested, it discouraged me from trying to adapt the existing Truffle
+codebase when attempting to integrate the concepts from Enso. However, this
+limitation places additional demands on the driver code that handles user
+interaction. Each user command that is impossible to express using the polyglot
+interface needs to be implemented as an interpreter directive, a pragma. As
+processing of parsed input happens in the course of elaboration, this means that
+the function ~checkTopLevel~ not only handles elaboration of top-level
+definitions, but also these commands. They are parsed into ~RTerm~ nodes, as the
+same mechanism is used for pragmas like ~NORMALIZE~, that expect a well-formed
+expression. An snippet of the code that processes these commands is shown in
+Listing ref:truffle-symbols.
+
+#+label:truffle-symbols
+#+caption:Processing REPL commands inside elaboration
+#+attr_latex: :position [htb]
+#+begin_src kotlin
+  fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
+    top.metas.newMetaBlock()
+    val ctx = LocalContext(top, LocalEnv(top.ntbl))
+    return when (e) {
+      // ...
+      is RTerm -> when (e.cmd) {
+        Pragma.NOTHING -> top.pretty(ctx.infer(e.tm))
+        Pragma.RESET -> { top.reset(); null }
+        Pragma.SYMBOLS -> top.getSymbols()
+        Pragma.BUILTIN -> { top.registerBuiltins(e.loc, e.tm); null }
+        Pragma.PRINT -> top.printElaborated()
+      }
+    }
+  }
+#+end_src
+
+One other benefit of the two interpreters sharing their code base is that
+switching between backends is possible by simply issuing a command in the REPL
+interface, as demonstrated in Listing ref:repl-engine. Extending the compiler
+backend with different or better optimizations passes, in the manner of Montuno,
+would be possible by simply extending the ~Compiler~ interface. Any algorithmic
+improvements to the elaboration process would then be shared between all
+implementations.
+
+#+label:repl-engine
+#+caption:Switching compilation engines in REPL
+#+attr_latex: :position [htb]
+#+begin_src text
+  $> montuno --truffle
+  Mt> :engine
+  montuno-truffle
+  Mt> id : {A} -> A -> A = \x.x
+  Mt> :normalize id id
+  λ x. x
+  Mt> :engine montuno-pure
+  Mt> id : {A} -> A -> A = \x.x
+  Mt> :normalize id id
+  λ x. x
+#+end_src
 
 * Bibliography                                                :ignoreheading:
 bibliographystyle:abbrv

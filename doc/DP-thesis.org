@@ -265,9 +265,27 @@ bibliography:bibliography.bib
    :CUSTOM_ID: spec
    :END:
 ** Syntax
-#+include: "../montuno/src/main/antlr/montuno/Montuno.g4" src antlr -n
+#+label:syntax-recap2
+#+caption:Terms and values in Montuno (revisited)
+#+attr_latex: :options [htb]
+#+begin_figure latex
+\[\begin{array}{rclclcl}
+term & ≔ & v     & | & constant & & \\
+     & | & a b   & | & a \{b\}  &   & \\
+     & | & a→b   & | & (a:A)→b  & | & \{a:A\}→b \\
+     & | & a × b & | & (l:A)×b  & | & a.l \\
+     & | & \text{let} x=v \text{in} e && && \\
+     & | & \_ &&&& \\
+value& ≔ & constant & | & neutral && \\
+     & | & λx:A.b & | & Πx:A.b && \\
+     & | & (a₁,⋯,aₙ) &&&& \\
+     & | & \_ &&&& \\
+neutral & ≔ & var & | & neutral a₁ ...aₙ & | & neutral.lₙ\\
+\end{array}\]
+#+end_figure
 
-** Semantics
+** Grammar
+#+include: "../montuno/src/main/antlr/montuno/Montuno.g4" src antlr -n
 
 ** Built-in constructs
 - Unit : Type

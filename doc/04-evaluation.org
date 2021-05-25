@@ -208,6 +208,24 @@ we will also measure the peak memory usage using the system tool ~time -v~.
 
 [...]
 
+*** Optimization
+**** λ merging
+  - each closure has an arity equal to the number of currently relevant binders
+  - eval-apply, closure invocation decides whether to PAP (requires type-processing), invoke, or over-apply
+  - forcing a spine is the exception
+This makes the concept of neutral values even more important: a reference to a
+top-level definition is a neutral value that accumulates a spine of applications
+(or projections). It is only evaluated when the resulting value is required: for
+unification, or for printing it out for the user. As a closure 
+
+  - VPi(n, Closure(tm))
+  - VPi(VPi(n, Closure([n'], tm)) -> inst -> reconstruct the inner Pi
+
+**** Spine application merging
+SApp only
+
+**** 
+
 *** Discussion
 - evaluation
   - numbers, snippets of workload code
