@@ -1,15 +1,8 @@
 * Writing
 presents the result of my research into dependent types and lambda calculus, sourced from 
-impl relies on elab-zoo from Kovacs
-Truffle impl sources from Cadenza, and takes certain concepts from Enso
 performance analysis based on Gross, Idris 2 development
 
 abstract - primarily for evaluation, not too suitable for elab
-
-- λ-calculus
-  - binders, Π binds a value as well
-  - ChangeDir == "conversion rule", conversion checking + unification
-  - domain/range, operand/operator, clarify terminology
 
 - elaboration
   - inlining, unfolding
@@ -26,7 +19,7 @@ abstract - primarily for evaluation, not too suitable for elab
 - problem: working blindly, testable only using the polyglot interface, as
   compilation is not accessible without a Language, and a Language is not
   accessible without a Polyglot context.
-- thus, unit tests only for 
+- thus, unit tests possible only for non-Truffle parts of the language
 
 - Closures
   - all closures are now compiled
@@ -37,6 +30,9 @@ abstract - primarily for evaluation, not too suitable for elab
   - forcing a spine is the exception
   - storing the environment inside an array would be simpler but, in theory, using the Frame should allow Truffle to optimize better
   - EXAMPLES of code and of FLOW!!!
+  - VPi(n, Closure(tm))
+  - VPi(VPi(n, Closure([n'], tm)) -> inst -> reconstruct the inner Pi
+  - Top entry contains a Value - a fresh context, the Term is only for pretty()
 
 - Typed metas
   - previously, untyped metas were sufficient, now to produce arities, we need typed meta-variables
@@ -56,6 +52,8 @@ abstract - primarily for evaluation, not too suitable for elab
     - λ-merging - requires elaboration changes
     - static code flow analysis (will we apply, or pap?), as well
     - low-level optimizations
+      - unfolding recursive algorithm into explicit stack-based one
+      - pair representation - nested pairs -> arrays, OSM
     - renaming and including only free variables - but! indices/levels mean that we can refer to arbitrary values in the general case
   - mention rewrite again (previous version had even worse performance)
   - JIT not suitable for elaboration, many small expressions
@@ -75,17 +73,33 @@ abstract - primarily for evaluation, not too suitable for elab
     - TESTING is only possible via the POLYGLOT interface - originally, only for demo purposes, but necessary!
 - discussion
   - normalization-bench, Scala results
-  - LIMITATIONS of my solution
+  - LIMITATIONS of my solution - incomplete implementation, insufficient tests, likely bugs to be found
   - Cadenza follow-up unsuccessful, it did not use NbE
 
+- main contribution of this thesis is X
+
 * Tasks
-** README
 - nix installation + nix develop + gradle + repl
 - explain the need for make repl
 - Include DEMO REPL session - a video using ASCIInema (id, :print, const, const {Unit} const Unit, const id)
 - Document CLI commands
 - Add remaining CLI commands
 - REPL command completion, partial command recognition
-- Compile the language specification
 
-- evaluate Pure with and without Lazy!
+- úklid kódu, export na GH, link na GH do textu, PDF a kód a video na CD
+
+- Compile the language specification
+- fill in program/data flow in Truffle
+- fix program/data flow in Pure
+- zdroje obrázků - Truffle prezentace
+- parse tree pic
+
+- Force compilation, get graphs, include in text/motivational pic
+
+- Include Bool, natElim, cond, eq, leq, geq
+- write Fib
+- test Fib
+- test effect of lazy eval (with and without Thunk enabled)
+- test effect of nat repr (builtin opaque Nat)
+- test effect of JIT (engines)
+- perhaps fix from LetRec from Cadenza?

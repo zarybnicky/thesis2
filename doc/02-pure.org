@@ -17,23 +17,30 @@
 
 ** Introduction
 Now with a complete language specification, we can move onto the next step:
-writing an interpreter. The algorithms involved can be translated from
-specification to code quite naturally. at least in the style of interpreter we
-will create at first. The second interpreter in Truffle will require a quite
-different programming paradigm and deciding on many low-level implementation
-details, e.g., how to implement actual function calls.
+writing an interpreter. In this chapter we will introduce the algorithms at the
+core of an interpreter and build a tree-based interpreter for the language,
+elaborating on key implementation decisions. The algorithms involved can be
+translated from specification to code quite naturally, at least in the style of
+interpreter we will create in this chapter. The second interpreter in Truffle
+will require a quite different programming paradigm and deciding on many
+low-level implementation details, e.g., how to implement actual function calls.
 
-In this chapter we will introduce the algorithms at the core of an interpreter
-and build a tree-based implementation for the language, elaborating on key
-implementation decisions. This interpreter will be referred to using the working
+These algorithms presented here are state-of-the-art algorithms that are also
+used in other dependently-typed languages. In particular,
+normalization-by-evaluation as presented by Christiansen
+cite:christiansen19_nbe_haskell; bidirectional typing as formalized by Dunfield
+and Krishnaswami cite:dunfield19_bidi; and pattern unification presented in the
+thesis of Ulf Norell cite:norell07_thesis. Several key implementation decisions:
+laziness, choice of meta-context, and the specifics of unification, were based
+on Kovács' SmallTT project cite:smalltt.
+
+The Kotlin implementation is fully my work. Most implementations of
+dependently-typed languages are in (purely) functional languages, with Haskell
+being the most common, so while it would simplify this part of the thesis, it
+would be impossible to extend an existing implementation. The reasoning behind
+picking Kotlin as the implementation language will be explained momentarily.
+The interpreter created in this chapter will be referred to using the working
 name Montuno[fn:1].
-
-This interpreter can be called an AST (abstract syntax tree) interpreter, as the
-principal parts all consist of tree traversals, due to the fact that all the
-main data structures involved are trees: pre-terms, terms, and values are
-recursive data structures. The main algorithms to be discussed are: evaluation,
-normalization, and elaboration, all of them can be translated to tree traversals
-in a straightforward way.
 
 **** Language
 The choice of a programming language is mostly decided by the eventual target
@@ -49,11 +56,14 @@ first interpreter can be written in a more natural functional style.
 **** Libraries
 Truffle authors recommend against using many external libraries in the internals
 of the interpreter, as the techniques the libraries use may not work well with
-Truffle inline:Source. Therefore, we will need to design our own supporting data
-structures based on the fundamental data structures provided directly by
-Kotlin. Only two external libraries would be too complicated to reimplement, and
-both of these were chosen because they are among the most widely used in
-their field:
+Truffle: the JIT compiler relies on inlining and whole-function optimization,
+and any external call to, e.g., a logging service, might be inlined and cause
+compilation slow-downs.
+
+Therefore, we will need to design our own supporting data structures based on
+the fundamental data structures provided directly by Kotlin. Only two external
+libraries would be too complicated to reimplement, and both of these were chosen
+because they are among the most widely used in their field:
 - a parser generator, ANTLR, to process input into an abstract syntax tree,
 - a terminal interface library, JLine, to implement the interactive interface.
 
@@ -110,7 +120,7 @@ Figure ref:data-flow. In brief, the /elaboration/ process turns user input in th
 form of partially-typed, well-formed /pre-terms/ into fully-annotated well-typed
 /terms/. /Evaluation/ converts between a /term/ and a /value/: a term can be compared to
 program data, it can only be evaluated, whereas a value is the result of such
-evaluation and can be e.g., compared for equality.
+evaluation and can be, e.g., compared for equality.
 
 #+LABEL:data-flow
 #+CAPTION:Data flow overview
@@ -136,14 +146,21 @@ evaluation and can be e.g., compared for equality.
 #+end_figure
 
 **** Data flow
+This interpreter can be called an AST (abstract syntax tree) interpreter, as the
+principal parts all consist of tree traversals and transformations, as all of
+the main data structures involved are trees: pre-terms, terms, and values are
+recursive data structures. The main algorithms to be discussed are: evaluation,
+normalization, and elaboration, all of them can be translated to tree traversals
+in a straightforward way.
+
 In Figure ref:data-flow, /Infer/ and /Check/ correspond to type checking and type
 inference, two parts of the /bidirectional typing/ algorithm that we will
-use. /Unification/ (/Unify/) forms a major part of the process, as that is how we
-check whether two values are equal. /Eval/ corresponds to the previously described
-βδζι-reduction implemented using the /normalization-by-evaluation/ style, whereas
-/Quote/ builds a term back up from an evaluated value. To complete the
-description, /Parse/ and /Pretty-print/ convert between the user-readable, string
-representation of terms and the data structures of their internal
+use. /Unification/ (/Unify/) forms a major part of the elaboration process, as that
+is how we check whether two values are equal. /Eval/ corresponds to the previously
+described βδζι-reduction implemented using the /normalization-by-evaluation/
+style, whereas /Quote/ builds a term back up from an evaluated value. To complete
+the description, /Parse/ and /Pretty-print/ convert between the user-readable,
+string representation of terms and the data structures of their internal
 representation.  For the sake of clarity, the processes are illustrated using
 their simplified function signatures in Listing ref:main-sigs.
 
@@ -152,7 +169,7 @@ their simplified function signatures in Listing ref:main-sigs.
 #+attr_latex: :position [!htb]
 #+begin_src kotlin
 fun parse(input: String): PreTerm;
-fun pprint(term: Term): String;
+fun pretty(term: Term): String;
 fun infer(pre: PreTerm): Pair<Term, Val>;
 fun check(pre: PreTerm, wanted: Val): Term;
 fun eval(term: Term): Val;
@@ -160,13 +177,13 @@ fun quote(value: Val): Term;
 fun unify(left: Val, right: Val): Unit;
 #+end_src
 
-In this chapter, we will first define the data types, especially focusing on
+We will first define the data types in this chapter, especially focusing on
 closure representation. Then, we will specify and implement two algorithms:
 /normalization-by-evaluation/, and /bidirectional type elaboration/, and lastly, we
 finish the interpreter by creating its driver and frontend.
 
 ** Data structures
-We have specified the syntax of the language in the previous chapter, which we
+In the previous chapter, we have specified the syntax of the language, which we
 first need to translate to concrete data structures before trying to implement
 the semantics. Sometimes, the semantics impose additional constraints on the
 design of the data structures, but in this case, the translation is quite
@@ -175,7 +192,7 @@ straight-forward.
 **** Properties
 Terms and values form recursive data structures. We will also need a separate
 data structure for pre-terms as the result of parsing user input. All of these
-structures represent only well-formed terms and in addition, terms and value
+structures represent only well-formed terms and in addition, terms and values
 represent the well-typed subset of well-formed terms. Well-formedness should be
 ensured by the parsing process, whereas type-checking will take care of the
 second property.
@@ -204,7 +221,7 @@ term & ≔ & v     & | & constant & & \\
      & | & a b   & | & a \{b\}  &   & \\
      & | & a→b   & | & (a:A)→b  & | & \{a:A\}→b \\
      & | & a × b & | & (l:A)×b  & | & a.l \\
-     & | & \text{let} x=v \text{in} e &|& [| id | foreign | type |] && \\
+     & | & \text{let} x=v \text{in} e && && \\
      & | & \_ &&&& \\
 value& ≔ & constant &&&& \\
      & | & λx:A.b & | & Πx:A.b && \\
@@ -214,48 +231,51 @@ value& ≔ & constant &&&& \\
 #+end_figure
 
 The terms and values that were specified in Chapter ref:lambda are revisited in
-Figure ref:syntax-recap, there are a two main classes of terms: those that
+Figure ref:syntax-recap, there are two main classes of terms: those that
 represent computation (functions and function application), and those that
 represent data (pairs, records, constants).
 
 **** Data classes
 Most /data/ terms can be represented in a straight-forward way, as they map
-directly to features of the host language, Kotlin in our case. Kotlin has a
-standard way of representing primarily data-oriented structures using
-\texttt{data class}es. These are classes whose primary purpose is to hold data,
-so-called Data Transfer Objects (DTOs), and are the recommended approach in
-Kotlin[fn:4]. In Listing ref:dto we have the base classes for terms and values,
-and a few examples of structures that map directly from the syntax to a data
-object.
+directly to features of the host language, Kotlin in our case. Kotlin recommends
+a standard way of representing primarily data-oriented structures using
+\texttt{data class}es[fn:4]. These are classes whose primary purpose is to hold
+data, so-called Data Transfer Objects (DTOs). In Listing ref:dto we have the
+base classes for terms and values, and a few examples of structures mapped from
+the syntax to code.
 
 #+label: dto
-#+caption: Pair and \texttt{let-in} representations
+#+caption: Data classes representing some of the terms and values in the language
 #+begin_src kotlin
-sealed class Term
-sealed class Value
+  sealed class Term
+  data class TLocal(val ix: Ix) : Term()
+  data class TPair(val left: Term, val right: Term) : Term()
+  data class TPi(val id: String?, val bound: Term, val body: Term) : Term()
+  data class TSg(val id: String?, val bound: Term, val body: Term) : Term()
 
-data class TLet(val id: String, val bind: Term, val body: Term) : Term()
-data class TSigma(val id: String, val type: Term, val body: Term) : Term()
-data class TPair(val left: Term, val right: Term) : Term()
-
-data class VPair(val left: Value, val right: Value) : Value()
+  sealed class Val
+  data class VLocal(val lvl: Lvl) : Val()
+  data class VPair(val left: Val, val right: Val) : Val()
+  data class VPi(val id: String?, val bound: Val, val cl: Closure) : Val()
+  data class VSg(val id: String?, val bound: Val, val cl: Closure) : Val()
 #+end_src
 
-Terms that encode computation, whether delayed (λ-abstraction) or not
-(application) will be more involved. Variables /can/ be represented in a
-straight-forward way, but a string-based representations is not the most optimal
+Some constructs are straightforward to map, but terms that encode computation,
+whether delayed (λ-abstraction) or not (application) are more
+involved. Variables /can/ be represented in a straightforward way using the
+variable name, but a string-based representations is not the most optimal
 way. We will look at these three constructs in turn.
 
 *** Functions
 **** Closure
 Languages, in which functions are first-class values, all use the concept of a
 closure. A closure is, in brief, a function in combination with the environment
-in it was created. The body of the function can refer to variables other than
-its immediate arguments, which means the surrounding environment needs to be
-stored as well. The simplest example is the $const$ function $λx.λy.x, which,
-when partially applied to a single argument, e.g., $\text{let }five = const 5$,
+in which it was created. The body of the function can refer to variables other than
+its immediate arguments, which means that the surrounding environment needs to be
+stored as well. The simplest example is the $const$ function $λx.λy.x$, which,
+when partially applied to a single argument, e.g., $\text{let }plusFive = plus 5$,
 needs to store the value $5$ until it is eventually applied to the remaining
-second argument: $five 15 ⟶ 5$.
+second argument: $plusFive 15 ⟶ 20$.
 
 **** HOAS
 As Kotlin supports closures on its own, it would be possible to encode λ-terms
@@ -263,16 +283,17 @@ directly as functions in the host language. This is possible, and it is one of
 the ways of encoding functions in interpreters. This encoding is called the
 higher-order abstract syntax (HOAS), which means that functions[fn:5] in the
 language are equal to functions in the host language. Representing functions
-using HOAS produces very readable code, and in some cases, e.g., on GHC produces
-code an order of magnitude faster than using other representations
-cite:kovacs_norm. An example of what it looks like is in Listing ref:hoas.
+using HOAS produces very readable code, and in some cases, e.g., in the Haskell
+compiler GHC, produces code an order of magnitude faster than using other
+representations cite:kovacs_norm. An example of what it looks like is in Listing
+ref:hoas.
 
 #+label:hoas
 #+caption: Higher-order abstract syntax encoding of a closure
 #+begin_src kotlin
-data class Closure<T>(val fun: (T) -> T)
+data class HOASClosure<T>(val body: (T) -> T)
 
-val constFive = Closure<Int> { (n) -> 5 }
+val constFive = HOASClosure<Int> { (n) -> 5 }
 #+end_src
 
 **** Explicit closures
@@ -289,17 +310,17 @@ closure was created.
 #+label:nonhoas
 #+caption:Defunctionalized function representation
 #+begin_src kotlin
-data class Closure<T>(val fun: Term, val environment: Map<Name,Term>)
+data class ExplicitClosure<T>(val env: Map<Name, Val>, val body: Term)
 
-val constFive = Closure<Int>(TLocal("x"), mapOf("x" to 5))
+val constFive = ExplicitClosure<Int>(mapOf("x" to VNat(5)), TLocal("x"))
 #+end_src
 
 *** Variables
-Representing variables can be as straight-forward as in Listing ref:nonhoas: a
-variable can be a simple string containing the name of the variable. This is
-also what our parser produces in the pre-term representation. Also, when
-describing reduction rules and substitution, we have also referred to variables
-by their names. That is not the best way of representing variables.
+Variable representation can be simple, as in Listing ref:nonhoas: a variable can
+be a simple string containing the name of the variable. This is also what our
+parser produces in the pre-term representation. Also, when describing reduction
+rules and substitution, we have also referred to variables by their names. That
+is not the best way of representing variables.
 
 **** Named
 Often, when specifying a λ-calculus, the process of substitution $t[x≔e]$ is
@@ -315,7 +336,7 @@ is not used in any real implementation of dependent types or λ-calculus.
 An alternative to string-based variable representation is a /nameless/
 representation, which uses numbers in place of variable names
 cite:kamareddine01_de_bruijn. These numbers are indices that point to the
-current variable environment, offsets from the top or the top of the environment
+current variable environment, offsets from either end of the environment
 stack. The numbers are assigned, informally, by /counting the lambdas/, as each
 λ-abstraction corresponds to one entry in the environment. The environment can
 be represented as a stack to which a variable is pushed with every function
@@ -340,15 +361,15 @@ entries. These two approaches can be seen side-by-side in Figure ref:var-named.
 **** de Bruijn indices
 The first way of addressing, de Bruijn indexing, is rather well-known. It is a
 way of counting from the top of the stack, meaning that the argument of the
-innermost lambda has the lowest number. It is a "relative" way of counting,
-relative to the top of the stack, which is beneficial during e.g. δ-reduction in
-which a reference to a function is replaced by its definition: using indices,
-the variable references in the function body do not need to be adjusted after
-such substitution.
+innermost (most recent) lambda has the lowest number. It is a "relative" way of
+counting, relative to the top of the stack, which is beneficial during, e.g.,
+δ-reduction, in which a reference to a function is replaced by its definition:
+using indices, the variable references in the function body do not need to be
+adjusted after such substitution.
 
 **** de Bruijn levels
 The second way is also called the "reversed de Bruijn indexing"
-cite:lescanne95_levels, as it counts from the start of the stack. This means
+cite:lescanne95_levels, as it counts from the bottom of the stack. This means
 that the argument of the innermost lambda has the highest number. In the entire
 term, one variable is only ever addressed by one number, meaning that this is an
 "absolute" way of addressing, as opposed to the "relative" indices.
@@ -363,20 +384,19 @@ the evaluation of a term.
 
 **** Our choice
 We will use a representation that has been used in recent type theory
-implementations cite:eisenberg20_stitch cite:gratzer19_modal_types: de Bruijn
-indices in terms, and de Bruijn levels in values. Such a representation avoids
-any need for substitution as terms are that substituted /into/ an existing value
-do not need to have the "relative" indices adjusted based on the size of the
-current environment, whereas the "absolute" addressing of levels in values means
-that values can be directly compared. This combination of representations means
-that we can doing avoid any substitution at all, as any adjustment of variables
-is performed during the evaluation from term to value and back.
+implementations cite:eisenberg20_stitch,gratzer19_modal_types: de Bruijn indices
+in terms, and de Bruijn levels in values. Such a representation avoids any need
+for substitution: "relative" indices do not need to be adjusted based on the
+size of the environment, whereas the "absolute" addressing of levels in values
+means that values can be directly compared. This combination of representations
+means that we can avoid doing any substitution at all, as any adjustment of
+variables is performed during the evaluation from term to value and back.
 
 **** Implementation
 Kotlin makes it possible to construct type-safe wrappers over basic data types
 that are erased at runtime but that support custom operations. Representing
-indices and levels as \texttt{inline class}es means that we can perform add and
-subtract them using the natural syntax e.g. ~ix + 1~, which we will use when
+indices and levels as \texttt{inline class}es means that we can increase and
+decrease them using the natural syntax e.g. ~ix + 1~, which we will use when
 manipulating the environment in the next section. The final representation of
 variables in our interpreter is in Listing ref:indices.
 
@@ -396,7 +416,7 @@ inline class Lvl(val it: Int) {
 }
 
 data class VLocal(val it: Lvl) : Val()
-data class TLocal(val it: Ix) : Val()
+data class TLocal(val it: Ix) : Term()
 #+end_src
 
 *** Class structure
@@ -441,17 +461,19 @@ VLam("x", Expl,
  & Variables & Functions & Properties\\\hline
 \texttt{PreTerm} & String names & \texttt{PreTerm} AST & well-formed\\
 \texttt{Term} & de Bruijn index & \texttt{Term} AST & well-typed\\
-\texttt{Value} & de Bruijn level & Closure (\texttt{Term} AST + \texttt{Values} in context) & normal form\\
+\texttt{Value} & de Bruijn level & Closure: \texttt{Term} + \texttt{Value} context & head-normal form\\
 \end{tabular}
 #+end_figure
 
 ** Normalization
-*** Approach
-**** Normalization-by-evaluation
+*** Approach                                                  :ignoreheading:
 Normalization is a series of βδζι-reductions, as defined in Chapter
 ref:lambda. While there are systems that implement normalization as an exact
 series of reduction rules, it is an inefficient approach that is not common in
-the internals of state-of-the-art proof assistants. An alternative way of
+the internals of state-of-the-art proof assistants.
+
+**** Normalization-by-evaluation
+An alternative way of
 bringing terms to normal form is the so-called /normalization-by-evaluation/ (NbE)
 cite:pagano12_nbe_dependent. The main principle of this technique is
 interpretation from the syntactic domain of terms into a computational, semantic
@@ -513,16 +535,16 @@ say that NbE (as we will implement it) is a pair of functions $nf = quote(eval(t
 \node[block,below=1.5cm of nfv](v){Value};
 \node[block,below=1.5cm of t](vv){\hphantom{Term}};
 
-\node[draw,inner xsep=3mm,inner ysep=2mm,fit=(t)(nft)(net),label={180:Syntactic domain}]{};
-\node[draw,inner xsep=3mm,inner ysep=2mm,fit=(vv)(nfv)(nev)(v),label={180:Semantic domain}]{};
+\node[draw,inner xsep=3mm,inner ysep=3mm,fit=(t)(nft)(net),label={180:Syntactic domain}]{};
+\node[draw,inner xsep=3mm,inner ysep=3mm,fit=(vv)(nfv)(nev)(v),label={180:Semantic domain}]{};
 
-\draw[line] (t) to[bend right=10] node[midway,fill=white]{Eval} (v);
-\draw[line] (v) to node[midway,fill=white]{Reify} (nfv);
-\draw[line] (nev) to[bend left=10] node[midway,fill=white]{Reflect} (v);
-\draw[line] (nfv) to node[midway,fill=white]{Quote} (nft);
-\draw[line] (nev) to node[midway,fill=white]{Quote} (net);
-\draw[line] (net) to node[midway,fill=white]{$⊆$} (nft);
-\draw[line] (nft) to node[midway,fill=white]{$⊆$} (t);
+\draw[line] (t) to[bend right=10] node[midway,left,fill=white]{Eval} (v);
+\draw[line] (v) to node[midway,right,fill=white]{Reify} (nfv);
+\draw[line] (nev) to[bend left=10] node[midway,right,fill=white]{Reflect} (v);
+\draw[line] (nfv) to node[midway,right,fill=white]{Quote} (nft);
+\draw[line] (nev) to node[midway,right,fill=white]{Quote} (net);
+\draw[line] (net) to node[midway,above,fill=white]{$⊆$} (nft);
+\draw[line] (nft) to node[midway,above,fill=white]{$⊆$} (t);
 \end{tikzpicture}
 #+end_figure
 
@@ -533,21 +555,21 @@ normalize terms in the interpreter is for type-checking and inference and that,
 in particular, needs normalized terms to check whether two terms are
 equivalent. NbE is an algorithm to get a full normal form of a term, whereas to
 compare values for equality, we only need the weak head-normal form. To
-illustrate: to compare whether a λ-term and a pair are equal, we do not need to
-compare two fully-evaluated values, but only to find out whether the term is a
-pair of a λ-term, which is given by the outermost constructor, the /head/.
+illustrate: to compare whether a pair is equal to another term, we do not need to
+compare two fully-evaluated values, but only to find out whether that term is a
+pair of a terms, which is given by the outermost constructor, the /head/.
 
 In Chapter ref:lambda we saw an overview of normal forms of λ-calculus. To
 briefly recapitulate, a normal form is a fully evaluated term with all sub-terms
 also fully evaluated. A weak head-normal form is a form where only the outermost
-construction is fully evaluated, be it a λ-abstraction or application of a
+construction is fully evaluated, be it a λ-abstraction or an application of a
 variable to a spine of arguments.
 
 **** Reduction strategy
 Normal forms are associated with a reduction strategy, a set of small-step
-reduction rules that specify the order in which sub-expressions are
+reduction rules that specify the order in which subexpressions are
 reduced. Each strategy brings an expression to their corresponding normal form.
-Common ones are /applicative order/ in which we first reduce sub-expressions
+Common ones are /applicative order/ in which we first reduce sub-terms
 left-to-right, and then apply functions to them; and /normal order/ in which we
 first apply the leftmost function, and only then reduce its arguments. In Figure
 ref:reduction-order there are two reduction strategies that we will emulate.
@@ -574,6 +596,7 @@ ref:reduction-order there are two reduction strategies that we will emulate.
 \end{prooftree}
 \caption{Call-by-name to weak head normal form}
 \end{subfigure}
+\hspace*{-1cm}
 \begin{subfigure}[t]{.5\textwidth}\centering
 \[x \xrightarrow{norm} x\]
 \begin{prooftree}
@@ -602,12 +625,12 @@ evaluated into a value, but in our case, they apply to our host language Kotlin.
 **** Call-by-value
 Call-by-value, otherwise called eager evaluation, corresponds to applicative
 order reduction strategy cite:ariola97_cbn. Specifically, when executing a
-statement, its sub-expressions are evaluated inside-out and immediately reduced
-to a value.  This leads to predictable program performance (the program will
-execute in the order that the programmer wrote it, evaluating all expressions in
-order), but this may lead to unnecessary computations performed: given an
-expression ~const 5 (ackermann 4 2)~, the value of ~ackermann 4 2~ will be computed
-but immediately discarded, in effect wasting processor time.
+statement, its sub-terms are evaluated inside-out and immediately reduced to a
+value.  This leads to predictable program performance (the program will execute
+in the order that the programmer wrote it, evaluating all expressions in order),
+but this may lead to unnecessary computations performed: given an expression
+~const 5 (ackermann 4 2)~, the value of ~ackermann 4 2~ will be computed but
+immediately discarded, in effect wasting processor time.
 
 **** Call-by-need
 Call-by-need, also lazy evaluation, is the opposite paradigm. An expression will
@@ -617,15 +640,15 @@ the calculation ~ackermann 4 2~ will be deferred and then discarded. However, it
 also has some drawbacks, as the performance characteristics of programs may be
 less predictable or harder to debug.
 
-Call-by-value is the prevailing paradigm, used in all commonly used languages
-with the exception of Haskell. It is sometimes necessary to defer the evaluation
-of an expression, however, and in such cases lazy evaluation is emulated using
+Call-by-value is the prevailing paradigm, used in the majority of commonly used
+languages. However, it is sometimes necessary to defer the evaluation of an
+expression, however, and in such cases lazy evaluation is emulated using
 closures or zero-argument functions: e.g., in Kotlin a variable can be
 initialized using the syntax ~val x by lazy { ackermann(4, 2) }~, and the value
 will only be evaluated if it is ever needed.
 
 **** Call-by-push-value
-There is also an alternative paradigm, called call-by-push-value, which subsumes
+There is also an alternative paradigm, called call-by-push-value, that subsumes
 both call-by-need and call-by-value as they can be directly translated to
 CBPV--in the context of λ-calculus specifically. It defines additional operators
 /delay/ and /force/ to accomplish this, one to create a /thunk/ that contains a
@@ -634,18 +657,17 @@ distinguishes between values and computations: values can be passed around, but
 computations can only be executed, or deferred.
 
 **** Emulation
-We can emulate normalization strategies by implementing the full
-normalization-by-evaluation algorithm, and varying the evaluation
-strategy. Kotlin is by default a call-by-value language, though, and evaluation
-strategy is an intrinsic property of a language so, in our case, this means that
-we need to insert ~lazy~ annotations in the correct places, so that no values are
-evaluated other than those that are actually used. In the case of the later
-Truffle implementation, we will need to implement explicit /delay/ and /force/
-operations of call-by-push-value, which is why we introduced all three paradigms
-in one place.
+We can emulate normalization strategies by implementing the full normalization
+by evaluation algorithm, and varying the evaluation strategy. Kotlin is by
+default a call-by-value language, though, and evaluation strategy is an
+intrinsic property of a language so, in our case, this means that we need to
+insert ~lazy~ annotations in the correct places, so that no values are evaluated
+other than those that are actually used. In the case of the later Truffle
+implementation, we will need to implement explicit /delay/ and /force/ operations of
+call-by-push-value, which is why we introduced all three paradigms in one place.
 
 *** Implementation
-The basic outline of the implementation is based on Christiansen's
+The basic outline of the implementation is based on Christiansen
 cite:christiansen19_nbe_haskell. In essence, it implements the obvious
 evaluation algorithm: evaluating a function captures the current environment in
 a closure, evaluating a variable looks up its value in the environment, and
@@ -718,12 +740,12 @@ the class of the argument, in this case we check if ~this~ is a ~TLocal~, ~TLet~
 #+begin_src kotlin
 fun eval(ctx: Context, term: Term, env: VEnv): Val = when (term) {
   is TLocal ->
-    env[term.ix] ?: VNeutral(HLocal(Lvl(ctx.lvl - term.ix - 1), spineNil))
+    env[term.ix] ?: VLocal(Lvl(ctx.lvl - term.ix - 1), spineNil)
   is TLet -> eval(ctx, term.body, env + eval(ctx, term.defn, env))
-  is TLam -> VLam(term.name, VCl(env, term.body))
+  is TLam -> VLam(term.name, VClosure(env, term.body))
   is TApp -> when (fn := eval(ctx, term.lhs, env)) {
     is VLam -> eval(ctx, fn.cl.term, fn.cl.env + eval(ctx, term.rhs, env))
-    is VNeutral -> VNeutral(fn.head, fn.spine + term.right)
+    is VLocal -> VLocal(fn.head, fn.spine + term.right)
   }
   // ...
 }
@@ -753,18 +775,19 @@ reconstructed as a tree of nested ~TApp~ applications.
 #+caption:Demonstration of the \texttt{quote} algorithm
 #+attr_latex: :position [htb]
 #+begin_src kotlin
-fun quote(ctx: Context, v: Val): Term = when (v) {
-  is VNeutral -> {
-    x = TLocal(Ix(ctx.depth - v.head - 1))
-    for (vSpine in v.spine.reversed()) {
-        x = TApp(x, quote(ctx, vSpine))
+  fun quote(ctx: Context, v: Val): Term = when (v) {
+    is VLocal -> {
+      x = TLocal(Ix(ctx.depth - v.head - 1))
+      for (vSpine in v.spine.reversed()) {
+          x = TApp(x, quote(ctx, vSpine))
+      }
+      x
     }
-    x
+    is VLam -> TLam(v.name,
+        quote(ctx, eval(ctx, v.cl.body, v.cl.env + VLocal(ctx.lvl)))
+    )
+    // ...
   }
-  is VLam -> TLam(v.name,
-      quote(ctx, eval(ctx, v.cl.body, v.cl.env + VNeutral(HLocal(ctx.lvl)))))
-  // ...
-}
 #+end_src
 
 These two operations work together, to fully quote a value, we need to also
@@ -794,7 +817,7 @@ to be included in text.
    :PROPERTIES:
    :CUSTOM_ID: elaboration
    :END:
-*** Approach
+*** Approach                                                  :ignoreheading:
 The second part of the internals of the compiler is type elaboration.
 Elaboration is the transformation of a partially-specified, well-formed program
 submitted by a user into a fully-specified, well-typed internal representation
@@ -827,8 +850,8 @@ standard approach cite:nawaz19_survey_provers, often used in combination with
 constraint solving.
 
 **** Judgments
-The type system is composed of two additional type judgments we haven't seen
-yet, that describe the two directions of computation in the type system:
+The type system is composed of two additional type judgments we have not seen
+yet that describe the two directions of computation in the type system:
 - $Γ ⊢ e ⇒ t$ is "given the context Γ and term $e$, infer (synthesize) its type
   $t$", and
 - $Γ ⊢ e ⇐ t$ is "given the context Γ, term $e$ and type $t$, check that $t$ is
@@ -875,16 +898,17 @@ need to infer it entirely.
 \end{tabular}
 #+end_figure
 
-**** Bidirectional λ→ typing
+**** Bidirectional λ→-typing
 In Figure ref:simple-bidi, this principle is demonstrated on the simply-typed
 λ-calculus with only variables, λ-abstractions and function application. The
 first four rules correspond to rules that we have introduced in Chapter
 ref:lambda, with the exception of the constant rule that we have not used
 there. The two new rules are *(ChangeDir)* and *(Ann)*: *(ChangeDir)* says that if we
 know that a term has an already inferred type, then we can satisfy any rule that
-requires that the term checks against a type equivalent to this one. *(Ann)* says
-that to synthesize the type of an annotated term $a:t$, the term first needs to
-check against that type.
+requires that the term checks against a type equivalent to this one. It is also
+sometimes called the "conversion rule", as it checks whether the terms can be
+converted into one another. *(Ann)* says that to synthesize the type of an
+annotated term $a:t$, the term first needs to check against that type.
 
 Rules *(Var)* and *(Const*) produce an assumption, if a term is already in the
 context or a constant, then we can synthesize its type. In rule *(App)*, if we
@@ -956,18 +980,16 @@ course of processing $five$, we encounter two implicit arguments, which are
 inserted on the top-level as the meta-variables $?α$ and $?β$.
 
 *** Unification
-Returning to the rule *(ChangeDir)* in Figure ref:defn-bidi, a critical piece of
-the algorithm is the equality of two types that this rule uses. To check a term
+Returning to the rule *(ChangeDir)* in Figure ref:simple-bidi, a critical piece of
+the algorithm is how the equivalence of two types is checked. To check a term
 against a type $Γ ⊢ a ⇐ t$, we first infer a type for the term $Γ ⊢ a ⇒ u$, and
 then test its equivalence to the wanted type $t = u$.
 
-**** Conversion checking
 The usual notion of equivalence in λ-calculus is /α-equivalence of β-normal
-forms/, that we discussed in Chapter ref:lambda, which corresponds to structural
+forms/, that we discussed in Chapter ref:lambda, and it corresponds to structural
 equality of the two terms. /Conversion checking/ is the algorithm that determines
 if two terms are convertible using a set of conversion rules.
 
-**** Unification
 As we also use meta-variables in the type elaboration process, these variables
 need to be solved in some way. This process of conversion checking together with
 solving meta-variables is called /unification/ cite:gundry13_pattern_tutorial, and
@@ -979,19 +1001,18 @@ the constraint $?α 5 = 5$, we can produce two solutions: $?α = λx.x$ and $?�
 λx.5$. There are several possible approaches and heuristics: first-order
 unification solves for base types and cannot produce functions as a result;
 higher-order unification can produce functions but is undecidable; /pattern
-unification/ is a middle ground and can produce functions as solutions, with some
-restrictions.
+unification/ is a middle ground and with some
+restrictions, it can produce functions as solutions.
 
-**** Renaming
-In this thesis, I have chosen to reuse the algorithm from cite:mazzoli16_unify
-which, in brief, assumes that a meta-variable is a function whose arguments are
-all local variables in scope at the moment of its creation. Then, when unifying
-the meta-variable with another (non-variable) term, it builds up a list of
-variables the term uses, and stores such a solution as a /renaming/ that maps the
-arguments to a meta-variable to the variables with which it was unified.  As the
-algorithm is rather involved but tangential to the goals of this thesis, I will
-omit a detailed description and instead point an interested reader at the
-original source cite:mazzoli16_unify.
+In this thesis, I have chosen to reuse an existing algorithm
+cite:mazzoli16_unify which, in brief, assumes that a meta-variable is a function
+whose arguments are all local variables in scope at the moment of its
+creation. Then, when unifying the meta-variable with another (non-variable)
+term, it builds up a list of variables the term uses, and stores such a solution
+as a /renaming/ that maps the meta-variable arguments to the variables in the term
+which it was unified with. As the algorithm is rather involved but tangential to
+the goals of this thesis, I will omit a detailed description and instead point
+an interested reader at the original source cite:mazzoli16_unify.
 
 *** Implementation
 As with the implementation of normalization-by-evaluation, we will look at the
@@ -999,19 +1020,20 @@ most illustrative parts of the implementation. This time, the comparison can be
 made directly side-by-side, between the bidirectional typing algorithm and its
 implementation.
 
-What was not mentioned explicitly is that the type elaboration algorithm has
-\texttt{PreTerm}s as its input, and produces \texttt{Term}s in the case of type
-checking, and pairs of \texttt{Term}s and \texttt{Value}s (the corresponding
-types) in the case of type inference. Unification, not demonstrated here, is
-implemented as parallel structural recursion over two \texttt{Value} objects.
+What was not mentioned explicitly so far is that the type elaboration algorithm
+has \texttt{PreTerm}s as its input, and produces \texttt{Term}s in the case of
+type checking, and pairs of \texttt{Term}s and \texttt{Value}s (the
+corresponding types) in the case of type inference. Unification (not
+demonstrated here) is implemented as parallel structural recursion over two
+\texttt{Value} objects.
 
 In Figure ref:impl-bidi-dir, we see the previously described rule that connects
 the checking and synthesis parts of the algorithm and uses
 unification. Unification solves meta-variables as a side-effect, here it is only
 in the role of a guard as it does not produce a value. The code exactly follows
-the typing rule, the pre-term is inferred, resulting in a pair of a well-typed
-term and its type, the type is unified with the wanted type and, if successful,
-the produced term is the return value.
+the typing rule: the type of the pre-term is inferred, resulting in a well-typed
+term and its type. The type is unified with the "wanted" type and, if
+the unification successful, the rule produces the inferred term.
 
 #+label:impl-bidi-dir
 #+caption:Side-by-side comparison of the \textbf{ChangeDir} rule
@@ -1038,13 +1060,13 @@ fun LocalContext.check(pre: PreTerm, wanted: Value): Term = when (pre) {
 Figure ref:impl-bidi-let shows the exact correspondence between the rule and its
 implementation, one read left-to-right, the other top-to-bottom. Checking of the
 type and value are straight-forward, translation of $Γ,x:t ⊢ b ⇒ u$ binds a
-local variable in the environment, so that the body of the ~let-in~ expression
+local variable in the environment, so the body of the ~let-in~ expression
 can be inferred, and the result is a term containing the inferred body and type,
 wrapped in a ~TLet~.
 
 #+label:impl-bidi-let
 #+caption:Side-by-side comparison of the \textbf{Let-in} rule
-#+attr_latex: :options [htb]
+#+attr_latex: :options [!htb]
 #+begin_figure latex
 \begin{prooftree}
 \AxiomC{$Γ ⊢ t ⇐ ⋆$}
@@ -1059,39 +1081,34 @@ fun LocalContext.infer(pre: PreTerm): Pair<Term, Value> = when (pre)
     val t = check(pre.type, VStar)
     val a = check(pre.defn, t)
     val (b, u) = localDefine(pre.name, a, t).infer(pre.body)
-    Pair(TLet(pre.name, t, a, b), u)
-  }
-  // ...
+    TLet(pre.name, t, a, b) to u
+  } // ...
 }
 \end{minted}
 #+end_figure
 
 Lastly, the rule for a term-level λ-abstraction is demonstrated in Figure
-ref:impl-bidi-abs. The type produced on the last line of the snippet is a ~VPi~
-unlike the rule, as the rule was written for the λ→-calculus; it is semantically
-equivalent, however.  This rule demonstrates the creation of a new meta-variable
-as without a placeholder, we are not able to infer the type of the body of the
-function. This meta-variable might or might not be solved in the course of
-inferring the body: either way, both the term and the type only contain a
-reference to a globally-scoped meta-variable and not the solution.
+ref:impl-bidi-abs. This rule demonstrates the creation of a new meta-variable as
+without a placeholder, we are not able to infer the type of the body of the
+function. This meta-variable might be solved in the course of inferring the
+body.
 
 #+label:impl-bidi-abs
 #+caption:Side-by-side comparison of the \textbf{Abs} rule
-#+attr_latex: :options [htb]
+#+attr_latex: :options [!htb]
 #+begin_figure latex
 \begin{prooftree}
 \AxiomC{$Γ,x:t⊢e ⇐ u$}
 \RightLabel{\textbf{(Abs)}}
-\UnaryInfC{$Γ⊢λx.e ⇐ t→u$}
+\UnaryInfC{$Γ⊢λx.e ⇐ Πt:*.u$}
 \end{prooftree}
 \begin{minted}{kotlin}
 fun LocalContext.infer(pre: PreTerm): Pair<Term, Value> = when (pre)
   is RLam -> {
     val a = newMeta()
     val (b, t) = localBind(pre.name, a).infer(pre.body)
-    Pair(TLam(pre.name, b), VPi(pre.name, a, VCl(env, t.quote())))
-  }
-  // ...
+    TLam(pre.name, b) to VPi(pre.name, a, VCl(env, t.quote()))
+  } // ...
 }
 \end{minted}
 #+end_figure
@@ -1100,30 +1117,43 @@ fun LocalContext.infer(pre: PreTerm): Pair<Term, Value> = when (pre)
 This concludes the complex part of the interpreter, what follows are rather
 routine concerns. Next part of the implementation is the driver that wraps the
 backend, and handles its interaction with the surrounding world. In particular,
-the parser, pretty-printer, and state management.
+this includes the parser, pretty-printer, and state management.
+
+#+LABEL: id-tree
+#+ATTR_LaTeX: :placement [htb]
+#+CAPTION: Parse tree of the \texttt{id} function
+[[./img/id-parse-tree.png]]
 
 **** Parser
 Lexical and syntactic analysis is not the focus of this work, so simply I chose
 the most prevalent parsing library in Java-based languages, which seems to be
 ANTLR[fn:6]. It comes with a large library of languages and protocols from
 which to take inspiration[fn:7], so creating the parser was a rather simple
-matter.  ANTLR provides two recommended ways of consuming the result of parsing
-using classical object-oriented design patterns: a listener and a visitor. I
-used neither as they were needlessly verbose or limiting[fn:8].
+matter.
 
-Instead of these, a custom recursive-descent AST transformation was used that is
-demonstrated in Listing ref:parser. This directly transforms the ~ParseContext~
-objects created by ANTLR into our ~PreTerm~ data type.
+The grammar from the previous chapter be translated into ANTLR grammar almost
+directly, as it also uses syntax that reminds the Backus-Naur form. The result
+of parsing the ~id~ function $id : {A}→A→A = λx.x$ is shown in Figure
+ref:id-tree. This tree includes many redundant contexts, and needs to be
+translated to a simpler representation of a ~PreTerm~, which can then be directly
+used as input for elaboration.
+
+ANTLR provides two recommended ways of consuming the result of parsing using
+classical object-oriented design patterns: a listener and a visitor. I used
+neither as they were needlessly verbose or limiting[fn:8].  Instead of these, a
+custom recursive-descent AST transformation was used that is demonstrated in
+Listing ref:parser. This directly transforms the ~ParseContext~ objects created by
+ANTLR into our ~PreTerm~ data type.
 
 #+label:parser
 #+caption:Parser to \texttt{PreTerm} transformation as a depth-first traversal
 #+attr_latex: :position [htb]
 #+begin_src kotlin
 fun TermContext.toAst(): PreTerm = when (this) {
-  is LetContext -> RLet(id.toAst(), type.toAst(), defn.toAst(), body.toAst())
-  is LamContext -> rands.foldRight(body.toAst()) { l, r -> RLam(l.toAst(), r) }
-  is PiContext -> spine.foldRight(body.toAst()) { l, r -> l.toAst()(r) }
-  is AppContext -> operands.fold(oprator.toAst()) { l, r -> r.toAst()(l) }
+  is Let -> RLet(id.toAst(), type.toAst(), defn.toAst(), body.toAst())
+  is Lam -> rest.foldRight(binder.toAst()) { l, r -> RLam(l.toAst(), r) }
+  is Pi -> rest.foldRight(binder.toAst()) { l, r -> l.toAst()(r) }
+  is App -> spine.fold(head.toAst()) { l, r -> r.toAst()(l) }
   else -> throw UnsupportedOperationException(javaClass.canonicalName)
 }
 #+end_src
@@ -1134,30 +1164,23 @@ simplified manner compared to the actual implementation, as it omits the part
 that tracks the position of a term in the original source.  The grammar that is
 used as the source for the parser generator ANTLR was already presented once in
 the conclusion of Chapter ref:lambda, so the full listing is only included in
-Appendix ref:spec.
+Appendix ref:spec.
 
 #+label: presyntax
-#+caption: Data type \texttt{PreTerm}
+#+caption: Snippet of the data type \texttt{PreTerm} (abbreviated to \texttt{Pre} for type-setting)
 #+attr_latex: :position [htb]
 #+begin_src kotlin
-  sealed class PreTerm
-  typealias Pre = PreTerm
-  typealias N = String
-
   sealed class TopLevel
-  data class RDecl(val n: N, val type: Pre) : TopLevel()
-  data class RDefn(val n: N, val type: Pre?, val term: Pre) : TopLevel()
-  data class RTerm(val cmd: Command, val term: Pre) : TopLevel()
+  class RDecl(val n: String, val type: Pre) : TopLevel()
+  class RDefn(val n: String, val type: Pre?, val term: Pre) : TopLevel()
+  class RTerm(val cmd: Pragma?, val term: Pre) : TopLevel()
 
+  sealed class Pre
   object RU : Pre()
-  object RHole : Pre()
-  data class RVar(val n: N) : Pre()
-  data class RNat(val n: Int) : Pre()
-  data class RApp(val lhs: Pre, val rhs: Pre) : Pre()
-  data class RLam(val n: N, val body: Pre) : Pre()
-  data class RPi(val n: N, val type: Pre, val body: Pre) : Pre()
-  data class RLet(val n: N, val type: Pre, val defn: Pre, val body: Pre) : Pre()
-  data class RForeign(val lang: N, val eval: N, val type: Pre) : Pre()
+  class RVar(val n: String) : Pre()
+  class RApp(val lhs: Pre, val rhs: Pre) : Pre()
+  class RLam(val n: String?, val body: Pre) : Pre()
+  class RPi(val n: String?, val type: Pre, val body: Pre) : Pre()
 #+end_src
 
 **** Pretty-printer
@@ -1172,41 +1195,43 @@ correct block indentation and ANSI text coloring: that functionality is also
 used in error reporting in the terminal interface.
 
 An excerpt from this part of the implementation is included in Listing
-ref:pretty, which demonstrates the precedence enumeration ~Prec~, the optionally
-parenthesizing operation ~par~, and other constructions of the ~kotlin-pretty~ library.
+ref:pretty, which demonstrates the pretty-printing of function application, and
+some constructions of the ~kotlin-pretty~ library.
 
 #+label:pretty
 #+caption:Pretty-printer written using \texttt{kotlin-pretty}
 #+attr_latex: :position [htb]
 #+begin_src kotlin
-enum class Prec { Atom, App, Pi, Let }
-fun Term.pretty(ns: NameEnv?, p: Prec = Prec.Atom): Doc<Nothing> = when (this) {
+fun Term.pretty(ns: NameEnv?, parens: Boolean): Doc = when (this) {
   is TVar -> ns[ix].text()
-  is TApp -> par(p, Prec.App,
-    arg.pretty(ns, Prec.App) spaced body.pretty(ns, Prec.Atom))
+  is TApp -> par(parens, lhs.pretty(ns, true) + " ".text() + when (icit) {
+      Icit.Impl -> "{".text() + rhs.pretty(ns, false) + "}".text()
+      Icit.Expl -> rhs.pretty(ns, true)
+  })
   is TLet -> {
     val d = listOf(
-      ":".text() spaced ty.pretty(ns, Prec.Let),
-      "=".text() spaced bind.pretty(ns, Prec.Let),
+      ":".text() spaced ty.pretty(ns, false),
+      "=".text() spaced bind.pretty(ns, false),
     ).vCat().align()
     val r = listOf(
       "let $n".text() spaced d,
-      "in".text() spaced body.pretty(ns + n, Prec.Let)
+      "in".text() spaced body.pretty(ns + n, false)
     ).vCat().align()
-    par(p, Prec.Let, r)
+    par(parens, r)
   } // ...
 }
 #+end_src
 
 **** State management
 Last component of the driver code is global interpreter state, which consists
-mainly of a table of global names, which is required for handling incremental
-interpretation or suggestions (tab-completion) in the interactive environment.
-It also tracks the position of the currently evaluated term in the original
-source file for error reporting.
+mainly of a table of global names. This table is required for handling
+incremental interpretation or suggestions (tab-completion) in the interactive
+environment. The global context also contains the meta-context, and tracks the
+position of the currently evaluated term in the original source file for error
+reporting.
 
 Overall, the driver receives user input in the form of a string, parses it,
-expression by expression supplies it to the backend, receiving back a global
+supplies it expression by expression to the backend, receiving back a global
 name, or an evaluated value, which it pretty-prints and returns back to the
 user-facing frontend code.
 
@@ -1237,7 +1262,7 @@ id {Nat} 5
 #+end_src
 
 We will reuse the entry point of Truffle languages, a ~Launcher~ class, so that
-integration of the Truffle interpreter is easier later, and so that we are able
+integration of the Truffle interpreter is easier later, and then we are able
 to create single executable that is able to use both interpreters.
 
 ~Launcher~ handles pre-processing command-line arguments for us, a feature for
@@ -1312,15 +1337,14 @@ value to a name.
 [fn:1] Montuno, as opposed to the project Cadenza, to which this project is a
 follow-up. Both are music terms, /cadenza/ being a "long virtuosic solo section",
 whereas /montuno/ is a "faster, semi-improvised instrumental part".
-[fn:3]Kotlin authors claim 40% reduction in the number of lines of code, (from
-https://kotlinlang.org/docs/faq.html)
+[fn:3]Kotlin authors claim 40% reduction in the number of lines of code,
+compared to imperative code in Java (from https://kotlinlang.org/docs/faq.html)
 [fn:4]https://kotlinlang.org/docs/idioms.html
 [fn:8] In particular, ANTLR-provided visitors require that all return values
-share a common super-class. Listeners don't allow return values and would
+share a common super-class. Listeners do not allow return values and would
 require explicit parse tree manipulation.
 [fn:7]https://github.com/antlr/grammars-v4/
 [fn:6]https://www.antlr.org/
 [fn:2]Even though Kotlin seems not to be recommended by Truffle authors, there
 are several languages implemented in it, which suggests there are no severe
-problems.  "[...] and Kotlin might use abstractions that don't properly
-partially evaluate." (from https://github.com/oracle/graal/issues/1228)
+problems. (from https://github.com/oracle/graal/issues/1228)
