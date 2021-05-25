@@ -79,10 +79,9 @@ fun Val.rename(occurs: Meta, state: ConvState, ren: Renaming): Term {
 fun LocalContext.solve(lvl: Lvl, state: ConvState, meta: MetaEntry, sp: VSpine, v: Val) {
     if (meta.solved) throw UnifyError("Trying to solve already solved meta")
     if (state == ConvState.Flex) throw UnifyError("")
-    val type = meta.type
     val ren = fromSpine(lvl, sp)
     val rhs = v.rename(meta.meta, state, ren)
-    val solution = rhs.lams(ren.domain, type).eval(ctx, VEnv())
+    val solution = rhs.lams(ren.domain, meta.type).eval(ctx, VEnv())
     ctx.registerMeta(meta.meta, solution)
 }
 

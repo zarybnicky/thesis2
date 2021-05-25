@@ -518,7 +518,7 @@ Generalizations of the λ→-calculus can be organized into a cube called the
 Barendregt cube, or the λ-cube cite:barendregt92_typed (Figure ref:cube). In λ→
 only terms depend on terms, but there are also three other combinations
 represented by the three dimensions of the cube: types depending on types
-$(□,□)$, or also called type operators; terms depending on types $(□,⋆)$, called
+$(□,□)$, or also called type operators; types depending on terms $(□,⋆)$, called
 /polymorphism/; and terms depending on types $(⋆,□)$, representing /dependent
 types/.
 

@@ -71,7 +71,7 @@ For the build and test system, the recommended choices of Gradle and JUnit were
 used.
 
 #+LABEL:program-flow
-#+CAPTION: Overview of interpreter components
+#+CAPTION: Interpreter component overview
 #+ATTR_LATEX: :options [!htb]
 #+begin_figure latex
 \centering
@@ -123,25 +123,29 @@ program data, it can only be evaluated, whereas a value is the result of such
 evaluation and can be, e.g., compared for equality.
 
 #+LABEL:data-flow
-#+CAPTION:Data flow overview
-#+ATTR_LATEX: :options[!htb]
+#+CAPTION: Data flow overview. Cyan is elaboration, red is normalization-by-evaluation
+#+ATTR_LATEX: :options [!htb]
 #+begin_figure latex
 \centering
-\begin{tikzpicture}[line/.style={-latex}, block/.style={draw,thick,text width=2cm,minimum height=1cm,align=center}]
+\begin{tikzpicture}[
+  line/.style={-latex},
+  elabl/.style={-latex,draw=cyan},
+  elabn/.style={-latex,color=cyan},
+  evall/.style={-latex,draw=red},
+  evaln/.style={-latex,color=red},
+  block/.style={draw,thick,text width=2cm,minimum height=1cm,align=center}
+]
 \node[block](s){String};
 \node[block,right=1.5cm of s](p){Pre-term};
 \node[block,right=1.5cm of p](t){Term};
 \node[block,right=1.5cm of t](v){Value};
 
-\node[draw,inner xsep=2.5mm,inner ysep=11mm,fit=(p)(t)(v),label={90:Elaboration}]{};
-\node[draw,inner xsep=1.25mm,inner ysep=5mm,fit=(t)(v),label={90:Evaluation}]{};
-
 \draw[line] (s) to node[midway,above]{Parse} (p);
-\draw[line] (p) to node[midway,above]{Infer} node[midway,below]{Check} (t);
-\draw[line] (t) to[bend left=10] node[midway,above]{Eval} (v);
-\draw[line] (v) to[bend left=10] node[midway,below]{Quote} (t);
+\draw[elabl] (p) to node[elabn,midway,above]{Infer} node[elabn,midway,below]{Check} (t);
+\draw[evall] (t) to[bend left=10] node[evaln,midway,above]{Eval} (v);
+\draw[evall] (v) to[bend left=10] node[evaln,midway,below]{Quote} (t);
 \draw[line] (t) to[bend left=20] node[midway,below]{Pretty-print} (s);
-\draw[line] (v) to[loop right] node[midway,left]{Unify} (v);
+\draw[elabl] (v) to[loop right] node[elabn,midway,left]{Unify} (v);
 \end{tikzpicture}
 #+end_figure
 
@@ -1241,24 +1245,6 @@ source file into an executable using Truffle's capability to produce /Native
 Images/.
 
 **** CLI
-#+label:cli-example
-#+caption:Example usage of the CLI interface
-#+attr_latex: :position [htb]
-#+begin_src text
-> cat demo.mt
-id : {A} -> A -> A = \x. x
-{-# TYPE id #-}
-{-# ELABORATE id 5 #-}
-{-# NORMALIZE id 5 #-}
-
-> montuno demo.mt
-{A} -> A -> A
-id {Nat} 5
-5
-> montuno --type id
-{A} -> A -> A
-#+end_src
-
 We will reuse the entry point of Truffle languages, a ~Launcher~ class, so that
 integration of the Truffle interpreter is easier later, and then we are able
 to create single executable that is able to use both interpreters.
@@ -1293,6 +1279,23 @@ In Listing ref:cli-example, a demonstration of the command-line interface is
 provided: normalization of an expression, batch processing of a file, and
 finally, starting up of the REPL.
 
+#+label:cli-example
+#+caption:Example usage of the CLI interface
+#+attr_latex: :position [htb]
+#+begin_src text
+$> cat demo.mt
+id : {A} -> A -> A = \x. x
+const : {A B} -> A -> B -> A = \x y. x
+{-# TYPE id #-}
+{-# NORMALIZE id const #-}
+
+$> montuno demo.mt
+{A} → A → A
+λ x _. x
+$> montuno --type id
+{A} → A → A
+#+end_src
+
 **** REPL
 Read-Eval-Print Loop is the standard way of implementing interactive terminal
 interfaces to programming languages. The interpreter receives a string input,
@@ -1312,14 +1315,12 @@ ref:repl-example.
 #+caption:REPL session example
 #+attr_latex: :position [htb]
 #+begin_src text
-> montuno
+$> montuno
 Mt> :load demo.mt
 Mt> <TAB><TAB>
-Nat Bool zero succ true false if natElim id const
-Mt> :normalize id 5
-5
-Mt> :elaborate id 5
-id {Nat} 5
+id const true false cond
+Mt> :normalize id const
+λ x _. x
 Mt> :type id
 {A} -> A -> A
 Mt> :quit

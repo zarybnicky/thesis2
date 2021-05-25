@@ -38,26 +38,24 @@
    Virtual Machine. The performance of these two interpreters is then compared
    on a number of normalization and elaboration tasks.
 
-   [...specific numbers]
+   [...specific numbers] abstract - primarily for evaluation, not too suitable for elab
   }, abstract.cs={
+Řada programovacích jazyků byla schopna zvýšit svoji rychlost výměnou běhových
+systémů stavěných na míru za obecné platformy, které pro optimalizaci
+používají just-in-time překlad, jako jsou GraalVM nebo RPython. V této práci
+vyhodnocuji, zda je použití takovýchto platforem vhodné i pro jazyky se
+závislymi typy nebo důkazovými systémy.
 
-   Řada programovacích jazyků byla schopna zvýšit svoji rychlost nahrazením
-   běhových systémů, stavěných pouze pro potřeby jazyka, obecnými platformami,
-   které pro optimalizaci používají just-in-time překlad, jako jsou GraalVM nebo
-   RPython. Tato práce vyhodnocuje, zda je použití takovýchto platforem vhodné i
-   pro jazyky se závislymi typy nebo důkazovými systémy.
-
-   Tato práce představuje koncepty $\lambda\text{-kalkulu}$ a teorie typů
-   potřebné pro úvod do závislých typů a algoritmy, které jsou potřeba pro práci
-   s nimi, specifikuje malý závisle-typovaný jazyk založený na
-   $\lambda\Pi\text{-kalkulu}$, a prezentuje dva interpretery tohoto jazyka:
-   jednoduchý interpreter ve funkcionálním stylu psaný v jazyce Kotlin, a druhý
-   interpreter, taktéž psaný v jazyce Kotlin, který používá platformu GraalVM a
-   Truffle, knihovnu pro vytváření programovacích jazyků. GraalVM je platforma
-   založená na virtuálním stroji Javy (JVM), která přidává just-in-time
-   překladač založený na částečném vyhodnocení (\textit{partial evaluation}). Na
-   závěr práce vyhodnocuje běhové charakteristiky těchto interpreterů na různých
-   zátěžových testech.
+Tato práce představuje koncepty $\lambda\text{-kalkulu}$ a teorie typů potřebné
+pro úvod do závislých typů s relevantními algoritmy, specifikuje malý
+závisle-typovaný jazyk založený na $\lambda\Pi\text{-kalkulu}$, a prezentuje dva
+interpretery tohoto jazyka. Tyto interpretery jsou psané v jazyce Kotlin, první
+je jednoduchý, psaný ve funkcionálním stylu a druhý používá platformu GraalVM a
+Truffle. GraalVM je platforma založená na virtuálním stroji Javy (JVM), která
+přidává just-in-time překladač založený na částečném vyhodnocení
+(\textit{partial evaluation}) a Truffle je knihovna pro tvorbu programovacích
+jazyků využívající tento překladač. Závěr práce vyhodnocuje běhové
+charakteristiky těchto interpreterů na různých zátěžových testech.
 
    [...vyhodnocení]
   },
@@ -82,6 +80,7 @@
   se závislými typy: \textit{normalization-by-evaluation} a
   \textit{bidirectional typing}. Tyto implementuji a používám pro vytvoření
   funkčního interpreteru tohoto jazyka.
+REPL, full programming language, ...
 
   Třetí sekce představuje detaily platformy GraalVM a knihovny Truffle, které
   poté používám pro implementaci druhého interpreteru, který využívá

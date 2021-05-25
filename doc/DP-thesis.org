@@ -227,6 +227,9 @@ my thesis [...].
 
 todo:Závěr
 
+The main contribution of this thesis is X. It also includes an overview of the
+relevant concepts, suitable as a brief introduction into the subject matter
+
 Overall, despite the negative conclusion, I believe this thesis has fulfilled
 its goals [...]
 

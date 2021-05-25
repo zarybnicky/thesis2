@@ -30,6 +30,8 @@ based on the JVM, and how they may be eliminated. We will also prepare a suite
 of benchmarks by translating a number of test cases from common performance test
 suites, and compare this system's performance with other functional languages.
 
+-- based on SmallTT, Kovacs, ...; performance analysis based on Gross, Idris 2 development
+
 ** Subjects
 For the comparison of elaboration and normalization, we will use
 state-of-the-art proof assistants: I have chosen Coq, Agda, Idris, as they use a
@@ -205,6 +207,41 @@ we will also measure the peak memory usage using the system tool ~time -v~.
 \missingfigure{A single large bar graph, grouped by language, four tasks in a group}
 
 [...]
+
+*** Discussion
+- evaluation
+  - numbers, snippets of workload code
+    - SIMPLIFY benchmarks, remove STLC interpreter or what not
+  - list possible optimizations
+    - abstract machines are often used (lazy G-machine, Epigram)
+    - type erasure
+    - unboxed values for Truffle
+    - λ-merging - requires elaboration changes
+    - static code flow analysis (will we apply, or pap?), as well
+    - low-level optimizations
+      - unfolding recursive algorithm into explicit stack-based one
+      - pair representation - nested pairs -> arrays, OSM
+    - renaming and including only free variables - but! indices/levels mean that we can refer to arbitrary values in the general case
+  - mention rewrite again (previous version had even worse performance)
+  - JIT not suitable for elaboration, many small expressions
+  - JIT very suitable for evaluation, so even it JIT did not perform well during NbE and typing, Enso uses Truffle for its evaluation speed
+  - More sharing (CSE) would obviate the need for a JIT even more
+  - re-adding lazy evaluation would speed up computations like const 1 (fib 100)
+  - COMPARE:
+    - agda, idris, coq, montuno (whole program runtime, JIT averaged over 100 invocations, others are non-JIT)
+    - constant factors: empty program runtime
+    - montuno with both "compilers", compare Nat built-ins
+  - MENTION:
+    - OOP for name resolution: static references to Metas, can be replaced using a la IOVars
+    - Lazy evaluation is impractical, but possible (see FastR)
+    - NbE is impractical for Truffle implementation (function invocation overhead) compared to GHC and similar abstract machines
+    - what's the fast and slow path in Truffle with NbE???
+    - overhead of lazy evaluation on small terms vs eager evaluation of large terms!
+    - TESTING is only possible via the POLYGLOT interface - originally, only for demo purposes, but necessary!
+- discussion
+  - normalization-bench, Scala results
+  - LIMITATIONS of my solution - incomplete implementation, insufficient tests, likely bugs to be found
+  - Cadenza follow-up unsuccessful, it did not use NbE
 
 * Optimizations: Making MontunoTruffle fast
    :PROPERTIES:

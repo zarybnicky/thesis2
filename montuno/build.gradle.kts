@@ -140,6 +140,7 @@ val graalArgs = listOf(
     "-Dpolyglot.engine.TraceSplitting=true",
     //"-Dpolyglot.engine.TraceSplittingSummary=true",
     "-Dpolyglot.engine.TraceAssumptions=true"
+    //"-Dpolyglot.engine.CompileImmediately=true",
     //"-Dpolyglot.engine.TraceTransferToInterpreter=true"
     // limit size of graphs for easier visualization
     //"-Dpolyglot.engine.InliningRecursionDepth=0",

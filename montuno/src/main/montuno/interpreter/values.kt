@@ -20,6 +20,8 @@ import montuno.truffle.Closure
     VUnit::class,
     VLam::class,
     VPi::class,
+    VSg::class,
+    VPair::class,
     VMeta::class,
     VLocal::class,
     VTop::class,
