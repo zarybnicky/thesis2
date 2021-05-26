@@ -9,6 +9,58 @@
 #+BIND: org-latex-default-figure-position "htb"
 
 #+latex: \setcounter{chapter}{4}
+*** μ-types
+There are multiple ways of encoding recursion in λ-calculi with types, based on
+whether a recursive expression is delimited using types, or whether it is also
+reflected in the type of a recursive expression. Recursion must be defined
+carefully if the type system needs to be consistent, as non-restricted general
+recursion leads to non-termination and inconsistency. /Iso-recursive types/ use
+explicit folding and unfolding operations, that convert between the recursive
+type $μa.T$ and $T[a≔μa.T]$, whereas in /equi-recursive types/ these operations
+are implicit and inserted by the type-checker.
+
+As both complicate the type-checker, we will use a simpler value-level recursive
+combinator $fix$. While this does compromise the consistency of the type system,
+it is sufficient for the purposes of runtime system characterization.
+
+#+label: type-fix
+#+CAPTION: \texttt{fix} semantics
+#+ATTR_LaTeX: :options [htb]
+#+begin_figure latex
+\centering
+\begin{tabular}{cc}
+\multicolumn{2}{c}{%
+\AxiomC{$Γ ⊢ f:A→A$}
+\RightLabel{\textbf{(Type-Fix)}}
+\UnaryInfC{$Γ ⊢ fix f : A$}
+\DisplayProof
+} \\[15pt]
+\multicolumn{2}{c}{%
+\AxiomC{$Γ,x:A ⊢ t:A$}
+\RightLabel{\textbf{(Eval-Fix)}}
+\UnaryInfC{$Γ ⊢ fix (λx.t) ⟶_β t[x≔(λx.t)] : A$}
+\DisplayProof
+}
+\end{tabular}
+#+end_figure
+
+The semantics of the function $fix$ are described in Figure ref:type-fix. This
+definition is sufficient to define e.g., the recursive computation of a
+Fibonacci number or a local recursive binding as below.
+
+#+begin_src text
+fib = fix (λf. λn. if (isLess n 2) n (add (f (n - 1)) (f (n-2))))
+
+evenOdd
+  : (isEven : Nat → Bool) × (isOdd : Nat → Bool) × Top
+  = fix (λf. ( if isZero x then true else f.isOdd (pred x)
+            , if isZero x then false else f.isEven (pred x)
+            , Top
+            ))
+#+end_src
+
+
+
 
 * Evaluation
   :PROPERTIES:

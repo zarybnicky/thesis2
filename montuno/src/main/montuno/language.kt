@@ -85,8 +85,13 @@ class ProgramRootNode(l: TruffleLanguage<*>, val ctx: MontunoContext, private va
         CompilerAsserts.neverPartOfCompilation()
         val results = mutableListOf<Any>()
         for (e in pre) {
-            val x = checkTopLevel(ctx, e)
-            if (x != null) results.add(x)
+            try {
+                val x = checkTopLevel(ctx, e)
+                if (x != null) results.add(x)
+            } catch (e: RuntimeException) {
+                println(e)
+                throw e
+            }
         }
         for (res in results.dropLast(1)) println(res)
         return if (results.isEmpty()) VUnit else results.last()

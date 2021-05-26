@@ -17,17 +17,17 @@ abstract class Dispatch : Node() {
     @Specialization(guards = ["callTarget == cachedCallTarget"], limit = "3")
     fun callDirect(
         callTarget: CallTarget,
-        ys: Array<Any?>?,
+        ys: Array<Any?>,
         @Cached("callTarget") cachedCallTarget: CallTarget,
         @Cached("create(cachedCallTarget)") callNode: DirectCallNode
-    ): Any? = callNode.call(ys)
+    ): Any? = callNode.call(*ys)
 
     @Specialization
     fun callIndirect(
         callTarget: CallTarget,
-        ys: Array<Any?>?,
+        ys: Array<Any?>,
         @Cached("create()") callNode: IndirectCallNode
-    ): Any? = callNode.call(callTarget, ys)
+    ): Any? = callNode.call(callTarget, *ys)
 }
 
 abstract class Issue : Node() {

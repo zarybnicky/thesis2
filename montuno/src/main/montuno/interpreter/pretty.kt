@@ -53,7 +53,7 @@ fun Term.pretty(ns: NameEnv, p: Boolean = false): Doc<Nothing> = when (this) {
     is TPi -> {
         var x = ns.fresh(name)
         var b = when {
-            x == "_" -> bound.pretty(ns, false)
+            x == "_" -> bound.pretty(ns, true)
             icit == Icit.Impl -> "{$x : ".text() + bound.pretty(ns, false) + "}".text()
             else -> "($x : ".text() + bound.pretty(ns, false) + ")".text()
         }
@@ -62,9 +62,9 @@ fun Term.pretty(ns: NameEnv, p: Boolean = false): Doc<Nothing> = when (this) {
         while (rest is TPi) {
             x = nsLocal.fresh(rest.name)
             b += when {
-                x == "_" -> " → ".text() + rest.bound.pretty(nsLocal, p)
-                rest.icit == Icit.Expl -> " ($x : ".text() + rest.bound.pretty(nsLocal, p) + ")".text()
-                else -> " {$x : ".text() + rest.bound.pretty(nsLocal, p) + "}".text()
+                x == "_" -> " → ".text() + rest.bound.pretty(nsLocal, true)
+                rest.icit == Icit.Expl -> " ($x : ".text() + rest.bound.pretty(nsLocal, false) + ")".text()
+                else -> " {$x : ".text() + rest.bound.pretty(nsLocal, false) + "}".text()
             }
             nsLocal += x
             rest = rest.body

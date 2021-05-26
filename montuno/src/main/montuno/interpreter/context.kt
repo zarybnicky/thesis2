@@ -88,4 +88,5 @@ class MontunoContext(val env: TruffleLanguage.Env) {
         }
         return makeLocalContext().inferVar(name)
     }
+    fun getBuiltinVal(name: String) = makeLocalContext().inferVar(name).first.eval(this, VEnv())
 }

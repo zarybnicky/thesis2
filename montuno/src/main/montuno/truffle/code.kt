@@ -31,7 +31,11 @@ abstract class Code(val loc: Loc?) : Node(), InstrumentableNode {
     abstract fun execute(frame: VirtualFrame): Any?
     open fun executeAny(frame: VirtualFrame): Any? = execute(frame)
     @Throws(UnexpectedResultException::class)
-    open fun executeVal(frame: VirtualFrame): Val = execute(frame).let { if (it is Val) it else throw UnexpectedResultException(it) }
+    open fun executeVal(frame: VirtualFrame): Val = execute(frame).let {
+        if (it is Val) it else {
+            throw UnexpectedResultException(it)
+        }
+    }
     @Throws(UnexpectedResultException::class)
     open fun executeClosure(frame: VirtualFrame): Closure = execute(frame).let { if (it is Closure) it else throw UnexpectedResultException(it) }
 }
@@ -82,7 +86,7 @@ open class CClosure(
 }
 open class CApp(val icit: Icit, @field:Child var lhs: Code, @field:Child var rhs: Code, loc: Loc?) : Code(loc) {
     override fun hasTag(tag: Class<out Tag>?) = tag == StandardTags.CallTag::class.java || super.hasTag(tag)
-    override fun execute(frame: VirtualFrame): Any? = lhs.executeVal(frame).app(icit, rhs.executeVal(frame))
+    override fun execute(frame: VirtualFrame): Any? = lhs.executeVal(frame).app(icit, VThunk { rhs.executeVal(frame) })
 }
 open class CPair(@field:Child var lhs: Code, @field:Child var rhs: Code, loc: Loc?) : Code(loc) {
     override fun execute(frame: VirtualFrame): Any? = VPair(lhs.executeVal(frame), rhs.executeVal(frame))

@@ -1,4 +1,12 @@
 id : {A} -> A -> A = \x. x
 const : {A B} -> A -> B -> A = \x _. x
 const' : {A B} (C : Unit) -> (B -> A) -> A -> (A -> C) -> A = \_ _ a _. a
+
+{-# BUILTIN ALL #-}
+fib : Nat -> Nat = fixNatF (\rec x. (cond (eqn x 0) 0 (cond (eqn x 1) 1 (add (rec (sub x 1)) (rec (sub x 2))))))
+
 {-# NORMALIZE const id 5 42 #-}
+{-# NORMALIZE fixNatF (\f x. x) 5 #-}
+{-# NORMALIZE fib 0 #-}
+{-# NORMALIZE fib 1 #-}
+{-# NORMALIZE fib 2 #-}

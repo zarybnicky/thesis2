@@ -23,12 +23,14 @@ interface Closure {
     fun inst(v: Val): Val = execute(v)
     fun execute(vararg args: Any?): Val
     val arity: Int
+    val callTarget: CallTarget
 }
 
 @CompilerDirectives.ValueType
 @ExportLibrary(InteropLibrary::class)
 data class PureClosure(val ctx: MontunoContext, val env: VEnv, val body: Term) : TruffleObject, Closure {
     override val arity: Int = 1
+    override val callTarget = null as CallTarget
     @ExportMessage fun isExecutable() = true
     @ExportMessage override fun execute(vararg args: Any?): Val {
         if (args.isEmpty()) {
@@ -52,7 +54,7 @@ class TruffleClosure (
     @JvmField @CompilerDirectives.CompilationFinal(dimensions = 1) val papArgs: Array<out Any?>,
     @JvmField @CompilerDirectives.CompilationFinal(dimensions = 1) val heads: Array<ClosureHead>,
     @JvmField val maxArity: Int,
-    @JvmField val callTarget: CallTarget
+    override val callTarget: CallTarget
 ) : TruffleObject, Closure {
     override val arity: Int = heads.size + 1
     @ExportMessage fun isExecutable() = true
@@ -88,7 +90,7 @@ class ConstClosure (
     @JvmField @CompilerDirectives.CompilationFinal(dimensions = 1) val papArgs: Array<out Any?>,
     @JvmField @CompilerDirectives.CompilationFinal(dimensions = 1) val heads: Array<ConstHead>,
     @JvmField val maxArity: Int,
-    @JvmField val callTarget: CallTarget
+    override val callTarget: CallTarget
 ) : TruffleObject, Closure {
     override val arity: Int = heads.size + 1
     @ExportMessage fun isExecutable() = true
