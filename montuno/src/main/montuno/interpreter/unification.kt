@@ -72,6 +72,7 @@ fun Val.rename(occurs: Meta, state: ConvState, ren: Renaming): Term {
         is VPair -> TPair(v.left.rename(occurs, state, ren), v.right.rename(occurs, state, ren))
         VUnit -> TUnit
         is VNat -> TNat(v.n)
+        is VBool -> TBool(v.n)
         is VThunk -> v.value.rename(occurs, state, ren)
     }
 }
@@ -133,6 +134,8 @@ fun LocalContext.unify(lvl: Lvl, state: ConvState, a: Val, b: Val) {
         }
 
         v is VUnit && w is VUnit -> {}
+        v is VNat && w is VNat && v.n == w.n -> {}
+        v is VBool && w is VBool && v.n == w.n -> {}
         v is VPi && w is VPi && v.icit == w.icit -> {
             unify(lvl, state, v.bound, w.bound)
             unify(lvl + 1, state, v.closure.inst(VLocal(lvl)), w.closure.inst(VLocal(lvl)))

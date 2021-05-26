@@ -18,6 +18,8 @@ import montuno.truffle.Closure
 
 @TypeSystem(
     VUnit::class,
+    VNat::class,
+    VBool::class,
     VLam::class,
     VPi::class,
     VSg::class,
@@ -80,6 +82,7 @@ sealed class Val : TruffleObject {
         is VSg -> TSg(v.name, v.bound.quote(lvl, unfold), v.closure.inst(VLocal(lvl)).quote(lvl + 1, unfold))
         is VPair -> TPair(v.left.quote(lvl, unfold), v.right.quote(lvl, unfold))
         is VNat -> TNat(v.n)
+        is VBool -> TBool(v.n)
         is VUnit -> TUnit
         is VThunk -> v.value.quote(lvl, unfold)
     }
@@ -215,4 +218,10 @@ object VUnit : Val() {
 @ExportLibrary(InteropLibrary::class)
 data class VNat(val n: Int) : Val() {
     @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VNat($n)"
+}
+
+@CompilerDirectives.ValueType
+@ExportLibrary(InteropLibrary::class)
+data class VBool(val n: Boolean) : Val() {
+    @ExportMessage fun toDisplayString(allowSideEffects: Boolean) = "VBool($n)"
 }

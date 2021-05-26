@@ -48,7 +48,7 @@ atom
     : '(' term ')'             #Rec
     | IDENT                    #Var
     | '_'                      #Hole
-    | ('()' | 'Unit')          #Star
+    | ('()' | 'Unit' | 'Type') #Star
     | NAT                      #Nat
     | '[' IDENT '|' FOREIGN? '|' term ']' #Foreign
     ;

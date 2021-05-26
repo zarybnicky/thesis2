@@ -58,6 +58,7 @@ class MontunoContext(val env: TruffleLanguage.Env) {
     var ntbl = NameTable()
     var loc: Loc = Loc.Unavailable
     var metas = MetaContext(this)
+    val builtins = BuiltinScope(this)
     lateinit var compiler: Compiler
 
     fun makeLocalContext() = LocalContext(this, LocalEnv(ntbl))
@@ -78,14 +79,13 @@ class MontunoContext(val env: TruffleLanguage.Env) {
         ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
         top.it.add(TopEntry(name, loc, defn, defn?.eval(this, VEnv()), type, type.eval(this, VEnv())))
     }
-    fun getBuiltin(name: String): Pair<Term, Val> {
+    fun getBuiltin(name: String, loc: Loc = Loc.Unavailable): Pair<Term, Val> {
         val ni = ntbl[name]
-        if (ni.isEmpty()) registerBuiltin(Loc.Unavailable, name)
+        if (ni.isEmpty()) {
+            val (body, type) = builtins.getBuiltin(name)
+            ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
+            top.it.add(TopEntry(name, loc,null, body, type.quote(Lvl(0), false), type))
+        }
         return makeLocalContext().inferVar(name)
-    }
-    fun registerBuiltin(loc: Loc, name: String) {
-        val (body, type) = compiler.getBuiltin(name)
-        ntbl.addName(name, NITop(loc, Lvl(top.it.size)))
-        top.it.add(TopEntry(name, loc,null, body, type.quote(Lvl(0), false), type))
     }
 }

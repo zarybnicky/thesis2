@@ -1,9 +1,11 @@
 package montuno.interpreter
 
+import com.oracle.truffle.api.CompilerAsserts
 import montuno.ElabError
 import montuno.Lvl
 import montuno.MetaInsertion
 import montuno.UnifyError
+import montuno.interpreter.scope.Builtin
 import montuno.interpreter.scope.NILocal
 import montuno.interpreter.scope.NITop
 import montuno.syntax.*
@@ -164,7 +166,7 @@ fun LocalContext.infer(mi: MetaInsertion, r: PreTerm): Pair<Term, Val> {
         }
 
         is RU -> TUnit to VUnit
-        is RNat -> TNat(r.n) to ctx.getBuiltin("Nat").first.eval(ctx, env.vals)
+        is RNat -> TNat(r.n) to ctx.builtins.getType(Builtin.Nat)
         is RHole -> {
             val m1 = ctx.metas.freshType(env)
             val m2 = ctx.metas.freshMeta(env, m1)
@@ -180,6 +182,7 @@ fun getIds(r: PreTerm): List<String> = when (r) {
 }
 
 fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
+    CompilerAsserts.neverPartOfCompilation()
     top.metas.newMetaBlock()
     val ctx = LocalContext(top, LocalEnv(top.ntbl))
     top.loc = e.loc
@@ -188,7 +191,17 @@ fun checkTopLevel(top: MontunoContext, e: TopLevel): Any? {
             Pragma.PARSE -> e.tm.toString()
             Pragma.RESET -> { top.reset(); null }
             Pragma.SYMBOLS -> top.top.getMembers().it
-            Pragma.BUILTIN -> { getIds(e.tm!!).forEach { top.registerBuiltin(e.loc, it) }; null }
+            Pragma.BUILTIN -> {
+                val ids = getIds(e.tm!!)
+                if ("ALL" in ids) {
+                    for (b in Builtin.values()) {
+                        top.getBuiltin(b.name, e.loc)
+                    }
+                } else {
+                    ids.forEach { top.getBuiltin(it, e.loc) }
+                };
+                null
+            }
             Pragma.PRINT -> {
                 for (i in top.top.it.indices) {
                     for ((j, meta) in top.metas.it[i].withIndex()) {
