@@ -1,5 +1,0 @@
-{-# BUILTIN Nat zero succ #-}
-Vec : Unit → Nat → Unit = λ a n. (V : Nat → Unit) → V zero → ((n : Nat) → a → V n → V (succ n)) → V n
-vnil : (a : Unit) → Vec a zero = λ V n c. n
-vcons : (a n : Unit) → a → Vec a n → Vec a (succ n) = λ a as V n c. c a (as V n c)
-{-# NORMALIZE vcons true (vcons false (vcons true vnil)) #-}
