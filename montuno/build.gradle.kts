@@ -116,7 +116,7 @@ application {
         "-XX:+EnableJVMCI",
         "--module-path=${compiler.asPath}",
         "--upgrade-module-path=${compiler.asPath}",
-        "-Dtruffle.class.path.append=@MONTUNO_APP_HOME@/lib/montuno-${project.version}.jar"
+        "-Dtruffle.class.path.append=lib/montuno.jar"
     )
 }
 

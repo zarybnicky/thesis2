@@ -29,7 +29,7 @@ maximum: 30,000
 #+LANGUAGE: en
 #+OPTIONS: texht:nil toc:nil author:nil ':t H:6 num:3
 #+LATEX_CLASS: fitthesis
-#+LATEX_CLASS_OPTIONS: [english,zadani,odsaz]
+#+LATEX_CLASS_OPTIONS: [english,zadani,cprint,odsaz]
 #+EXCLUDE_TAGS: noexport
 # print = B&W links and logo
 # cprint = B&W links, color logo
@@ -43,9 +43,8 @@ maximum: 30,000
 \iftotalfigures\listoffigures\fi
 \iftotaltables\listoftables\fi
 \iftotallistings\listoflistings\fi
-\listoftodos
 \iftwoside\cleardoublepage\fi
-\setlength{\parskip}{0.5\bigskipamount}
+\setlength{\parskip}{0.5\bigskipamount}n
 #+END_EXPORT
 * Bleh                                                             :noexport:
 - cite:altenkirch08_pisigma, cite:altenkirch10_pisigma - "I had discovered the ΠΣ paper when finishing my thesis: too late, unfortunately"
@@ -191,16 +190,6 @@ possible follow-up work (Chapter ref:evaluation).
 #+INCLUDE: "04-evaluation.org::#evaluation" :only-contents t
 
 * Conclusion
----    This thesis introduces the type-theoretic notion of dependent types,
-   specifies a minimal dependently-typed language, and implements two
-   interpreters for this language: a simple AST-based interpreter, and a
-   Truffle-based interpreter. A number of optimization techniques that use the
-   capabilities of a JIT compiler are then applied to the Truffle-based
-   interpreter. The performance of these interpreters is then evaluated on a
-   number of normalization and elaboration tasks designed to be comparable with
-   other system, and the performance is then compared with a number of
-   state-of-the-art dependent languages and proof assistants.
-
 The first part of this thesis presents the concepts necessary for understanding
 and specifying type systems based on the systems of the λ-cube. I have used
 these concepts to specify a small, dependently-typed language. The second part
@@ -222,16 +211,14 @@ compilation are outweighed by the overhead of the implementation on the JVM
 platform. Its performance is lacking, compared to platforms like GHC Haskell, or
 Chez Scheme that are used in other dependently-typed languages. I believe
 further investigation would manage to eliminate most causes of inefficiency, but
-compared to the initial expectations, such conclusions disprove the premise of
-my thesis [...].
+compared to the initial expectations, such conclusions disprove the entire
+premise of my thesis.
 
-todo:Závěr
-
-The main contribution of this thesis is X. It also includes an overview of the
-relevant concepts, suitable as a brief introduction into the subject matter
-
-Overall, despite the negative conclusion, I believe this thesis has fulfilled
-its goals [...]
+Overall, despite the negative conclusion, I believe this thesis has fulfilled a
+large part of its goals. It presents a concise introduction to the concepts
+required for implementing a dependently-typed language, and an overview of
+the optimization opportunities offered by Truffle, which can both form the
+starting point for other projects in this area.
 
 
 * (bibliography, start of appendix)                           :ignoreheading:
@@ -259,7 +246,6 @@ bibliography:bibliography.bib
 \iftwoside\cleardoublepage\fi
 #+END_EXPORT
 
-* Contents of the attached data storage
 * Language specification
    :PROPERTIES:
    :CUSTOM_ID: spec
@@ -297,20 +283,15 @@ neutral & ≔ & var & | & neutral a₁ ...aₙ & | & neutral.lₙ\\
 - Bool : Type
 - true : Bool
 - false : Bool
-- if : {A} → Bool → A → A → A
+- cond : {A} → Bool → A → A → A
 - fix : {A} → (A→A) → A
 - the : (A) → A → A
-- eval : {A} → String → A
-- typeOf : {A} → A → Type
-
-* Montuno
-  :PROPERTIES:
-  :CUSTOM_ID: montuno-data
-  :END:
 ** Pre-terms
+   :PROPERTIES:
+   :CUSTOM_ID: montuno-data
+   :END:
 #+include: "../montuno/src/main/montuno/syntax/presyntax.kt" src kotlin -n
 * Footnotes
-
 [fn:12] https://github.com/AndrasKovacs/normalization-bench 
 
 [fn:8] FastR is between 50 to 85x faster than GNU R, depending on the source. cite:fumero17_jit_gpu

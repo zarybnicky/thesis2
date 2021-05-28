@@ -9,5 +9,5 @@ hundred  : Nat = mul ten ten
 thousand : Nat = mul ten hundred
 
 nfun : Nat → Unit = λ n. n Unit (λ A. Unit → A) Unit
-nten : nfun thousand -> nfun thousand = \x.x
+nten : nfun hundred -> nfun hundred = \x.x
 {-# NORMAL_TYPE nten #-}

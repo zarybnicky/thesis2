@@ -11,20 +11,8 @@ data class Ix(val it: Int) {
 data class Lvl(val it: Int) {
     operator fun plus(i: Int) = Lvl(it + i)
     operator fun minus(i: Int) = Lvl(it - i)
-    fun toIx(depth: Int): Ix {
-        if (depth - it - 1 < 0 || depth - it - 1 > depth) {
-            println(it)
-            throw RuntimeException("wow")
-        }
-        return Ix(depth - it - 1)
-    }
-    fun toIx(depth: Lvl): Ix {
-        if (depth.it - it - 1 < 0 || depth.it - it - 1 > depth.it) {
-            println(it)
-            throw RuntimeException("wow")
-        }
-        return Ix(depth.it - it - 1)
-    }
+    fun toIx(depth: Int): Ix = Ix(depth - it - 1)
+    fun toIx(depth: Lvl): Ix = Ix(depth.it - it - 1)
     override fun toString(): String = "Lvl($it)"
 }
 

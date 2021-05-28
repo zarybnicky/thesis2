@@ -1,0 +1,59 @@
+Nat : Unit = (N : Unit) → (N → N) → N → N
+zero : Nat = \ N s z. z
+succ : Nat → Nat = λ a N s z. s (a N s z)
+const : {A B} -> A -> B -> A
+
+Bool = (B : Unit) → B → B → B
+true  : Bool = λ _ t f. t
+false : Bool = λ _ t f. f
+
+forceNat : Nat → Bool = λ n. n _ (λ x. x) true
+
+n2  : Nat = λ N s z. s (s z)
+n5  : Nat = λ N s z. s (s (s (s (s z))))
+mul : Nat → Nat → Nat = λ a b N s z. a N (b N s) z
+succ : Nat → Nat = λ a N s z. s (a N s z)
+
+n10 : Nat = mul n2 n5
+n10b : Nat = mul n5 n2
+n20 : Nat = mul n2 n10
+n20b : Nat = mul n2 n10b
+n21 : Nat = succ n20
+n21b : Nat = succ n20b
+n22 : Nat = succ n21
+n22b : Nat = succ n21b
+n100 : Nat = mul n10 n10
+n100b : Nat = mul n10b n10b
+n1k : Nat = mul n10 n100
+n1kb : Nat = mul n100b n10b
+n10k : Nat = mul n100 n100
+n10kb : Nat = mul n100b n100b
+n100k : Nat = mul n10k n10
+n100kb : Nat = mul n10kb n10b
+
+id : {A} -> A -> A = \x.x
+idStress : {A} -> A -> A = id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id id 
+
+{-# NORMALIZE idStress #-}
+
+Eq : Nat -> Nat -> Unit = λ x y. (P : Nat → Unit) → P x → P y
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+x : Eq n100kb n100k = \_ x.x
+
+{-# NORMALIZE forceNat n10k #-}
+
+List  : Unit → Unit = λ a. (l : Unit) → (a → l → l) → l → l
+lnil  : {a} → List a = λ l c n. n
+lcons : {a} → a → List a → List a = λ a as l c n. c a (as l c n)

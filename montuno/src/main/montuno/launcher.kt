@@ -115,11 +115,30 @@ class Launcher : AbstractLanguageLauncher() {
         } else Source.newBuilder(currentLang, "{-# $cmd ${res[1]} #-}", "<stdin>").build() }
         return when (res[0]) {
             ":quit" -> exitProcess(0)
+            ":help" -> {
+                println("""
+                Available commands:
+                :list - lists currently loaded symbols
+                :print - prints out the elaboration state
+                :load - discards current state and loads a file
+                :reload - discards current state and reloads current file
+                :parse - prints out parse tree of an expression
+                :raw - prints out the raw inferred term and type
+                :elaborate - pretty-prints the result of elaborating an expression
+                :normalize - evaluates the expression into a normal form
+                :type - prints the inferred type
+                :normalType - normalized the inferred type
+                :builtin - loads a built-in command (:builtin ALL loads them all, see :list; fix is only available for Truffle) 
+                :engine - switches the engine between montuno-pure and montuno (Truffle-based)
+            """.trimIndent())
+                null
+            }
             ":elaborate" -> wrapCmd("ELABORATE")
             ":normalize" -> wrapCmd("NORMALIZE")
             ":type" -> wrapCmd("TYPE")
             ":normalType" -> wrapCmd("NORMAL_TYPE")
             ":parse" -> wrapCmd("PARSE")
+            ":builtin" -> wrapCmd("BUILTIN")
             ":raw" -> wrapCmd("RAW")
             ":print" -> Source.create(currentLang, "{-# WHOLE_PROGRAM #-}")
             ":list" -> { ctx.getBindings(currentLang).memberKeys.forEach { println(it) }; null }
@@ -208,6 +227,8 @@ class Launcher : AbstractLanguageLauncher() {
         println("\t--version\tprint the version and exit")
         println("\t--pure\tselect the non-Truffle interpreter")
         println("\t--truffle\tselect the Truffle interpreter")
+        println("\t--elaborate EXPR\tprint the result of elaboration")
+        println("\t--normalize EXPR\telaborate and normalize an expression")
     }
 }
 

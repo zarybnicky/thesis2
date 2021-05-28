@@ -950,7 +950,7 @@ terms and values can now store the type of their argument, which allows the
 optimization process to use this information.
 
 The actual implementation of meta-variables, as used by the compiler is shown in
-Figure ref:truffle-metas. The Truffle graph node stores a reference to the
+Listing ref:truffle-metas. The Truffle graph node stores a reference to the
 meta-variable. If it has been solved between the time of the compilation and
 execution, this node is replaced with the value of the solution. If it has not,
 then this node produces a neutral value with an empty spine.
@@ -976,9 +976,9 @@ algorithm, only the references to closures in Π- and λ-terms have been changed
 to be an opaque interface, which offers only a single operation ~instantiate~.
 The non-Truffle implementation needed to slightly change as well to conform to
 this interface. The interface and the non-Truffle implementation of a closure
-are demonstrated in Listing ref:truffle-metas.
+are demonstrated in Listing ref:nontruffle.
 
-#+label:truffle-metas
+#+label:nontruffle
 #+caption:Non-Truffle closure implementation
 #+attr_latex: :position [htb]
 #+begin_src kotlin

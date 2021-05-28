@@ -120,10 +120,10 @@ to explicitly prove that concatenation preserves list length.
 
 On the other hand, these languages are often restricted in some ways. General
 Turing-complete languages allow non-terminating programs: non-termination leads
-to a inconsistent type system, so proof assistants use various ways of keeping
+to an inconsistent type system, so proof assistants use various ways of keeping
 the logic sound and consistent. Idris, for example, requires that functions are
 total and finite. It uses a termination checker, checking that recursive
-functions use only structural or primitive recursion, in order to ensure that
+functions use only structural or primitive recursion in order to ensure that
 type-checking stays decidable.
 
 This chapter aims to introduce the concepts required to specify the syntax and
@@ -250,7 +250,7 @@ short. Every term of the λ-calculus has only a single unique normal form (up to
 
 **** Other normal forms
 A full normal form has all sub-terms of a term fully reduced. There are also
-other normal forms, that differ in the treatment of bodies of λ-abstractions.If
+other normal forms that differ in the treatment of bodies of λ-abstractions. If
 we have an expression and repeatedly only use the β-reduction, we end up with a
 function, or a variable applied to some free variables. These other normal forms
 specify what happens in such a "stuck" case. In Figure ref:normal-forms, $e$ is
@@ -293,7 +293,7 @@ whether there are expressions for which computation does not stop. In the
 context of λ-calculus it means whether there are terms, where repeatedly
 applying rewriting rules does not produce a unique normal form in a finite
 sequence steps. While for some expressions this may depend on the selected
-rewriting strategy, the general property is as follows: If for all well-formed
+rewriting strategy, the general property is as follows: if for all well-formed
 terms $a$ there does not exist any infinite sequence of reductions $a ⟶_{β}
 a' ⟶_{β} a''⟶_{β} ⋯$, then such a system is called /strongly normalizing/.
 
@@ -375,7 +375,7 @@ and function application. Now we will restrict this model using types that
 describe the values that can be computed with.
 
 The simply typed λ-calculus introduces the concept of types. There are two
-separate languages languages: the language of terms, and the language of
+separate languages: the language of terms, and the language of
 types. These languages are connected by a /type judgment/, or /type assignment/ $x :
 T$ that asserts that the term $x$ has the type $T$
 cite:guallart15_overview_types. It also called the λ→-calculus, as "→" is the
@@ -395,7 +395,7 @@ or using parentheses to clarify the precedence
 #+LATEX: \[λ(x : A).x : (A → A).\]
 
 Curry-style is also called the system of typed assignment, or the implicitly
-type λ-calculus as we assign types to untyped λ-terms that do not carry type
+typed λ-calculus as we assign types to untyped λ-terms that do not carry type
 information by themselves, and we say $λx.x : A → A$ cite:barendregt92_typed.
 
 There are systems that are not expressible in Curry-style, and vice versa.
@@ -449,8 +449,8 @@ possible value is a closure: a partially-evaluated function. Reduction
 operations are the same as in the untyped lambda calculus, but we will need to
 add the language of types to the previously specified language of terms.
 
-The language of types consists of a set of /base types/ which can consist of
-e.g. natural numbers or booleans, and /composite types/, which describe functions
+The language of types consists of a set of /base types/ which can consist of,
+e.g., natural numbers or booleans, and /composite types/, which describe functions
 between them. We also need a way to store the types of terms that are known, a
 typing /context/, which consists of a list of /type judgments/ in the form $x:T$,
 which associate variables to their types.
@@ -573,7 +573,7 @@ values & ≔ &  &   & λx:A.t &   & \\
 #+end_export
 
 **** λ\underline{ω}-calculus
-Higher-order types or type operators generalizes the concepts of functions to
+Higher-order types or type operators generalize the concepts of functions to
 the type level, adding λ-abstractions and applications to the language of types.
 
 #+begin_export latex
@@ -683,12 +683,12 @@ be easy to see.
 The notion of sorts and axioms can be generalized even more. Instantiating this
 system with an infinite set of sorts $S=\{Type₀,Type₁,...\}$ instead of the set
 $\{⋆,□\}$ and setting $A$ to $\{(Type₀, Type₁),\linebreak[1] (Type₁,Type₂),
-...\}$ leads to an infinite hierarchy of /type universes. Proof assistants
+...\}$ leads to an infinite hierarchy of /type universes/. Proof assistants
 commonly use such a hierarchy cite:bove08_atwork.
 
 **** Type in Type
 Going the other way around, simplifying $S$ to $S=\{⋆\}$ and setting
-$A$ to $\{(⋆,⋆)\}$, leads to an inconsistent logic system called λ⋆, also called a
+$A$ to $\{(⋆,⋆)\}$, lead to an inconsistent logic system called λ⋆, also called a
 system with a /Type in Type/ rule. This leads to paradoxes similar to the Russel's
 paradox in set theory.
 
@@ -774,7 +774,7 @@ for the substitution in the type of $B$ in rule *Elim-Pi*.
 While a very common example of a Π-type is the length-indexed vector
 $Π(n:ℕ). Vec(ℝ, n)$, it is also possible to define a function with a /"dynamic"/
 number of arguments like in the following listing. It is a powerful language
-feature also for its programming uses, as it makes it possible to e.g. implement
+feature also for its programming uses, as it makes it possible to, e.g., implement
 a well-typed function ~printf~ that, e.g., produces the function $Nat → Nat →
 String$ when called as ~printf "%d%d"~. The following is an example of a function,
 whose number of arguments changes based on the value of the first argument.
@@ -882,7 +882,7 @@ rule *Intro-Sigma*, in the substitution $B[x≔a]$.
 #+end_figure
 
 Above, we had a function that could accept different arguments based on the
-value of the first argument. Below we have a type that simply uses Σ in place of
+value of the first argument. Below, we have a type that simply uses Σ in place of
 Π in the type: based on the value of the first member, the second member can be
 either a function or a value, and still be a well-typed term.
 
@@ -917,7 +917,7 @@ written as $(a₁, ..., aₙ)$.
 
 **** Record
 A record type is similar to a tuple, only its members have unique labels. In
-Figure ref:type-record we see the semantics of a general record type, using the
+Figure ref:type-record, we see the semantics of a general record type, using the
 notation $\{l_i=t_i\} : \{l_i:T_i\}$ and a projection $record.member$.
 
 #+label: type-record
@@ -951,7 +951,7 @@ notation $\{l_i=t_i\} : \{l_i:T_i\}$ and a projection $record.member$.
 \end{tabular}
 #+end_figure
 
-In Figure ref:syntax-sigma we have a syntax that unifies all of these concepts:
+In Figure ref:syntax-sigma, we have a syntax that unifies all of these concepts:
 a Σ-type, a pair, an n-tuple, a named record. A non-dependent n-tuple type is
 written as $A×B×C$ with values $(a,b,c)$. Projections of non-dependent tuples
 use numbers, e.g., $p.1$, $p.2$, ... A dependent sum type is written in the same
@@ -992,7 +992,7 @@ and *2* with a finite number of inhabitants, where the type *0* (with zero
 inhabitants of the type) is the empty or void type. Type *1* with a single
 inhabitant is the unit type, and the type *2* is the boolean type. Also, the
 infinite set of natural numbers can be defined using induction over *2*.
-For our purposes it is enough to define a fixed number of types, though.
+For our purposes, it is enough to define a fixed number of types, though.
 
 **** Unit
 The unit type *1*, or commonly written as the 0-tuple "$()$", is sometimes used as a
@@ -1001,7 +1001,7 @@ a new type $Unit$ and a new value and term $unit$, with the rule $unit : Unit$.
 
 **** Booleans
 The above-mentioned type *2* has two inhabitants and can be semantically mapped to
-the boolean type. In Figure ref:type-bool we introduce the values $true$ and
+the boolean type. In Figure ref:type-bool, we introduce the values $true$ and
 $false$, and a simple eliminator $cond$ that returns one of two values based on
 the truth value of its argument.
 
@@ -1051,7 +1051,7 @@ the truth value of its argument.
 The natural numbers form an infinite set, unlike the above value types.  On
 their own, adding natural numbers to a type system does not produce
 non-termination, as the recursion involved in their manipulation can be limited
-to primitive recursion as e.g., used in Gödel's System T cite:bove08_atwork.
+to primitive recursion as, e.g., used in Gödel's System T cite:bove08_atwork.
 The constructions introduced in Figure ref:type-nat are simply the constructors
 $zero$ and $succ$, and the destructor $natElim$ unwraps at most one layer of
 $succ$.
@@ -1169,7 +1169,7 @@ term & ≔ & \_
 Another type of top-level expressions is a pragma, a direct command to the
 compiler. We will use these when evaluating the time it takes to normalize or
 elaborate an expression, or when enabling or disabling the use of "wired-in"
-types, e.g. to compare the performance impact of using a Church encoding of
+types, e.g., to compare the performance impact of using a Church encoding of
 numbers versus a natural type that uses hardware integers. We will once again
 use the syntax of Agda:
 

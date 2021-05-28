@@ -17,7 +17,7 @@
 
 ** Introduction
 Now with a complete language specification, we can move onto the next step:
-writing an interpreter. In this chapter we will introduce the algorithms at the
+writing an interpreter. In this chapter, we will introduce the algorithms at the
 core of an interpreter and build a tree-based interpreter for the language,
 elaborating on key implementation decisions. The algorithms involved can be
 translated from specification to code quite naturally, at least in the style of
@@ -48,7 +48,7 @@ platform Truffle, as we will be able to share parts of the implementation
 between the two interpreters. The language of GraalVM and Truffle is Java,
 although other languages that run on the Java Virtual Machine can be
 used[fn:2]. My personal preference lies with more functional languages like
-Scala or Kotlin, as the code often is cleaner and more concise[fn:3], so in the
+Scala or Kotlin, as the code is often cleaner and more concise[fn:3], so in the
 end, after comparing the languages, I have selected Kotlin due to its
 multi-paradigm nature: Truffle requires the use of annotated classes, but this
 first interpreter can be written in a more natural functional style.
@@ -288,7 +288,7 @@ the ways of encoding functions in interpreters. This encoding is called the
 higher-order abstract syntax (HOAS), which means that functions[fn:5] in the
 language are equal to functions in the host language. Representing functions
 using HOAS produces very readable code, and in some cases, e.g., in the Haskell
-compiler GHC, produces code an order of magnitude faster than using other
+compiler GHC, it produces code an order of magnitude faster than using other
 representations cite:kovacs_norm. An example of what it looks like is in Listing
 ref:hoas.
 
@@ -521,8 +521,8 @@ The NbE algorithm is fully formally specifiable using four operations: the
 above-mentioned evaluation and quoting, reflection of a neutral value (/NeVal/)
 into a value, and reification of a value into a normal value (/NfVal/) that
 includes its type, schematically shown in Figure ref:nbe. In this thesis,
-though, will only describe the relevant parts of the specification in words, and
-say that NbE (as we will implement it) is a pair of functions $nf = quote(eval(term))$,
+though, we will only describe the relevant parts of the specification in words, and
+say that NbE (as we will implement it) is a pair of functions $nf = quote(eval(term))$.
 
 #+label: nbe
 #+caption: Syntactic and semantic domains in NbE \cite{abel17_sized}
@@ -560,7 +560,7 @@ equivalent. NbE is an algorithm to get a full normal form of a term, whereas to
 compare values for equality, we only need the weak head-normal form. To
 illustrate: to compare whether a pair is equal to another term, we do not need to
 compare two fully-evaluated values, but only to find out whether that term is a
-pair of a terms, which is given by the outermost constructor, the /head/.
+pair of terms, which is given by the outermost constructor, the /head/.
 
 In Chapter ref:lambda we saw an overview of normal forms of λ-calculus. To
 briefly recapitulate, a normal form is a fully evaluated term with all sub-terms
@@ -762,7 +762,7 @@ environment. In ~TLet~ we see how an environment is extended with a local value.
 left-hand side is a ~VLam~, evaluates the body of this closure, and if the
 left-hand side is a neutral expression, then the result is also neutral value
 and its spine is extended with another argument. Other language constructs are
-handled in a similar way,
+handled in a similar way.
 
 **** Quote
 In Listing ref:quote, we see the second part of the algorithm. In the domain of
@@ -1023,7 +1023,7 @@ made directly side-by-side, between the bidirectional typing algorithm and its
 implementation.
 
 What was not mentioned explicitly so far is that the type elaboration algorithm
-has \texttt{PreTerm}s as its input, and produces \texttt{Term}s in the case of
+has as its input \texttt{PreTerm}s, and produces \texttt{Term}s in the case of
 type checking, and pairs of \texttt{Term}s and \texttt{Value}s (the
 corresponding types) in the case of type inference. Unification (not
 demonstrated here) is implemented as parallel structural recursion over two
@@ -1091,7 +1091,7 @@ fun LocalContext.infer(pre: PreTerm): Pair<Term, Value> = when (pre)
 
 Lastly, the rule for a term-level λ-abstraction is demonstrated in Figure
 ref:impl-bidi-abs. This rule demonstrates the creation of a new meta-variable as
-without a placeholder, we are not able to infer the type of the body of the
+without a placeholder, so we are not able to infer the type of the body of the
 function. This meta-variable might be solved in the course of inferring the
 body.
 
@@ -1133,7 +1133,7 @@ ANTLR[fn:6]. It comes with a large library of languages and protocols from
 which to take inspiration[fn:7], so creating the parser was a rather simple
 matter.
 
-The grammar from the previous chapter be translated into ANTLR grammar almost
+The grammar from the previous chapter is translated into ANTLR grammar almost
 directly, as it also uses syntax that reminds the Backus-Naur form. The result
 of parsing the ~id~ function $id : {A}→A→A = λx.x$ is shown in Figure
 ref:id-tree. This tree includes many redundant contexts, and needs to be

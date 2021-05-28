@@ -1,4 +1,0 @@
-id : {A} -> A -> A
-id = \x. x
-
-%normalize id 5

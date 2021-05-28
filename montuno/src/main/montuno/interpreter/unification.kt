@@ -33,6 +33,11 @@ fun Term.lams(lvl: Lvl, type: Val): Term {
             ty = ty.closure.inst(VLocal(l))
             l += 1
         }
+        is VLam -> {
+            t = TLam(ty.name, ty.icit, ty.bound.quote(l, false), t)
+            ty = ty.closure.inst(VLocal(l))
+            l += 1
+        }
         else -> TODO("impossible")
     }
     return t
