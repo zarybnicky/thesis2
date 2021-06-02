@@ -1,0 +1,15 @@
+* Video outline
+1. java --version (JDK)
+2. installation (nix develop w/o direnv)
+3. Java --version (Graal)
+4. Ruby --version == graal
+5. gradle jar, gradle buildDist
+6. montuno --help
+7. Demo script: cat <EOF [...] EOF -> montuno
+8. Demo script + --normalize expr
+9. Demo script: cat <EOF [...] {-# NORMALIZE #-} EOF -> montuno
+10. REPL
+11. load demo + id id id id id - infer, normalize, run
+12. load fixpoint + fibonacci
+13. REPL timing command??? + engine switch
+14. gradle jmh (# was a standalone script, bundled to gradle in GitHub version)

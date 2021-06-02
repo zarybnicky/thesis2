@@ -111,3 +111,6 @@
 [submodule "dep/shen-truffle"]
 	path = dep/shen-truffle
 	url = https://github.com/ragnard/shen-truffle/
+[submodule "montuno"]
+	path = montuno
+	url = git@github.com:zarybnicky/montuno.git

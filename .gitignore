@@ -13,6 +13,9 @@ auto/
 *.fdb_latexmk
 *.blg
 *.bbl
+*.nav
+*.snm
+*.vrb
 *.lof
 *.lol
 *.tdo
@@ -20,6 +23,9 @@ auto/
 \#*
 doc/DP-thesis.pdf
 doc/DP-thesis.tex
+doc/DP-slides.pdf
+doc/DP-slides.tex
+doc/SP-slides.pdf
 doc/01-spec.pdf
 doc/01-spec.tex
 doc/02-pure.pdf

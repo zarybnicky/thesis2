@@ -1,0 +1,76 @@
+#+startup: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [10pt,xcolor=pdflatex,hyperref={unicode}]
+#+BEAMER_THEME: FIT
+#+BEAMER_FRAME_LEVEL: 1
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+#+EXCLUDE_TAGS: noexport
+#+TITLE: Just-in-Time Compilation of the Dependently-Typed Lambda Calculus
+#+AUTHOR: Jakub Zárybnicky
+#+DATE: 21st June 2021
+#+LATEX_HEADER: \institute[]{Brno University of Technology, Faculty of Information Technology\\Bo\v{z}et\v{e}chova 1/2, 612 66 Brno - Kr\'alovo Pole\\xzaryb00@fit.vutbr.cz}
+#+LATEX_HEADER: \setbeamercovered{transparent}
+
+* Introduction
+** Inspiration
+Kmett + MIRI + PoC for a more modern TweLF system \pause
+
+JIT optimization = a midpoint between interpretation and compilation
+
+Investigation, is this a viable approach
+
+1. building a dependently-typed system on the JVM
+2. optimizing it using Truffle JIT
+
+** Dependent types
+- Agda, 4 colour theorem, Π-types
+
+** Dependent type performance
+Type-checking performance
+Gross @Google, real-world systems
+performance of Cubical (see refs in Idris 2)
+
+* Specification
+** Language
+- pure type system with extensions, type in type to simplify (no need for
+  termination checking), this gives the semantics
+- syntax
+
+** Algorithms
+- NbE
+- bidi
+- state-of-the-art (closely follows the algorithms implemented in Agda)
+
+* Implementation
+** Interpreter
+- Kotlin
+- implemented two interpreters, with/without JIT
+- code snippet
+- REPL session snippet
+
+** Truffle
+- Truffle: code -> graph -> machine code
+
+- applied to "evaluation" of Terms to Values
+
+- JIT compilation, Speculative optimization
+- GraalVM.png
+- node-rewrite.png
+
+** Performance
+- evaluated their performance, compared with state-of-the-art tools
+- elaboration on JVM ineffective, effect of JIT not seen through the noise
+- compare with baseline (smalltt, native, agda, idris)
+
+** Optimizations
+- Flamegraph, effect of optimizations on runtime
+** Results
+- Proof of concept type elaboration + dependent types on the JVM
+- interoperability options (formal core + imperative code)
+- debugging tools (Truffle LSP)
+- performance evaluation, bottlenecks on the JVM, optimizations
+
+- PoC for MIRI/Kmett; previously Cadenza, recently TruffleSTG as a semi follow-up
+- basis for a potential paper - rigorous formalized benchmark/survey of systems with dependent types
+- dependent types on the JVM

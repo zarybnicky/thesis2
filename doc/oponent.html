@@ -1,0 +1,123 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+<head>
+<title>Projekty v ak.r. 2020/2021</title>
+<link rel="SHORTCUT ICON" href="/images/favicon.ico" type="image/x-icon">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/common/style8.css" type="text/css">
+<style type="text/css">
+div.agr, p.agr, dd { max-width: 600px; }
+</style>
+<script type="text/javascript">
+function checkent(event)
+{
+    var key;
+    if (event.key) {
+	if (event.key != 'Enter') return true;
+	key = 13;
+    } else
+    if (event.keyCode) key = event.keyCode;
+    else key = event.which;
+    if (key != 13) return true;
+    event.preventDefault();
+    return false;
+}
+</script>
+<script type="text/javascript">
+var ClockMonths = new Array("ledna", "února", "března", "dubna", "května", "června",
+"července", "srpna", "září", "října", "listopadu", "prosince");
+var ClockElm;
+var ClockDiff=0;
+document.cookie = "res=w:"+screen.width+",h:"+screen.height+",r:"+window.devicePixelRatio+",p:"+navigator.platform+",tp:"+navigator.maxTouchPoints+"; path=/";
+
+function ClockInit()
+{
+    if (!document.getElementById) return;
+    ClockElm = document.getElementById('clock');
+    if (!ClockElm || !ClockElm.innerHTML) return;
+    var ClockTm = new Date();
+    var datefmt = /^(\d\d?)[.]? ([^ ]+) (\d{4})\s(\d\d):(\d\d):(\d\d)$/;
+    var datep = datefmt.exec(ClockElm.innerHTML);
+    if (datep) {
+	var SrvClock = new Date();
+	SrvClock.setDate(datep[1]);
+	for (var i = 0; i<12; i++) {
+	    if (datep[2] == ClockMonths[i]) {
+		SrvClock.setMonth(i);
+	    }
+	}
+	SrvClock.setYear(datep[3]);
+	SrvClock.setHours(datep[4]);
+	SrvClock.setMinutes(datep[5]);
+	SrvClock.setSeconds(datep[6]);
+	ClockDiff = 500 + SrvClock.getTime()-ClockTm.getTime();
+    }
+    setInterval(UpdateClock, 1000);
+}
+
+function UpdateClock()
+{
+    var hr,min,sec,day,mon,year;
+
+    if (!ClockElm || !ClockElm.innerHTML) return;
+    var ClockTm = new Date();
+    ClockTm.setMilliseconds(ClockDiff+ClockTm.getMilliseconds());
+    if (ClockTm.getFullYear) year = ClockTm.getFullYear();
+    else year = ClockTm.getYear+1900;
+    mon = ClockTm.getMonth();
+    day = ClockTm.getDate();
+    hr = ClockTm.getHours();
+    min = ClockTm.getMinutes();
+    sec = ClockTm.getSeconds();
+    ClockElm.innerHTML = day+'. '+ClockMonths[mon]+' '+year+'\n '+(hr<=9?'0':'')+hr+':'+(min<=9?'0':'')+min+':'+(sec<=9?'0':'')+sec; 
+}
+
+function filter_empty(name)
+{
+    var i;
+    for (i = 0; i < document[name].elements.length; i++) {
+	var o = document.forms[name].elements[i];
+	if (o.type != 'text' && o.type != 'select-one') continue;
+	if (o.value == '') o.disabled = true;
+    }
+    return true;
+}
+</script>
+<script type="text/javascript" src="/common/taedit.js">
+</script>
+</head>
+<body onLoad="StartOnLoad(); ClockInit()">
+<table class="noprint" role="navigation" width="100%" border=0 cellpadding=0 cellspacing=0 style="background-color: #3498db">
+<tr><td><a href="https://www.fit.vut.cz/.cs"><img class="FITlogo" src="/images/fitnewz.png" alt="FIT"></a></td>
+<td class="mitembg" nowrap><a class="stab" href="/FIT/st/index.php.cs"><span style="font-size:24px;line-height:14px">&nbsp;&#8962;&nbsp;</span></a></td>
+<th class="mitem hide-m"><a class="stab" href="/FIT/st/study.php.cs">studia</a></th>
+<th class="mitem hide-m"><a class="stab" href="/FIT/st/courses.php.cs">předměty</a></th>
+<th class="mitem"><a class="stab" href="/FIT/st/study-v.php.cs">termíny</a></th>
+<th class="mitem"><a class="stabs" href="/FIT/st/reg.php.cs">registrace</a></th>
+<th class="mitem"><a class="stab" href="/FIT/st/admin.php.cs">hesla</a></th>
+<th class="mitem hide-m"><a class="stab" href="/FIT/st/other.php.cs">ostatní</a></th>
+<td class="mitembg hide-d hide-t"><a class="stab" href="/FIT/st/other.php.cs"><span style="font-size: 16px;line-height:16px">&nbsp;&gt;&nbsp;</span></a></td><td class="mitembg hide-m"><a class="stab" href="/FIT/st/logoff.php.cs?logoff=1"><span style="font-size:16px;line-height:16px">&nbsp;&#9032;&nbsp;</span></a></td><th class="mitem"><a class="stab" href="/FIT/st/bci-prj-z.php.en?id=24198&amp;op=1&amp;rok=2020&amp;typ=DP20">&nbsp;EN&nbsp;</a></th></tr>
+</table>
+<table cellpadding=4 width="100%" border=0>
+<tr valign=top><td style="width: 90%"><h1>Projekty v ak.r. 2020/2021</h1></td>
+<td style="text-align: right; white-space: nowrap"><div id="clock">31. května 2021
+10:08:46</div></td></tr></table>
+<div role="main" class="content">
+Login xzaryb00, <b>Zárybnický Jakub, Bc.</b>, 2. ročník NISY, prezenční, FIT<br>
+Ak. rok 2020/2021 studium č.2: řádný zápis<p><form action="/FIT/st/bci-prj-z.php.cs#abst" enctype="multipart/form-data" method="post" name="selform" onsubmit="return EditSubmit()">
+<p>V ak.r. 2020/2021 máte přihlášeny tyto projekty:
+<ul class=nomargin>
+<li>DIP - Diplomová práce: <b><a href="/FIT/st/bci-prj-z.php.cs?id=24198&amp;rok=2020&amp;typ=DP20">Just-in-time kompilace závisle typovaného lambda kalkulu</a></b> (odevzdáno)<br>Zahájení projektu: <b>2020-11-01</b><br>Odevzdání projektu: <b>2021-05-19</b><br>Obhajoba semestrální části projektu: <b><a href="bci-com-l.php.cs?id=77">komise VeriFIT č.3</a></b>, 2021-02-02 08:48<br>&#187; <a href="/FIT/st/bci-prj-z.php.cs?id=24198&amp;op=1&amp;rok=2020&amp;typ=DP20#posudek"><b>Posudek oponenta</b></a><br>&#187; <a href="bci-prj-o.php?id=24198"><b>Zadání pro vložení do práce</b></a> <img src="/images/pdf.gif" alt="[PDF]" style="vertical-align: top"><br>&#187; <a href="bci-prj-t.php.cs?id=24198"><b>Vzor desek práce - český</b></a> <img src="/images/pdf.gif" alt="[PDF]" style="vertical-align: top"><br>&#187; <a href="bci-prj-t.php.en?id=24198"><b>Vzor desek práce - anglický</b></a> <img src="/images/pdf.gif" alt="[PDF]" style="vertical-align: top">
+</ul>
+<p><ul class=nomargin>
+<li><a href="https://www.fit.vut.cz/study/theses/schedule/.cs">Harmonogram vypracování bakalářských a diplomových prací</a>
+<li><a href="https://www.fit.vut.cz/study/theses/external/.cs">Externí zadání práce</a>
+<li><a href="https://www.fit.vut.cz/study/theses/master-theses/.cs">Pokyny ke zpracování závěrečných prací a SZZ</a>
+</ul><hr size=1><table border=0 width="100%"><tr valign=top><td><h2><a name="posudek">Posudek oponenta</a></h2><a name="seznam"></a><h3>Just-in-time kompilace závisle typovaného lambda kalkulu<br>Just-in-Time Compilation of Dependently-Typed Lambda Calculus</h3></td><td align=right>&nbsp;<a href="/FIT/st/bci-prj-z.php.cs?typ=DP20#seznam">Zpět na seznam</a></td></tr></table>
+<dl class=nomargin><dt><b>Vedoucí:</b><dd><a href="http://www.fit.vutbr.cz/~lengal/.cs">Lengál Ondřej, Ing., Ph.D.</a>, UITS FIT VUT<dt><b>Oponent:</b><dd><a href="http://www.fit.vutbr.cz/~ihavlena/.cs">Havlena Vojtěch, Ing.</a>, UITS FIT VUT<dt><b>Student:</b><dd>Zárybnický Jakub, Bc.</dl><p><table style="max-width: 600px"><tr align=left><th>1.</th><th>Náročnost zadání</th></tr><tr><td>&nbsp;</td><td><table border=1 bordercolor=black cellpadding=6><tr><th>obtížnější zadání</th></tr></table>Téma práce považuji za obtížné. Práce vyžadovala nastudování netriviálních výsledků (nejen) z oblasti typovaného lambda kalkulu, automatického odvozování typů a normalizace. Navíc na úrovni, aby student byl schopen některé z těchto výsledků implementovat.</td></tr><tr align=left><th>2.</th><th>Splnění požadavků zadání</th></tr><tr><td>&nbsp;</td><td><table border=1 bordercolor=black cellpadding=6><tr><th>zadání splněno</th></tr></table>Zadání považuji za kvalitně splněné.</td></tr><tr align=left><th>3.</th><th>Rozsah technické zprávy</th></tr><tr><td>&nbsp;</td><td><table border=1 bordercolor=black cellpadding=6><tr><th>je v obvyklém rozmezí</th></tr></table>Práce je rozsahově v pořádku. Jednotlivé kapitoly jsou informačně bohaté, neobsahují vatu a navazují na sebe.</td></tr><tr align=left><th>4.</th><th>Prezentační úroveň předložené práce</th></tr><tr><td>&nbsp;</td><td><table border=1 bordercolor=black cellpadding=6><tr><th>86 b. (B)</th></tr></table>Co se týče prezentační úrovně práce, postrádal jsem občas high-level pohled na právě popisovanou problematiku. Ne zrovna málokrát se přešlo příliš rychle k podrobným technikalitám, což znesnadňovalo pochopení práce v širších souvislostech. Občas se taky pojmy blíže vysvětlovaly/definovaly až po jejich použití. Nicméně musím říct, že první polovina práce se četla opravdu hezky a i přes mé připomínky text práce považuji za zdařilý.</td></tr><tr align=left><th>5.</th><th>Formální úprava technické zprávy</th></tr><tr><td>&nbsp;</td><td><table border=1 bordercolor=black cellpadding=6><tr><th>95 b. (A)</th></tr></table>Práce je psána dobrou angličtinou. Obsahuje minimum překlepů a po typografické stránce nemám, co vytknout.</td></tr><tr align=left><th>6.</th><th>Práce s literaturou</th></tr><tr><td>&nbsp;</td><td><table border=1 bordercolor=black cellpadding=6><tr><th>95 b. (A)</th></tr></table>Student cituje v práci řadu relevantních vědeckých článků, což jen podtrhuje náročnost tématu. Citované prvky jsou odlišeny od těch vlastních.</td></tr><tr align=left><th>7.</th><th>Realizační výstup</th></tr><tr><td>&nbsp;</td><td><table border=1 bordercolor=black cellpadding=6><tr><th>92 b. (A)</th></tr></table>Součástí práce je vytvoření nástroje, který optimalizuje překlad typovaného lambda kalkulu. Nástroj je funkční, jedná se bezesporu o kvalitní technické dílo. Archiv obsahuje krátké Readme popisující instalaci nástroje. Zdrojové kódy vypadají čitelně, neobsahují ale komentáře.</td></tr><tr align=left><th>8.</th><th>Využitelnost výsledků</th></tr><tr><td>&nbsp;</td><td>Dle mého názoru se jedná spíše o práci kompilačního charakteru. Využití v praxi mi není zcela jasné. Student sám argumentuje, že výhody JIT překladu nejsou nijak ohromující. Nicméně práce může sloužit jako základní kámen pro experimentování s dalšími optimalizacemi.</td></tr><tr align=left><th>9.</th><th>Otázky k obhajobě</th></tr><tr><td>&nbsp;</td><td><ol><li>Můžete diskutovat případnou možnost praktické využitelnosti práce?</li><li>Vypořádáváte se nějak s ověřováním terminace?</li></ol></td></tr><tr align=left><th>10.</th><th>Souhrnné hodnocení</th></tr><tr><td>&nbsp;</td><td><table border=1 bordercolor=black cellpadding=6><tr><th>velmi dobře (B) 87 b.</th></tr></table>Dle mého názoru se jedná o kvalitní práci, která se věnuje obtížnému tématu. Na práci oceňuji, že před tím, než autor učinil nějaké rozhodnutí (např. volba konkrétního algoritmu), zvážil různé alternativy, které rovněž v práci diskutoval. Z celé práce mám tedy dojem, že se jedná o promyšlené řešení a ne pouze o nějakou ad hoc práci. V experimentálním vyhodnocení postrádám srovnání s ostatními nástroji (nutno tedy podotknout, že toto zřejmě nebylo cílem práce). Nicméně srovnání nebo hlubší vymezení oproti ostatním nástrojům by bylo opravdu zajímavé. Výtky k samotnému textu byly diskutovány výše. Když toto všechno vezmu v úvahu, navrhuji známkou <b>B</b>.</td></tr></table><p>V Brně dne: 28. května 2021</form></div>
+<div class="noprint">
+<address>&copy;Fakulta informačních technologií VUT, Božetěchova 2, 612 00 Brno<br>Připomínky zasílejte na adresu <a href="mailto:lampa@fit.vut.cz">lampa@fit.vut.cz</a></address></div>
+</body>
+</html>
