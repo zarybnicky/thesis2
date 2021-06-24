@@ -114,3 +114,6 @@
 [submodule "montuno"]
 	path = montuno
 	url = git@github.com:zarybnicky/montuno.git
+[submodule "doc/defence"]
+	path = doc/defence
+	url = git@gist.github.com:623af655ec7bd903faa5cbaf01e38aff.git

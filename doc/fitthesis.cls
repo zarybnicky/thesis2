@@ -76,6 +76,7 @@
 \usepackage{amssymb}
 \usepackage{unicode-math}
 
+\usepackage{fontspec}
 \setmainfont{texgyrepagella}[
   Ligatures=TeX,
   Extension=.otf,

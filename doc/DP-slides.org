@@ -1,76 +1,418 @@
 #+startup: beamer
 #+LaTeX_CLASS: beamer
-#+LaTeX_CLASS_OPTIONS: [10pt,xcolor=pdflatex,hyperref={unicode}]
+#+LaTeX_CLASS_OPTIONS: [10pt,hyperref={unicode}]
 #+BEAMER_THEME: FIT
 #+BEAMER_FRAME_LEVEL: 1
 #+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+#+OPTIONS: toc:nil
 
 #+EXCLUDE_TAGS: noexport
 #+TITLE: Just-in-Time Compilation of the Dependently-Typed Lambda Calculus
 #+AUTHOR: Jakub Zárybnicky
-#+DATE: 21st June 2021
+#+DATE: 22nd June 2021
 #+LATEX_HEADER: \institute[]{Brno University of Technology, Faculty of Information Technology\\Bo\v{z}et\v{e}chova 1/2, 612 66 Brno - Kr\'alovo Pole\\xzaryb00@fit.vutbr.cz}
 #+LATEX_HEADER: \setbeamercovered{transparent}
+#+LATEX_HEADER: \usefonttheme{professionalfonts}
+#+LATEX_HEADER: \setbeamertemplate{footline}[page number]{}
 
-* Introduction
-** Inspiration
-Kmett + MIRI + PoC for a more modern TweLF system \pause
+#+LATEX_HEADER: \newcommand{\foo}{\makebox[0pt]{\textbullet}\hskip-0.5pt\vrule width 1pt\hspace{\labelsep}}
+#+LATEX_HEADER: \makeatletter\def\beamer@framenotesbegin{\usebeamercolor[fg]{normal text}\gdef\beamer@noteitems{}\gdef\beamer@notes{}}\makeatother
+#+LATEX_HEADER: %\setbeameroption{show notes on second screen=bottom} % Both
+#+LATEX_HEADER: \usepackage{pgfplots, minted, tikz, bussproofs}\usetikzlibrary{arrows,arrows.meta,calc,fit,shapes,positioning}
+#+LATEX_HEADER: \setminted{fontsize=\footnotesize}
+#+LATEX_HEADER: \usepackage{array, booktabs, colortbl, ragged2e}
+#+LATEX_HEADER: \usepackage{fontspec, unicode-math}
+#+LATEX_HEADER: \setmainfont{texgyrepagella}[Ligatures=TeX,Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,ItalicFont=*-italic,BoldItalicFont=*-bolditalic,]
+#+LATEX_HEADER: \setmonofont{texgyrecursor-regular.otf}
+#+LATEX_HEADER: \setmathfont{texgyrepagella-math.otf}
+#+LATEX_HEADER: \setmathfont{Asana-Math.otf}[range={\setminus}, ]
+#+LATEX_HEADER: \setmathfont{XITSMath-Regular.otf}[range={"2A3E}, BoldFont=XITSMath-Bold.otf, ]
 
-JIT optimization = a midpoint between interpretation and compilation
+#+LATEX_HEADER: \pgfplotsset{compat=1.17}
 
-Investigation, is this a viable approach
+* Outcome
+#+LATEX: \note[item]{Hlavním výsledkém mé práce byla úplná implementace {\lambda}ΠΣ-kalkulu včetně UI (REPL, batch, compiled) a  JIT, včetně primitivních typů}
 
-1. building a dependently-typed system on the JVM
-2. optimizing it using Truffle JIT
+#+begin_src text
+$> montuno
+Mt> id : {A} -> A -> A = \x.x
+Mt> :normalize id id
+λ x. x
+Mt>
+Mt> :engine montuno-truffle
+Mt> id : {A} -> A -> A = \x.x
+Mt> const : {A B} -> A -> B -> A = \x _. x
+Mt> :normalize const id
+λ _ x. x
+Mt> :type const
+{A : Unit} {B : λ A0. Unit} → A → B → A
+Mt>
+Mt> :builtin ALL
+Mt> fibonacci : Nat -> Nat = fixNatF (\rec x.
+  (cond (eqn x 0) 0
+  (cond (eqn x 1) 1
+  (add (rec (sub x 1)) (rec (sub x 2))))))
+Mt> :normalize fibonacci 8
+21
+#+end_src
 
-** Dependent types
-- Agda, 4 colour theorem, Π-types
+* Context
+#+LATEX: \note[item]{Zadání jsem sice přinesl do školy, ale nebylo z mojí hlavy}
+#+LATEX: \note[item]{Doporučení jsem dostal od E. Kmetta, ...}
+#+LATEX: \note[item]{Alternativní sada nástrojů k jiným formálním metodám, jako se poižívají tady, např. Infer}
 
-** Dependent type performance
-Type-checking performance
-Gross @Google, real-world systems
-performance of Cubical (see refs in Idris 2)
+** Topic origin
+- Edward Kmett @ MIRI (Machine Intelligence Research Institute)
+- Small experimental languages for theoretical exploration
+- Aiming to create a modern TweLF system
+- Currently using languages in Idris, Agda, GHC, ...
+\pause
+
+** Proof assistants
+- Based on a typed \lambda-calculus core
+- Π-types, e.g. id : Π(A : Type). A → Type = \A x. x
+- Formal program verification, proof-carrying code
+- Isabelle (1989), Coq (1994), ..., Idris 2 (2020), Lean 4 (2021)...
+- Four colour theorem (Coq)
+- Real-world: video encoding codecs in Coq @ Google (Gross 2021)
+
+* Problem statement
+#+LATEX: \note[item]{Název práce je sice obecný JIT, ale konkrétně se jedná o systém Truffle, RPython by byla taky možnost}
+
+- Proof assistant performance is impractical for larger systems
+- Especially type-checking, type elaboration performance
+\medskip
+- Approaches:
+  - Interpretation - potentially slow, flexible
+  - Compilation - potentially fast, specialized
+  - Just-in-time compilation using a JIT platform - on-demand
+\medskip
+- Investigate whether JIT for DTLC in Truffle is a viable approach
+- Create a prototype system
 
 * Specification
-** Language
-- pure type system with extensions, type in type to simplify (no need for
-  termination checking), this gives the semantics
-- syntax
+#+LATEX: \note[item]{V práci jsem dělal tři věci, mimo kompilaci teorie}
+#+LATEX: \note[item]{Idris/Agda termination checking - isorecursive types or implicit \mu-types (structural recursion, primitive recursion)}
 
-** Algorithms
-- NbE
-- bidi
-- state-of-the-art (closely follows the algorithms implemented in Agda)
+** Language: Montuno
+- Pure type system with extensions (Π, Σ, fix, Nat, Bool)
+- Type In Type instead of universes, inconsistent
+\pause
+
+** Implementation
+- state-of-the-art algorithms, closely following Agda's approach
+  - bidirectional typing
+  - normalization-by-evaluation
+  - pattern unification
+- Kotlin on JVM
+
+#+LATEX: \note[item]{Bidi = type checking and type elaboration}
+#+LATEX: \note[item]{NbE = normalization using "stuck" values}
+#+LATEX: \note[item]{PE = equality/conversion checking}
+
+* Truffle
+#+LATEX: \note[item]{Code → node graph → machine code}
+#+LATEX: \note[item]{applied to "evaluation" of Terms to Values in NbE}
+
+#+begin_figure latex
+\centering
+\begin{tikzpicture}[scale=0.7,transform shape,
+  line/.style={-latex},
+  elabl/.style={-latex,draw=cyan},
+  elabn/.style={-latex,color=cyan},
+  evall/.style={-latex,draw=red},
+  evaln/.style={-latex,color=red},
+  block/.style={draw,thick,text width=2cm,minimum height=1cm,align=center}
+]
+\node[block](s){String};
+\node[block,right=1.5cm of s](p){Pre-term};
+\node[block,right=1.5cm of p](t){Term};
+\node[block,right=1.5cm of t](v){Value};
+\node[block,above=1cm of v](c){Code};
+
+\draw[line] (s) to node[midway,above]{Parse} (p);
+\draw[elabl] (p) to node[elabn,midway,above]{Infer} node[elabn,midway,below]{Check} (t);
+\draw[evall] (t) to[bend left=10] node[evaln,midway,above]{Eval} (v);
+\draw[evall] (t) to[bend left=10] node[evaln,midway,above left]{Close} (c);
+\draw[evall] (c) to[bend left=10] node[evaln,midway,right]{Eval} (v);
+\draw[evall] (v) to[bend left=10] node[evaln,midway,below]{Quote} (t);
+\draw[line] (t) to[bend left=20] node[midway,below]{Pretty-print} (s);
+\draw[elabl] (v) to[loop right] node[elabn,midway,left]{Unify} (v);
+\end{tikzpicture}
+#+end_figure
+
+- Project GraalVM (Graal compiler alternative to HotSpot T2)
+- Exposes the JVM JIT compiler to users
+  - AST-based interpreters
+  - Program graph, nodes are operations, values flow through it
+  - AST compiled to machine code
+- Successful approach for imperative, scripting languages
+  - Speculative optimization
+  - Ruby (100x), R (80x), Python, LLVM
+- Applied to the evaluation of closures
+
+#+LATEX: \note[item]{speculative optimization}
+
+* Performance
+#+LATEX: \note[item]{Task - evaluate Truffle for DTLC}
+#+LATEX: \note[item]{Conclusion - JVM unsuitable using state-of-the-art algorithms, as commonly implemented}
+
+#+LATEX: \note[item]{Červená - z doby odevzdání zprávy}
+#+LATEX: \note[item]{Zelená - state-of-the-art, SmallTT má njpodobnější implementaci algoritmů}
+#+LATEX: \note[item]{Modrá - na základě zpětné vazby}
+
+#+caption:\textit{idStress} benchmark results ($idStress : \{A\} → A → A = id id...id$)
+#+begin_figure latex
+\begin{tikzpicture}
+ \begin{axis}[
+   ybar, ymin=0, ymax=14, width=10.5cm, height=6cm,
+   my coords/.initial={Kotlin, Truffle, +dispatch, +staged, +visitor, Agda, Coq, SmallTT},
+   symbolic x coords/.expanded={\pgfkeysvalueof{/pgfplots/my coords}},
+   xticklabel style={rotate=45, anchor=east},
+   xtick distance=1,
+   bar width=15pt,
+   enlarge x limits=0.10,
+   nodes near coords,
+   nodes near coords align={vertical},
+   nodes near coords style={/pgf/number format/precision=3, /pgf/number format/fixed},
+   ylabel={Time (s)},
+   scaled y ticks=false,
+   bar shift=0pt,
+ ]
+  \addplot[fill=red] coordinates {
+      (Kotlin,  11.3)
+      (Truffle,  12.1)
+  }; \addplot[fill=blue] coordinates {
+      (+dispatch, 9.8)
+      (+staged,   9.3)
+      (+visitor,  6.4)
+  }; \addplot[fill=green] coordinates {
+      (Agda,   3.1)
+      (Coq,    0.3)
+      (SmallTT, 0.017)
+  };
+ \end{axis}
+\end{tikzpicture}
+#+end_figure
+
+* Discussion
+** Results
+- Proof-of-concept system complete, ready for further experiments
+- Conclusion: JVM unsuitable for common implementation approaches
+- Problem: slow function calls versus GHC, abstract machines
+\pause
+
+** Expanding Montuno
+- Dependent types on the JVM still worthwhile
+- But promising 2022 JVM projects, e.g. tail-call optimization
+\pause
+
+** Alternatives for implementing type elaboration
+- Tree traversal with global and local state need not be optimal
+- Different paradigms: Propagator networks, graph-based systems
+\pause
+
+** Rigorous benchmarks
+- Baseline for evaluation systems with dependent types
+- A few informal exist, e.g. Kovács
+
+* Conclusion
+- complete syntax and semantics specification  \bigskip
+- language implementation in Kotlin  \bigskip
+- JIT compilation component using Truffle  \bigskip
+- Promising follow-up topics (propagators for TC) \bigskip
+- Ongoing follow-up project: TruffleSTG
+
+* Timeline
+#+LATEX: \note[item]{O rychlosti DTLC systémů sice mnoho publikací není, ale experimentálních systémů málo není}
+
+#+begin_table latex
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{@{\,}r <{\hskip 2pt} !{\foo} >{\raggedright\arraybackslash}p{7cm}}
+2014 & HoTT in Coq performance (Gross) \\
+2018 & SmallTT (Kovács, fast NbE in GHC) \\
+2019 & Cadenza (Kmett, STLC on Truffle) \\
+2019 & Sixty (Fredriksson, faster NbE on GHC) \\
+2020 & SetoidTT (Kovács, even faster NbE on GHC) \\
+2020 & Idris 2 (Brady, very fast Idris on ChezScheme) \\
+Mar 2021 & Coq performance dissertation \newline(Gross, based on Google projects) \\
+Apr 2021 & Enso (commercial, DTLC on Truffle) \\
+May 2021 & \textit{(Montuno, this work)} \\
+from Jun 2021 & TruffleSTG (Kmett, GHC's STG on Truffle) \\
+\end{tabular}
+#+end_table
+
+* In closing
+:PROPERTIES:
+:BEAMER_OPT: c
+:END:
+#+begin_center
+\usebeamerfont*{frametitle}
+Thank you for your attention.
+
+\bigskip
+\url{github.com/zarybnicky/montuno}
+#+end_center
+
+
+* Questions
+\appendix
+
+** Applications
+- proof assistants, theorem solvers
+- type theory development
+  - HoTT, Cubical, ...
+  - large type theories also impacted by performance problems
+- correct-by-construction programming
+  - high-assurance software: control systems
+  - lately DAML, smart contracts
+
+** Termination checking
+- Type in Type rule, inconsistent logic
+- fixpoint construct, otherwise strongly normalizing
+- usually heuristics, no large impact on performance
 
 * Implementation
-** Interpreter
-- Kotlin
-- implemented two interpreters, with/without JIT
-- code snippet
-- REPL session snippet
+:PROPERTIES:
+:BEAMER_OPT: fragile
+:END:
+#+LATEX: \note[item]{Kotlin}
+#+LATEX: \note[item]{Two interpreters, with/without JIT}
+#+LATEX: \note[item]{One interpreter with a pluggable compiler backend}
 
-** Truffle
-- Truffle: code -> graph -> machine code
+#+begin_figure latex
+\centering
+\begin{tikzpicture}[scale=0.7,transform shape,
+  line/.style={-latex},
+  elabl/.style={-latex,draw=cyan},
+  elabn/.style={-latex,color=cyan},
+  evall/.style={-latex,draw=red},
+  evaln/.style={-latex,color=red},
+  block/.style={draw,thick,text width=2cm,minimum height=1cm,align=center}
+]
+\node[block](s){String};
+\node[block,right=1.5cm of s](p){Pre-term};
+\node[block,right=1.5cm of p](t){Term};
+\node[block,right=1.5cm of t](v){Value};
 
-- applied to "evaluation" of Terms to Values
+\draw[line] (s) to node[midway,above]{Parse} (p);
+\draw[elabl] (p) to node[elabn,midway,above]{Infer} node[elabn,midway,below]{Check} (t);
+\draw[evall] (t) to[bend left=10] node[evaln,midway,above]{Eval} (v);
+\draw[evall] (v) to[bend left=10] node[evaln,midway,below]{Quote} (t);
+\draw[line] (t) to[bend left=20] node[midway,below]{Pretty-print} (s);
+\draw[elabl] (v) to[loop right] node[elabn,midway,left]{Unify} (v);
+\end{tikzpicture}
+#+end_figure
 
-- JIT compilation, Speculative optimization
-- GraalVM.png
-- node-rewrite.png
+#+begin_figure latex
+\begin{prooftree}
+\AxiomC{$Γ ⊢ t ⇐ ⋆$}
+\AxiomC{$Γ ⊢ a ⇐ t$}
+\AxiomC{$Γ,x:t ⊢ b ⇒ u$}
+\RightLabel{\textbf{(Let-In)}}
+\TrinaryInfC{$Γ⊢\text{let }x:t=a\text{ in }b ⇒ u$}
+\end{prooftree}
+\medskip
+\begin{minted}{kotlin}
+fun RLet.infer(ctx: LocalContext): Pair<Term, Value> {
+  val t = type.check(ctx, VStar)
+  val a = defn.check(ctx, t)
+  val (b, u) = pre.body.infer(ctx.localDefine(pre.name, a, t))
+  return TLet(pre.name, t, a, b) to u
+}
+\end{minted}
+#+end_figure
 
-** Performance
-- evaluated their performance, compared with state-of-the-art tools
-- elaboration on JVM ineffective, effect of JIT not seen through the noise
-- compare with baseline (smalltt, native, agda, idris)
+* Syntax (snippet)
+#+begin_figure latex
+\[\begin{array}{rclclcl}
+term & ≔ & v     & | & constant & & \\
+     & | & a b   & | & a \{b\}  &   & \\
+     & | & a→b   & | & (a:A)→b  & | & \{a:A\}→b \\
+     & | & a × b & | & (l:A)×b  & | & a.l \\
+     & | & \text{let} x=v \text{in} e && && \\
+     & | & \_ &&&& \\
+value& ≔ & constant & | & neutral && \\
+     & | & λx:A.b & | & Πx:A.b && \\
+     & | & (a₁,⋯,aₙ) &&&& \\
+     & | & \_ &&&& \\
+neutral & ≔ & var & | & neutral a₁ ...aₙ & | & neutral.lₙ\\
+Γ & ≔ & ∅ & | & Γ,x:τ \\[5pt]
+\end{array}\]
+#+end_figure
 
-** Optimizations
-- Flamegraph, effect of optimizations on runtime
-** Results
-- Proof of concept type elaboration + dependent types on the JVM
-- interoperability options (formal core + imperative code)
-- debugging tools (Truffle LSP)
-- performance evaluation, bottlenecks on the JVM, optimizations
+* Typing rules (snippet, PTS)
+#+begin_figure latex
+\centering
+\begin{tabular}{cl}
+\AxiomC{}
+\RightLabel{$(s₁,s₂)∈A$}
+\UnaryInfC{$⊢ s₁:s₂$}
+\DisplayProof & \textsc{(Start)} \\[11pt]
+\AxiomC{$Γ ⊢ A:s$}
+\RightLabel{$s∈S$}
+\UnaryInfC{$Γ,x:A ⊢ x:A$}
+\DisplayProof & \textsc{(Var)} \\[15pt]
+\AxiomC{$Γ ⊢ x : A$}
+\AxiomC{$Γ ⊢ B : s$}
+\RightLabel{$s∈S$}
+\BinaryInfC{$Γ,y:B ⊢ x:A$}
+\DisplayProof & \textsc{(Weaken)} \\[15pt]
+\AxiomC{$Γ ⊢ f:Π_{x:A}B(x)$}
+\AxiomC{$Γ ⊢ a:A$}
+\BinaryInfC{$Γ ⊢ fa : B[x≔a]$}
+\DisplayProof & \textsc{(App)} \\[17pt]
+\AxiomC{$Γ,x : A ⊢ b:B$}
+\AxiomC{$Γ ⊢ Π_{x:A}B(x) : s$}
+\RightLabel{$s∈S$}
+\BinaryInfC{$Γ ⊢ (λx : A. b) : Π_{x:A}B(x)$}
+\DisplayProof & \textsc{(Abs)} \\[17pt]
+\AxiomC{$Γ ⊢ A:s₁$}
+\AxiomC{$Γ,x:A ⊢ B:s₂$}
+\RightLabel{$(s₁,s₂,s₃)∈R$}
+\BinaryInfC{$Γ ⊢ Π_{x:A}B(x) : s₃$}
+\DisplayProof & \textsc{(Product)} \\[17pt]
+\AxiomC{$Γ ⊢ a:A$}
+\AxiomC{$Γ ⊢ A':s$}
+\AxiomC{$A ⟶_β A'$}
+\RightLabel{$s∈S$}
+\TrinaryInfC{$Γ ⊢ a:A'$}
+\DisplayProof & \textsc{(Conv)} \\[7pt]
+\end{tabular}
+#+end_figure
 
-- PoC for MIRI/Kmett; previously Cadenza, recently TruffleSTG as a semi follow-up
-- basis for a potential paper - rigorous formalized benchmark/survey of systems with dependent types
-- dependent types on the JVM
+* Bidirectional typing rules (snippet)
+#+begin_figure latex
+\begin{prooftree}
+\AxiomC{$a:t∈Γ$}
+\RightLabel{\textsc{(Var)}}
+\UnaryInfC{$Γ⊢a⇒t$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$c \text{ is a constant of type } t$}
+\RightLabel{\textsc{(Const)}}
+\UnaryInfC{$Γ⊢c⇒t$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$Γ,x:t⊢e ⇐ u$}
+\RightLabel{\textsc{(Abs)}}
+\UnaryInfC{$Γ⊢λx.e ⇐ t→u$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$Γ⊢f⇒t→u$}
+\AxiomC{$Γ⊢a⇒t$}
+\RightLabel{\textsc{(App)}}
+\BinaryInfC{$Γ⊢f a ⇒ u$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$Γ⊢a⇐t$}
+\RightLabel{\textsc{(Ann)}}
+\UnaryInfC{$Γ⊢(a:t)⇒t$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$Γ⊢a⇒t$}
+\AxiomC{$Γ⊢a=b$}
+\RightLabel{\textsc{(ChangeDir)}}
+\BinaryInfC{$Γ⊢a⇐b$}
+\end{prooftree}
+#+end_figure
